@@ -1,0 +1,1401 @@
+import { useState, type ReactElement } from "react";
+import {
+  Plus,
+  Upload,
+  Send,
+  Archive,
+  ListPlus,
+  Eye,
+  Copy,
+  Trash2,
+  Sparkles,
+  CircleCheck,
+  CircleX,
+  RotateCw,
+  History,
+  GripVertical,
+  Type,
+  CodeXml,
+  Image,
+  MessageSquareQuote,
+  ListChecks,
+  Heading,
+  Link2,
+  Pause,
+  Square,
+  Building2,
+  ShieldCheck,
+  ExternalLink,
+  TriangleAlert,
+  Lock,
+  Save,
+  FileText,
+  Factory,
+  Network,
+  Clock,
+  Play,
+} from "lucide-react";
+import { Link, navigate, useT, useToast } from "../lib/core";
+import { Badge, Level, Tabs, Code, Card, Toggle, Drawer, Meter, Seg } from "../ui/kit";
+import { AdmHead, Gate, Toolbar, Pager, RowMenu, Status, useSelection, FourEyes, useFirstLoad, SkelRows } from "./akit";
+
+/* ---------------- problems list ---------------- */
+
+const PROBS = [
+  { id: "P-2231", n: "Valid brackets", st: "review", k: "DSA", lv: 2, ac: 58, rep: 1, help: 91, v: 3, upd: "10:02", ai: false },
+  { id: "P-2230", n: "Pair with target sum", st: "live", k: "DSA", lv: 2, ac: 61, rep: 0, help: 94, v: 5, upd: "Yesterday", ai: false },
+  { id: "P-2229", n: "Bus stop queue", st: "live", k: "DSA", lv: 3, ac: 37, rep: 2, help: 88, v: 2, upd: "18 Oct", ai: true },
+  { id: "P-2228", n: "Top 3 per branch without an offer", st: "live", k: "SQL", lv: 3, ac: 44, rep: 0, help: 90, v: 1, upd: "17 Oct", ai: false },
+  { id: "P-2227", n: "Tree of lamps", st: "draft", k: "CP", lv: 5, ac: 0, rep: 0, help: 0, v: 1, upd: "16 Oct", ai: true },
+  { id: "P-2226", n: "Rotting oranges", st: "live", k: "DSA", lv: 3, ac: 49, rep: 5, help: 79, v: 4, upd: "15 Oct", ai: false },
+  { id: "P-1990", n: "Pair sum (old)", st: "bad", k: "DSA", lv: 2, ac: 55, rep: 0, help: 70, v: 2, upd: "2 Sep", ai: false },
+];
+const ST: Record<string, ["live" | "review" | "draft" | "bad", string]> = { live: ["live", "Live"], review: ["review", "In review"], draft: ["draft", "Draft"], bad: ["bad", "Retired"] };
+
+export function AdmProblems() {
+  const t = useT();
+  const toast = useToast();
+  const s = useSelection(PROBS.map((p) => p.id));
+  const [del, setDel] = useState(false);
+  const loading = useFirstLoad();
+  return (
+    <div className="col g16">
+      <AdmHead
+        title={t("Problems", "Problems", "प्रश्न")}
+        sub={t("4,982 problems · 4,611 live · 64 in review", "4,982 problems · 4,611 live · 64 review me", "4,982 प्रश्न")}
+        actions={
+          <>
+            <Gate mod="content" className="btn">
+              <Upload />
+              {t("Import package", "Package import", "पैकेज आयात")}
+            </Gate>
+            <Gate mod="content" className="btn pri" onClick={() => navigate("adm-problem")}>
+              <Plus />
+              {t("New problem", "Naya problem", "नया प्रश्न")}
+            </Gate>
+          </>
+        }
+      />
+      <section className="card">
+        <Toolbar
+          placeholder={t("Search by title, ID, pattern", "Title, ID, pattern se khojo", "खोजें")}
+          filters={[{ label: t("Status: live", "Status: live", "स्थिति: लाइव") }, { label: "DSA", on: true }, { label: t("Level", "Level", "स्तर") }, { label: t("Has reports", "Reports wale", "रिपोर्ट") }, { label: t("AI-drafted", "AI-drafted", "एआई मसौदा") }]}
+          right={
+            <Seg
+              value="table"
+              onChange={() => {}}
+              items={[
+                { id: "table", label: t("Table", "Table", "तालिका") },
+                { id: "board", label: t("Board", "Board", "बोर्ड") },
+              ]}
+            />
+          }
+        />
+        {s.count > 0 && (
+          <div style={{ padding: "8px 12px" }}>
+            <div className="bulkbar">
+              <b>
+                {s.count} {t("selected", "chune", "चयनित")}
+              </b>
+              <span className="grow" />
+              <button className="btn" onClick={() => toast(t("Sent to review", "Review me bheja", "समीक्षा में भेजा"))}>
+                <Send />
+                {t("Send to review", "Review bhejo", "समीक्षा")}
+              </button>
+              <button className="btn">
+                <ListPlus />
+                {t("Add to sheet", "Sheet me jodo", "शीट में")}
+              </button>
+              <button className="btn" onClick={() => setDel(true)}>
+                <Archive />
+                {t("Retire", "Retire", "हटाएँ")}
+              </button>
+              <button className="icon-btn sm" style={{ color: "inherit" }} onClick={s.clear} aria-label="Clear selection">
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
+        <div className="tbl-wrap" tabIndex={0}>
+          <table className="tbl">
+            <thead>
+              <tr>
+                <th style={{ width: 36 }}>
+                  <span onClick={s.toggleAll}>{s.box("__all")}</span>
+                </th>
+                <th>{t("Problem", "Problem", "प्रश्न")}</th>
+                <th>{t("Status", "Status", "स्थिति")}</th>
+                <th>{t("Kind", "Kind", "प्रकार")}</th>
+                <th>{t("Level", "Level", "स्तर")}</th>
+                <th className="r">AC %</th>
+                <th className="r">{t("Helped?", "Kaam aaya?", "उपयोगी?")}</th>
+                <th className="r">{t("Reports", "Reports", "रिपोर्ट")}</th>
+                <th className="r">Ver</th>
+                <th>{t("Updated", "Updated", "अद्यतन")}</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <SkelRows cols={11} rows={7} />
+              ) : (
+                PROBS.map((p) => (
+                  <tr key={p.id} aria-selected={!!s.sel[p.id]}>
+                    <td>{s.box(p.id)}</td>
+                    <td>
+                      <Link to="adm-problem" className="p-link">
+                        {p.n}
+                      </Link>
+                      <span className="tiny mono faint" style={{ display: "block" }}>
+                        {p.id} {p.ai && <Badge tone="ai" sq>AI draft</Badge>}
+                      </span>
+                    </td>
+                    <td>
+                      <Status s={ST[p.st][0]}>{ST[p.st][1]}</Status>
+                    </td>
+                    <td>{p.k}</td>
+                    <td>
+                      <Level n={p.lv as 2} short />
+                    </td>
+                    <td className="r num">{p.ac ? `${p.ac}%` : "—"}</td>
+                    <td className={`r num ${p.help && p.help < 80 ? "t-red" : ""}`}>{p.help ? `${p.help}%` : "—"}</td>
+                    <td className={`r num ${p.rep > 2 ? "t-red" : ""}`}>{p.rep}</td>
+                    <td className="r num">v{p.v}</td>
+                    <td className="faint small">{p.upd}</td>
+                    <td>
+                      <RowMenu
+                        items={[
+                          { label: t("Open editor", "Editor kholo", "संपादक"), icon: <FileText />, onClick: () => navigate("adm-problem") },
+                          { label: t("View as learner", "Learner ki tarah", "शिक्षार्थी दृश्य"), icon: <Eye />, onClick: () => navigate("problem") },
+                          { label: t("Duplicate", "Copy banao", "प्रतिलिपि"), icon: <Copy /> },
+                          { label: t("Delete (needs approval)", "Delete (approval chahiye)", "हटाएँ (मंज़ूरी)"), icon: <Trash2 />, danger: true, onClick: () => setDel(true) },
+                        ]}
+                      />
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+        <Pager total="4,982" shown="1–7" />
+      </section>
+      <FourEyes open={del} onClose={() => setDel(false)} title={t("Delete or retire content", "Content delete ya retire", "सामग्री हटाएँ")} what="P-1990 · Pair sum (old) · 2 versions · 1,240 submissions keep their history" />
+    </div>
+  );
+}
+
+/* ---------------- problem editor ---------------- */
+
+const CHECKS: [string, boolean, string][] = [
+  ["Reference solution (4 languages)", true, "31/31 tests · max 0.41 s"],
+  ["Wrong solutions fail as expected", true, "overflow → WA on 23, O(n²) → TLE on 17"],
+  ["Validator accepts every test", true, "31/31"],
+  ["Second model solves independently", true, "matches on all tests"],
+  ["Duplicate check", true, "nearest: P-1201 at 0.18"],
+  ["Style critic", false, "2 notes: long sentence in para 2; missing 'why' for sample 2"],
+  ["Hinglish version", false, "not written yet"],
+];
+
+export function AdmProblemEditor() {
+  const t = useT();
+  const toast = useToast();
+  const [tab, setTab] = useState("statement");
+  const failing = CHECKS.filter((c) => !c[1]).length;
+  return (
+    <div className="col g16">
+      <div className="ed-head">
+        <div className="grow" style={{ minWidth: 0 }}>
+          <span className="tiny mono faint">P-2231 · v3 draft · {t("autosaved 10:02", "autosave 10:02", "स्वतः सहेजा 10:02")}</span>
+          <h1 className="h2" style={{ fontSize: 22 }}>
+            Valid brackets
+          </h1>
+          <div className="row g6 mt4">
+            <Status s="review">{t("In review", "Review me", "समीक्षा में")}</Status>
+            <Level n={2} short />
+            <Badge>Stack</Badge>
+            <Badge>{t("Free", "Free", "फ़्री")}</Badge>
+          </div>
+        </div>
+        <div className="row wrap g8">
+          <Link to="problem" className="btn">
+            <Eye />
+            {t("Preview as learner", "Learner preview", "पूर्वावलोकन")}
+          </Link>
+          <Gate mod="content" className="btn">
+            <Save />
+            {t("Save", "Save", "सहेजें")}
+          </Gate>
+          <button className="btn pri" disabled aria-label={t(`${failing} checks failing · review pending`, `${failing} checks fail · review baaki`, "जाँच विफल")} data-tip={t(`${failing} checks failing · review pending`, `${failing} checks fail · review baaki`, "जाँच विफल")}>
+            <Lock />
+            {t("Publish", "Publish", "प्रकाशित")}
+          </button>
+        </div>
+      </div>
+      <div className="banner red">
+        <TriangleAlert />
+        <span className="small grow">{t(`Publish opens when every check is green and a reviewer approves. ${failing} checks still need work.`, `Publish tab khulega jab saare checks hare hon aur reviewer approve kare. ${failing} checks baaki.`, "सभी जाँच हरी होने पर।")}</span>
+        <button className="link small" onClick={() => setTab("checks")}>
+          {t("See checks", "Checks dekho", "जाँच देखें")}
+        </button>
+      </div>
+      <Tabs
+        value={tab}
+        onChange={setTab}
+        items={[
+          { id: "statement", label: t("Statement", "Statement", "कथन") },
+          { id: "package", label: t("Tests", "Tests", "टेस्ट"), count: 31 },
+          { id: "solutions", label: t("Solutions", "Solutions", "हल"), count: 7 },
+          { id: "editorial", label: t("Editorial", "Editorial", "संपादकीय") },
+          { id: "visuals", label: t("Visuals", "Visuals", "दृश्य") },
+          { id: "meta", label: t("Metadata", "Metadata", "मेटाडेटा") },
+          { id: "checks", label: t("Checks", "Checks", "जाँच"), count: `${CHECKS.length - failing}/${CHECKS.length}` },
+          { id: "history", label: t("History", "History", "इतिहास") },
+        ]}
+      />
+      {tab === "statement" && (
+        <div className="split-ed">
+          <section className="card">
+            <div className="card-h">
+              <span className="h3">Markdown</span>
+              <Seg value="en" onChange={() => {}} items={[{ id: "en", label: "EN" }, { id: "hg", label: "HG" }, { id: "hi", label: "हि" }]} />
+            </div>
+            <textarea
+              className="md-ed mono"
+              aria-label="Markdown"
+              defaultValue={`Given a string made of the characters ()[]{}, print true if every opening bracket is closed by the same type of bracket in the right order, else false.\n\nAn empty string counts as valid.\n\n## Constraints\n- 0 ≤ |s| ≤ 10^5\n\n## Example 1\nInput: ([]{})\nOutput: true`}
+            />
+          </section>
+          <section className="card">
+            <div className="card-h">
+              <Eye className="ic" />
+              <span className="h3">{t("Live preview", "Live preview", "लाइव पूर्वावलोकन")}</span>
+            </div>
+            <div className="card-b col g10">
+              <h2 className="display" style={{ fontSize: 24 }}>
+                Valid brackets
+              </h2>
+              <p className="prose small">Given a string made of the characters ()[]{"{}"}, print true if every opening bracket is closed by the same type of bracket in the right order, else false.</p>
+              <p className="prose small">An empty string counts as valid.</p>
+              <pre className="ex-b">{"Input   ([]{})\nOutput  true"}</pre>
+            </div>
+          </section>
+        </div>
+      )}
+      {tab === "package" && (
+        <section className="card">
+          <Toolbar
+            placeholder={t("Filter tests", "Tests filter", "टेस्ट")}
+            right={
+              <>
+                <Gate mod="content" className="btn sm">
+                  <Upload />
+                  ZIP
+                </Gate>
+                <Gate mod="content" className="btn sm pri" onClick={() => toast(t("Regenerating 24 tests from generators", "Generators se 24 tests dobara", "टेस्ट फिर से"))}>
+                  <RotateCw />
+                  {t("Regenerate", "Dobara banao", "पुनः बनाएँ")}
+                </Gate>
+              </>
+            }
+          />
+          <div className="tbl-wrap" tabIndex={0}>
+            <table className="tbl dense">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>{t("Type", "Type", "प्रकार")}</th>
+                  <th>{t("Size", "Size", "आकार")}</th>
+                  <th>{t("Source", "Source", "स्रोत")}</th>
+                  <th>{t("Reference", "Reference", "संदर्भ")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  [1, "Sample", "6 chars", "hand", "0.00 s"],
+                  [2, "Sample", "4 chars", "hand", "0.00 s"],
+                  [3, "Edge", "empty", "hand", "0.00 s"],
+                  [17, "Hidden", "100,000 chars", "gen_random(seed=17)", "0.03 s"],
+                  [23, "Hidden", "99,999 '('", "gen_unbalanced()", "0.02 s"],
+                  [31, "Hidden", "100,000 nested", "gen_deep()", "0.41 s"],
+                ].map(([a, b, c, d, e]) => (
+                  <tr key={a as number}>
+                    <td className="num">{a}</td>
+                    <td>
+                      <Badge tone={b === "Sample" ? "pen" : b === "Edge" ? "coin" : ""}>{b}</Badge>
+                    </td>
+                    <td className="mono tiny">{c}</td>
+                    <td className="mono tiny">{d}</td>
+                    <td className="num t-tick">{e}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="card-f tiny faint">{t("Checker: exact match (tokens) · limits 1 s / 256 MB, Python ×3", "Checker: exact (tokens) · limits 1 s / 256 MB, Python ×3", "चेकर")}</div>
+        </section>
+      )}
+      {tab === "solutions" && (
+        <div className="grid c2">
+          {[
+            ["Reference · C++", "AC", "31/31"],
+            ["Reference · Python", "AC", "31/31"],
+            ["Wrong · forgets empty stack", "WA expected", "WA on 3 ✓"],
+            ["Wrong · counts only", "WA expected", "WA on 2 ✓"],
+          ].map(([n, e, r]) => (
+            <section key={n} className="card pad col g8">
+              <div className="row between">
+                <b className="small">{n}</b>
+                <Badge tone={e === "AC" ? "tick" : "red"}>{e}</Badge>
+              </div>
+              <Code code={"stack<char> st;\nfor (char c : s) { /* … */ }"} nonum />
+              <span className="tiny t-tick">{r}</span>
+            </section>
+          ))}
+        </div>
+      )}
+      {tab === "checks" && (
+        <section className="card">
+          <div className="list">
+            {CHECKS.map(([n, ok, d]) => (
+              <div key={n} className="li">
+                {ok ? <CircleCheck style={{ width: 20, height: 20, color: "var(--tick)" }} /> : <CircleX style={{ width: 20, height: 20, color: "var(--red-text)" }} />}
+                <span className="grow">
+                  <b className="small">{n}</b>
+                  <span className="tiny faint" style={{ display: "block" }}>
+                    {d}
+                  </span>
+                </span>
+                {!ok && (
+                  <Gate mod="content" className="btn sm">
+                    <RotateCw />
+                    {t("Run again", "Dobara chalao", "फिर चलाएँ")}
+                  </Gate>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+      {tab === "history" && (
+        <section className="card">
+          <div className="list">
+            {[
+              ["v3", "Kunal (Editor)", "draft · +2 tests, statement edited", "today 10:02"],
+              ["v2", "Ananya (Reviewer)", "published", "12 Sep"],
+              ["v1", "Factory batch 6", "drafted by AI, reviewed", "2 Sep"],
+            ].map(([v, who, what, when]) => (
+              <div key={v} className="li">
+                <span className="ic-box">
+                  <History />
+                </span>
+                <span className="grow small">
+                  <b>{v}</b> · {who} · <span className="muted">{what}</span>
+                </span>
+                <span className="tiny faint">{when}</span>
+                <button className="btn sm">{t("Diff", "Diff", "अंतर")}</button>
+                {v !== "v3" && (
+                  <Gate mod="content" need="full" className="btn sm">
+                    {t("Roll back", "Wapas lo", "वापस")}
+                  </Gate>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+      {tab === "meta" && (
+        <section className="card pad">
+          <div className="grid c2">
+            {[
+              [t("Patterns", "Patterns", "पैटर्न"), "Stack, Matching"],
+              [t("Rating / level", "Rating / level", "रेटिंग"), "1100 · L2"],
+              [t("Sheet", "Sheet", "शीट"), "DSA sheet · Step 8"],
+              [t("Access", "Access", "पहुँच"), "Free"],
+              [t("Companies (with source)", "Companies (source ke saath)", "कंपनियाँ"), "Nimbu Labs · 3 verified experiences"],
+              [t("Prerequisites", "Prerequisites", "पूर्वापेक्षा"), "Stack: the LIFO idea"],
+            ].map(([k, v]) => (
+              <div key={k} className="field">
+                <label>{k}</label>
+                <input aria-label={k} className="input" defaultValue={v} />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+      {tab === "editorial" && (
+        <div className="split-ed">
+          <section className="card">
+            <div className="card-h">
+              <span className="h3">{t("Outline", "Outline", "रूपरेखा")}</span>
+              <Seg value="hg" onChange={() => {}} items={[{ id: "en", label: "EN ✓" }, { id: "hg", label: "HG ✓" }, { id: "hi", label: "हि …" }]} />
+            </div>
+            <div className="list">
+              {[
+                [t("1 · The idea in one line", "1 · Ek line me idea", "1 · एक पंक्ति"), "live", t("done", "ho gaya", "पूरा")],
+                [t("2 · Three ways, slow to fast", "2 · Teen tareeke", "2 · तीन तरीके"), "live", "O(n²) · O(n log n) · O(n)"],
+                [t("3 · Watch it run", "3 · Chalta dekho", "3 · चलता देखो"), "live", t("6 frames · match the code", "6 frames · code se mel", "6 फ़्रेम")],
+                [t("4 · Code", "4 · Code", "4 · कोड"), "review", "C++ ✓ · Java ✓ · Python …"],
+                [t("5 · Where people slip", "5 · Log kahan phisalte", "5 · कहाँ फिसलते"), "draft", t("from 1,204 wrong answers", "1,204 galat jawabon se", "गलत जवाबों से")],
+              ].map(([n, st, d], i) => (
+                <button key={n} className={`li ${i === 4 ? "on" : ""}`}>
+                  <span className="grow">
+                    <b className="small">{n}</b>
+                    <span className="tiny faint" style={{ display: "block" }}>
+                      {d}
+                    </span>
+                  </span>
+                  <Status s={st as "live"}>{st === "live" ? "OK" : st === "review" ? t("Review", "Review", "समीक्षा") : t("Draft", "Draft", "मसौदा")}</Status>
+                </button>
+              ))}
+            </div>
+            <textarea
+              className="md-ed mono"
+              aria-label={t("Lesson block", "Lesson block", "पाठ खंड")}
+              style={{ minHeight: 200 }}
+              defaultValue={`## Where people slip\n- Pushing ")" when the stack is empty: check before pop.\n- Returning true when the stack still has "(" left at the end.\n- Using one counter for all three bracket types: "([)]" passes, but is wrong.`}
+            />
+          </section>
+          <section className="card">
+            <div className="card-h">
+              <Eye className="ic" />
+              <span className="h3">{t("Learner preview", "Learner preview", "शिक्षार्थी दृश्य")}</span>
+              <Link to="editorial" className="link small">
+                {t("Open full page", "Poora page", "पूरा पेज")}
+              </Link>
+            </div>
+            <div className="card-b col g10">
+              <h2 className="display" style={{ fontSize: 22 }}>
+                {t("Where people slip", "Log kahan phisalte hain", "लोग कहाँ फिसलते हैं")}
+              </h2>
+              {[
+                ["41%", t("pop on an empty stack", "khaali stack par pop", "खाली स्टैक पर pop")],
+                ["33%", t("forget the leftover '(' at the end", "aakhir me bacha '(' bhool jaate", "बचा '(' भूलना")],
+                ["19%", t("one counter for all types", "sab types ke liye ek counter", "एक काउंटर")],
+              ].map(([p, l]) => (
+                <div key={l} className="row g10 small">
+                  <b className="num t-red" style={{ width: 40 }}>
+                    {p}
+                  </b>
+                  <span className="grow">{l}</span>
+                </div>
+              ))}
+              <span className="tiny faint">{t("Numbers come from real wrong submissions on this problem (sample).", "Number is problem ke asli galat submissions se (sample).", "नमूना आँकड़े।")}</span>
+            </div>
+          </section>
+        </div>
+      )}
+      {tab === "visuals" && (
+        <div className="split-ed">
+          <section className="card">
+            <div className="card-h">
+              <span className="h3">{t("Visual spec", "Visual spec", "दृश्य स्पेक")}</span>
+              <Badge tone="tick" icon={<CircleCheck />}>
+                {t("6/6 frames match the code", "6/6 frames code se milte", "6/6 फ़्रेम मेल")}
+              </Badge>
+            </div>
+            <textarea
+              className="md-ed mono"
+              aria-label={t("Visual spec", "Visual spec", "दृश्य स्पेक")}
+              defaultValue={`{\n  "kind": "stack",\n  "input": "([]{})",\n  "frames": [\n    { "read": "(", "stack": ["("], "say": "open: push" },\n    { "read": "[", "stack": ["(", "["], "say": "open: push" },\n    { "read": "]", "stack": ["("], "say": "matches top: pop" },\n    { "read": "{", "stack": ["(", "{"], "say": "open: push" },\n    { "read": "}", "stack": ["("], "say": "matches top: pop" },\n    { "read": ")", "stack": [], "say": "matches top: pop" }\n  ],\n  "end": "stack empty → true"\n}`}
+            />
+          </section>
+          <section className="card">
+            <div className="card-h">
+              <Eye className="ic" />
+              <span className="h3">{t("Frames", "Frames", "फ़्रेम")}</span>
+              <Gate mod="content" className="btn sm" onClick={() => toast(t("Frames rebuilt from the reference solution", "Reference solution se frames dobara bane", "फ़्रेम दोबारा बने"))}>
+                <RotateCw />
+                {t("Rebuild from code", "Code se dobara", "कोड से दोबारा")}
+              </Gate>
+            </div>
+            <div className="card-b">
+              <div className="frames">
+                {[
+                  ["(", ["("], "open: push"],
+                  ["[", ["(", "["], "open: push"],
+                  ["]", ["("], "matches top: pop"],
+                  ["{", ["(", "{"], "open: push"],
+                  ["}", ["("], "matches top: pop"],
+                  [")", [], "matches top: pop"],
+                ].map(([r, st, say], i) => (
+                  <div key={i} className="frame">
+                    <span className="tiny faint">
+                      {t("Frame", "Frame", "फ़्रेम")} {i + 1} · {t("read", "padha", "पढ़ा")} <b className="mono">{r as string}</b>
+                    </span>
+                    <div className="fr-stack">
+                      {(st as string[]).length === 0 ? <span className="tiny faint">{t("empty", "khaali", "खाली")}</span> : (st as string[]).map((c, k) => <span key={k}>{c}</span>)}
+                    </div>
+                    <span className="tiny">{say as string}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------------- aptitude & quiz ---------------- */
+
+const APT_ITEMS: [string, string, string, 1 | 2 | 3 | 4 | 5, string, number, string][] = [
+  ["+20% then −20%: net change?", "Quant", "Percentages", 2, "40 s", 46, "live"],
+  ["A 12 days, B 18 days, together 4 days…", "Quant", "Time & work", 3, "60 s", 63, "live"],
+  ["Train crosses a pole in 9 s…", "Quant", "Speed & distance", 2, "45 s", 38, "review"],
+  ["Seating: 6 people, 2 rows…", "Logical", "Seating", 4, "120 s", 71, "live"],
+  ["Code: if TRAIN is VSDLQ, how is PLANE…", "Logical", "Coding-decoding", 2, "40 s", 29, "live"],
+  ["Find the odd one: 3, 8, 15, 24, 34", "Logical", "Series", 2, "30 s", 52, "draft"],
+  ["Choose the word closest to 'candid'", "Verbal", "Vocabulary", 1, "20 s", 18, "live"],
+  ["Para jumble: 5 sentences on monsoon", "Verbal", "Para jumbles", 3, "90 s", 66, "review"],
+];
+
+export function AdmAptitude() {
+  const t = useT();
+  const toast = useToast();
+  const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState("items");
+  const [pick, setPick] = useState(0);
+  const sel = useSelection(APT_ITEMS.map((x) => x[0]));
+  const [sections, setSections] = useState([
+    { n: "Quantitative", q: 20, m: 25, plus: 1, minus: 0.25 },
+    { n: "Logical", q: 20, m: 25, plus: 1, minus: 0.25 },
+    { n: "Verbal", q: 20, m: 20, plus: 1, minus: 0 },
+  ]);
+  const totQ = sections.reduce((a, b) => a + b.q, 0);
+  const totM = sections.reduce((a, b) => a + b.m, 0);
+  return (
+    <div className="col g16">
+      <AdmHead
+        title={t("Aptitude & quiz", "Aptitude aur quiz", "एप्टीट्यूड")}
+        sub={t("12,480 items · 38 practice sets · 50 mock patterns", "12,480 items · 38 sets · 50 mock patterns", "12,480 आइटम")}
+        actions={
+          <>
+            <Gate mod="content" className="btn">
+              <Upload />
+              {t("Import CSV", "CSV import", "CSV आयात")}
+            </Gate>
+            <Gate mod="content" className="btn pri" onClick={() => setOpen(true)}>
+              <Plus />
+              {t("New item", "Naya item", "नया आइटम")}
+            </Gate>
+          </>
+        }
+      />
+      <div className="stat-strip" style={{ ["--n" as string]: 4 }}>
+        {[
+          [t("Live items", "Live items", "लाइव"), "11,902", ""],
+          [t("In review", "Review me", "समीक्षा"), "214", t("SLA 48 h", "SLA 48 h", "48 घंटे")],
+          [t("Wrong rate above 60%", "60% se zyada galat", "60%+ गलत"), "38", t("check the key first", "pehle key jaancho", "कुंजी जाँचें")],
+          [t("Reports: 'answer is wrong'", "Report: 'jawab galat'", "रिपोर्ट"), "5", t("2 confirmed", "2 sahi nikle", "2 पुष्ट")],
+        ].map(([k, v, d]) => (
+          <div key={k} className="stat">
+            <span className="k">{k}</span>
+            <span className="v">{v}</span>
+            {d && <span className="d">{d}</span>}
+          </div>
+        ))}
+      </div>
+      <Tabs
+        value={tab}
+        onChange={setTab}
+        items={[
+          { id: "items", label: t("Items", "Items", "आइटम") },
+          { id: "sets", label: t("Practice sets", "Practice sets", "अभ्यास सेट"), count: 38 },
+          { id: "mocks", label: t("Mock patterns", "Mock patterns", "मॉक पैटर्न"), count: 50 },
+          { id: "reports", label: t("Reports", "Reports", "रिपोर्ट"), count: 5 },
+        ]}
+      />
+      {tab === "items" && (
+        <div className="grid c3">
+          <section className="card" style={{ gridColumn: "span 2" }}>
+            <Toolbar
+              placeholder={t("Search items", "Items khojo", "खोजें")}
+              filters={[{ label: "Quant", on: true }, { label: "Logical" }, { label: "Verbal" }, { label: t("Wrong rate > 60%", "Galat > 60%", "गलत > 60%") }, { label: t("AI drafted", "AI drafted", "एआई") }]}
+            />
+            {sel.count > 0 && (
+              <div className="bulkbar">
+                <b className="small">
+                  {sel.count} {t("selected", "chune", "चुने")}
+                </b>
+                <Gate mod="content" className="btn sm">
+                  <Send />
+                  {t("Send to review", "Review bhejo", "समीक्षा")}
+                </Gate>
+                <Gate mod="content" className="btn sm">
+                  {t("Change topic", "Topic badlo", "विषय बदलें")}
+                </Gate>
+                <Gate mod="content" need="full" className="btn sm dang">
+                  <Archive />
+                  {t("Retire", "Retire", "हटाएँ")}
+                </Gate>
+                <span className="grow" />
+                <button className="btn sm ghost" onClick={sel.clear}>
+                  {t("Clear", "Hatao", "साफ़")}
+                </button>
+              </div>
+            )}
+            <div className="tbl-wrap" tabIndex={0}>
+              <table className="tbl">
+                <thead>
+                  <tr>
+                    <th style={{ width: 36 }} />
+                    <th>{t("Item", "Item", "आइटम")}</th>
+                    <th>{t("Topic", "Topic", "विषय")}</th>
+                    <th>{t("Level", "Level", "स्तर")}</th>
+                    <th className="r">{t("Target", "Target", "लक्ष्य")}</th>
+                    <th className="r">{t("Wrong", "Galat", "गलत")}</th>
+                    <th>{t("Status", "Status", "स्थिति")}</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {APT_ITEMS.map(([q, sec, tp, lv, tg, w, st], i) => (
+                    <tr key={q} aria-selected={pick === i} onClick={() => setPick(i)} style={{ cursor: "pointer" }}>
+                      <td onClick={(e) => e.stopPropagation()}>{sel.box(q)}</td>
+                      <td className="small">{q}</td>
+                      <td>
+                        <span className="col">
+                          <span className="small">{tp}</span>
+                          <span className="tiny faint">{sec}</span>
+                        </span>
+                      </td>
+                      <td>
+                        <Level n={lv} short />
+                      </td>
+                      <td className="r num">{tg}</td>
+                      <td className={`r num ${w > 60 ? "t-red" : ""}`}>{w}%</td>
+                      <td>
+                        <Status s={st === "live" ? "live" : st === "draft" ? "draft" : "review"}>{st === "live" ? "Live" : st === "draft" ? "Draft" : "In review"}</Status>
+                      </td>
+                      <td onClick={(e) => e.stopPropagation()}>
+                        <RowMenu items={[{ label: t("Edit", "Badlo", "संपादित"), onClick: () => setOpen(true) }, { label: t("Duplicate", "Copy", "कॉपी"), icon: <Copy /> }, { label: t("Retire", "Retire", "हटाएँ"), icon: <Archive />, danger: true }]} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <Pager total="12,480" shown="1–8" />
+          </section>
+          <div className="col g12">
+            <Card title={t("Option analysis", "Option analysis", "विकल्प विश्लेषण")} icon={<ListChecks className="ic" />}>
+              <div className="col g10">
+                <span className="small">{APT_ITEMS[pick][0]}</span>
+                {[
+                  ["A · +4%", 9],
+                  ["B · −4% ✓", 54],
+                  ["C · no change", 31],
+                  ["D · −2%", 6],
+                ].map(([o, p]) => (
+                  <div key={o as string} className="col g4">
+                    <div className="row between small">
+                      <span>{o}</span>
+                      <b className="num">{p}%</b>
+                    </div>
+                    <Meter v={p as number} tone={(o as string).includes("✓") ? "tick" : (p as number) > 25 ? "red" : "pen"} />
+                  </div>
+                ))}
+                <p className="tiny faint">{t("'No change' is the trap: the shortcut card is shown after a wrong pick.", "'No change' jaal hai: galat chunne par shortcut card dikhta hai.", "जाल।")}</p>
+              </div>
+            </Card>
+            <Card title={t("Time against target", "Target ke muqable samay", "समय बनाम लक्ष्य")} icon={<Clock className="ic" />}>
+              <div className="col g8 small">
+                <div className="row between">
+                  <span className="muted">{t("Median", "Median", "माध्यिका")}</span>
+                  <b className="num">52 s</b>
+                </div>
+                <div className="row between">
+                  <span className="muted">{t("Within target", "Target ke andar", "लक्ष्य के भीतर")}</span>
+                  <b className="num">38%</b>
+                </div>
+                <Meter v={38} tone="coin" />
+                <span className="tiny faint">{t("Most learners who are slow also pick C. The method card fixes both.", "Dheeme learners zyada tar C chunte hain. Tareeka card dono theek karta hai.", "धीमे छात्र C चुनते हैं।")}</span>
+              </div>
+            </Card>
+          </div>
+        </div>
+      )}
+      {tab === "sets" && (
+        <section className="card">
+          <Toolbar placeholder={t("Search sets", "Sets khojo", "सेट खोजें")} filters={[{ label: "Quant" }, { label: "Logical" }, { label: "Verbal" }]} right={<Gate mod="content" className="btn sm pri"><Plus />{t("New set", "Naya set", "नया सेट")}</Gate>} />
+          <div className="tbl-wrap" tabIndex={0}>
+            <table className="tbl">
+              <thead>
+                <tr>
+                  <th>{t("Set", "Set", "सेट")}</th>
+                  <th>{t("Topic", "Topic", "विषय")}</th>
+                  <th className="r">{t("Items", "Items", "आइटम")}</th>
+                  <th className="r">{t("Avg score", "Avg score", "औसत")}</th>
+                  <th className="r">{t("Learners", "Learners", "शिक्षार्थी")}</th>
+                  <th>{t("Status", "Status", "स्थिति")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  ["Successive percentages · set 2", "Percentages", 10, "64%", "8,204", "live"],
+                  ["Pipes and cisterns · set 1", "Time & work", 12, "58%", "5,960", "live"],
+                  ["Blood relations · set 3", "Logical", 10, "71%", "4,410", "live"],
+                  ["Reading speed · set 1", "Reading", 6, "—", "—", "draft"],
+                ].map(([n, tp, it, av, l, st]) => (
+                  <tr key={n as string}>
+                    <td className="small">
+                      <b>{n}</b>
+                    </td>
+                    <td>
+                      <Badge>{tp}</Badge>
+                    </td>
+                    <td className="r num">{it}</td>
+                    <td className="r num">{av}</td>
+                    <td className="r num">{l}</td>
+                    <td>
+                      <Status s={st === "live" ? "live" : "draft"}>{st === "live" ? "Live" : "Draft"}</Status>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+      {tab === "mocks" && (
+        <div className="mock-builder">
+          <section className="card">
+            <div className="card-h">
+              <span className="h3">{t("Patterns", "Patterns", "पैटर्न")}</span>
+              <Gate mod="content" className="btn sm">
+                <Plus />
+              </Gate>
+            </div>
+            <div className="list">
+              {[
+                ["Mass-recruiter pattern A", "3 sections · 70 min", true],
+                ["Mass-recruiter pattern B", "4 sections · 100 min", false],
+                ["Product company OA (aptitude part)", "1 section · 25 min", false],
+              ].map(([n, d, on]) => (
+                <button key={n as string} className={`li ${on ? "on" : ""}`}>
+                  <span className="grow">
+                    <b className="small">{n as string}</b>
+                    <span className="tiny faint" style={{ display: "block" }}>
+                      {d as string}
+                    </span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </section>
+          <section className="card">
+            <div className="card-h">
+              <span className="h3">Mass-recruiter pattern A</span>
+              <Badge tone="tick" icon={<ShieldCheck />}>
+                {t("Source verified", "Source verified", "स्रोत सत्यापित")}
+              </Badge>
+            </div>
+            <div className="tbl-wrap" tabIndex={0}>
+              <table className="tbl">
+                <thead>
+                  <tr>
+                    <th>{t("Section", "Section", "खंड")}</th>
+                    <th className="r">{t("Questions", "Sawaal", "प्रश्न")}</th>
+                    <th className="r">{t("Minutes", "Minute", "मिनट")}</th>
+                    <th className="r">{t("Right", "Sahi", "सही")}</th>
+                    <th className="r">{t("Wrong", "Galat", "गलत")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sections.map((x, i) => (
+                    <tr key={x.n}>
+                      <td className="small">
+                        <b>{x.n}</b>
+                      </td>
+                      <td className="r">
+                        <input
+                          className="input sm cell-in"
+                          value={x.q}
+                          onChange={(e) => setSections((a) => a.map((y, k) => (k === i ? { ...y, q: Number(e.target.value) || 0 } : y)))}
+                        />
+                      </td>
+                      <td className="r">
+                        <input
+                          className="input sm cell-in"
+                          value={x.m}
+                          onChange={(e) => setSections((a) => a.map((y, k) => (k === i ? { ...y, m: Number(e.target.value) || 0 } : y)))}
+                        />
+                      </td>
+                      <td className="r num t-tick">+{x.plus}</td>
+                      <td className={`r num ${x.minus ? "t-red" : "faint"}`}>{x.minus ? `−${x.minus}` : "0"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="card-f wrap">
+              <span className="small">
+                <b className="num">{totQ}</b> {t("questions", "sawaal", "प्रश्न")} · <b className="num">{totM}</b> {t("min", "min", "मिनट")}
+              </span>
+              <span className="grow" />
+              <span className="tiny faint">{t("Source: recruiter's public test notice, checked 12 Oct by Ananya", "Source: recruiter ka public notice, 12 Oct ko Ananya ne jaancha", "स्रोत: सार्वजनिक सूचना")}</span>
+            </div>
+          </section>
+          <Card title={t("Rules", "Niyam", "नियम")}>
+            <div className="col g10">
+              {[
+                [t("Lock each section when its time ends", "Samay khatam par section lock", "समय पर लॉक"), true],
+                [t("Shuffle questions and options", "Sawaal aur options shuffle", "शफ़ल"), true],
+                [t("Calculator", "Calculator", "कैलकुलेटर"), false],
+                [t("Sahayak during the test", "Test me Sahayak", "टेस्ट में सहायक"), false],
+              ].map(([l, on]) => (
+                <div key={l as string} className="row between small g12">
+                  <span>{l as string}</span>
+                  <Toggle on={on as boolean} onChange={() => {}} label={l as string} />
+                </div>
+              ))}
+              <Link to="apt-mock" className="btn sm mt8">
+                <Eye />
+                {t("Preview as learner", "Learner ki tarah dekho", "पूर्वावलोकन")}
+              </Link>
+              <Gate mod="content" need="full" className="btn sm pri" onClick={() => toast(t("Pattern published · new mocks use it", "Pattern publish · naye mocks isi se", "प्रकाशित"))}>
+                <Send />
+                {t("Publish pattern", "Pattern publish", "प्रकाशित")}
+              </Gate>
+            </div>
+          </Card>
+        </div>
+      )}
+      {tab === "reports" && (
+        <Card pad={false}>
+          <div className="list">
+            {[
+              ["A 12 days, B 18 days, together 4 days…", t("'Answer should be 8 days, not 7⅓'", "'Jawab 8 din hona chahiye, 7⅓ nahi'", "उत्तर 8 दिन"), 3, true],
+              ["Seating: 6 people, 2 rows…", t("'Two arrangements fit the clues'", "'Do arrangement fit hote hain'", "दो व्यवस्थाएँ"), 2, true],
+              ["Choose the word closest to 'candid'", t("'Frank and open both look right'", "'Frank aur open dono sahi lagte'", "दोनों सही"), 1, false],
+            ].map(([q, r, n, ok]) => (
+              <div key={q as string} className="li">
+                <span className="grow">
+                  <b className="small">{q as string}</b>
+                  <span className="tiny faint" style={{ display: "block" }}>
+                    {r as string} · {n as number} {t("reports", "reports", "रिपोर्ट")}
+                  </span>
+                </span>
+                {ok ? <Badge tone="red">{t("Key wrong: confirmed", "Key galat: sahi nikla", "पुष्ट")}</Badge> : <Badge>{t("Checking", "Jaanch", "जाँच")}</Badge>}
+                <Gate mod="content" className="btn sm" onClick={() => setOpen(true)}>
+                  {t("Fix item", "Item theek karo", "सुधारें")}
+                </Gate>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+      <Drawer
+        open={open}
+        onClose={() => setOpen(false)}
+        title={t("Edit item", "Item badlo", "आइटम संपादित")}
+        footer={
+          <>
+            <button className="btn ghost" onClick={() => setOpen(false)}>
+              {t("Cancel", "Raho", "रद्द")}
+            </button>
+            <Gate mod="content" className="btn pri grow" onClick={() => setOpen(false)}>
+              {t("Send to review", "Review bhejo", "समीक्षा")}
+            </Gate>
+          </>
+        }
+      >
+        <div className="col g12">
+          <div className="field">
+            <label>{t("Question", "Sawaal", "प्रश्न")}</label>
+            <textarea aria-label={t("Question", "Sawaal", "प्रश्न")} className="textarea" defaultValue="The price of a phone rises by 20% in March and then falls by 20% in April. Compared with February, the April price:" />
+          </div>
+          {["Increases by 4%", "Decreases by 4%", "No change", "Decreases by 2%"].map((o, i) => (
+            <div key={o} className="row g8">
+              <span className={`radio`} aria-checked={i === 1} />
+              <input className="input sm" defaultValue={o} />
+            </div>
+          ))}
+          <div className="field">
+            <label>{t("Shortcut", "Shortcut", "शॉर्टकट")}</label>
+            <input aria-label={t("Shortcut", "Shortcut", "शॉर्टकट")} className="input" defaultValue="a + b + ab/100" />
+          </div>
+          <div className="row g12">
+            <div className="field grow">
+              <label>{t("Time target (s)", "Time target (s)", "समय लक्ष्य")}</label>
+              <input aria-label={t("Time target (s)", "Time target (s)", "समय लक्ष्य")} className="input" defaultValue="40" />
+            </div>
+            <div className="field grow">
+              <label>{t("Level", "Level", "स्तर")}</label>
+              <select aria-label={t("Level", "Level", "स्तर")} className="select" defaultValue="2">
+                <option value="1">L1</option>
+                <option value="2">L2</option>
+                <option value="3">L3</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </Drawer>
+    </div>
+  );
+}
+
+/* ---------------- courses & lessons (block editor) ---------------- */
+
+export function AdmLessons() {
+  const t = useT();
+  const blocks: [ReactElement, string, string][] = [
+    [<Heading key="a" />, t("Heading", "Heading", "शीर्षक"), "Deadlocks: the four conditions"],
+    [<Type key="b" />, t("Text", "Text", "पाठ"), "A deadlock is when every process in a group waits for something only another process in the same group can release."],
+    [<Image key="c" />, t("Visual", "Visual", "दृश्य"), "rag-cycle.json · resource allocation graph · 1 frame"],
+    [<ListChecks key="d" />, t("List", "List", "सूची"), "Mutual exclusion · Hold and wait · No preemption · Circular wait"],
+    [<MessageSquareQuote key="e" />, t("Callout", "Callout", "नोट"), "Break any one condition and the deadlock cannot happen."],
+    [<CodeXml key="f" />, t("Quiz", "Quiz", "क्विज़"), "Two threads always lock A then B. Can they deadlock? (3 options)"],
+  ];
+  return (
+    <div className="col g16">
+      <AdmHead title={t("Courses & lessons", "Courses aur lessons", "कोर्स और पाठ")} sub={t("65 courses · 2,214 lessons · 3 languages", "65 courses · 2,214 lessons · 3 bhasha", "65 कोर्स")} />
+      <div className="lesson-ed">
+        <aside className="card ltree">
+          <div className="card-h">
+            <span className="h3">Operating systems</span>
+          </div>
+          {[
+            ["1 · What an OS does", "live", 0],
+            ["2 · Processes and threads", "live", 0],
+            ["3 · Synchronisation", "live", 0],
+            ["Race conditions", "live", 1],
+            ["Mutex and semaphore", "live", 1],
+            ["Deadlocks: the four conditions", "review", 1],
+            ["Banker's algorithm", "draft", 1],
+            ["4 · CPU scheduling", "draft", 0],
+          ].map(([n, s, d]) => (
+            <div key={n as string} className={`lt-row ${n === "Deadlocks: the four conditions" ? "on" : ""}`} style={{ paddingLeft: 14 + (d as number) * 16 }}>
+              <span className={`lt-dot ${s}`} />
+              <span className="ellipsis small">{n as string}</span>
+            </div>
+          ))}
+        </aside>
+        <section className="card blocks">
+          <div className="card-h">
+            <span className="h3">{t("Lesson editor", "Lesson editor", "पाठ संपादक")}</span>
+            <Seg value="hg" onChange={() => {}} items={[{ id: "en", label: "EN ✓" }, { id: "hg", label: "HG ✓" }, { id: "hi", label: "हि …" }]} />
+          </div>
+          <div className="card-b col g8">
+            {blocks.map(([ic, k, v], i) => (
+              <div key={i} className="blk">
+                <GripVertical className="grip" />
+                <span className="blk-k">
+                  {ic}
+                  {k}
+                </span>
+                <span className="grow small">{v}</span>
+              </div>
+            ))}
+            <button className="add-block">
+              <Plus />
+              {t("Add a block: text, code that runs, visual, callout, question", "Block jodo: text, chalne wala code, visual, callout, sawaal", "ब्लॉक जोड़ें")}
+            </button>
+          </div>
+        </section>
+        <aside className="col g12">
+          <Card title={t("Publishing", "Publishing", "प्रकाशन")}>
+            <div className="col g8 small">
+              <div className="row between">
+                <span className="muted">{t("Status", "Status", "स्थिति")}</span>
+                <Status s="review">In review</Status>
+              </div>
+              <div className="row between">
+                <span className="muted">{t("Reviewer", "Reviewer", "समीक्षक")}</span>
+                <span>Ananya Rao</span>
+              </div>
+              <div className="row between">
+                <span className="muted">{t("Hindi version", "Hindi version", "हिंदी संस्करण")}</span>
+                <span className="t-coin">{t("in progress", "chal raha", "प्रगति में")}</span>
+              </div>
+              <Gate mod="content" className="btn pri block mt8">
+                <Send />
+                {t("Send to review", "Review bhejo", "समीक्षा हेतु")}
+              </Gate>
+            </div>
+          </Card>
+        </aside>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- roadmaps & sheets ---------------- */
+
+export function AdmRoadmaps() {
+  const t = useT();
+  const [sel, setSel] = useState("n3");
+  const nodes = [
+    { id: "n1", x: 60, y: 40, t: "Programming basics" },
+    { id: "n2", x: 60, y: 140, t: "Arrays & strings" },
+    { id: "n3", x: 60, y: 240, t: "Lists, stacks, queues" },
+    { id: "n4", x: 330, y: 190, t: "Monotonic stack", opt: true },
+    { id: "n5", x: 60, y: 340, t: "Recursion" },
+    { id: "n6", x: 330, y: 340, t: "Backtracking", opt: true },
+  ];
+  const edges = [
+    ["n1", "n2"],
+    ["n2", "n3"],
+    ["n3", "n4"],
+    ["n3", "n5"],
+    ["n5", "n6"],
+  ];
+  const pos = (id: string) => nodes.find((n) => n.id === id)!;
+  return (
+    <div className="col g16">
+      <AdmHead
+        title={t("Roadmaps & sheets", "Roadmaps aur sheets", "रोडमैप और शीट")}
+        sub="SDE at a product company · v7 draft"
+        actions={
+          <>
+            <Gate mod="content" className="btn">
+              <Plus />
+              {t("Add node", "Node jodo", "नोड जोड़ें")}
+            </Gate>
+            <Gate mod="content" need="full" className="btn pri">
+              <Send />
+              {t("Publish v7", "v7 publish", "v7 प्रकाशित")}
+            </Gate>
+          </>
+        }
+      />
+      <div className="rm-ed">
+        <section className="card rm-canvas paper-grid" tabIndex={0} aria-label={t("Roadmap canvas", "Roadmap canvas", "रोडमैप कैनवास")}>
+          <svg width="100%" height="420" viewBox="0 0 560 420" aria-label="Roadmap graph editor">
+            {edges.map(([a, b]) => {
+              const A = pos(a);
+              const B = pos(b);
+              return <path key={a + b} d={`M${A.x + 90} ${A.y + 40} C ${A.x + 90} ${(A.y + B.y) / 2 + 40}, ${B.x + 90} ${(A.y + B.y) / 2}, ${B.x + 90} ${B.y}`} stroke="var(--ink-3)" strokeWidth="1.6" fill="none" strokeDasharray={B.opt ? "5 4" : undefined} />;
+            })}
+            {nodes.map((n) => (
+              <g key={n.id} onClick={() => setSel(n.id)} style={{ cursor: "pointer" }}>
+                <rect x={n.x} y={n.y} width="180" height="40" rx="10" fill="var(--panel)" stroke={sel === n.id ? "var(--pen)" : "var(--line-2)"} strokeWidth={sel === n.id ? 2.5 : 1.5} strokeDasharray={n.opt ? "5 4" : undefined} />
+                <text x={n.x + 90} y={n.y + 25} textAnchor="middle" fontSize="13" fill="var(--ink)" fontFamily="var(--f-ui)" fontWeight="560">
+                  {n.t}
+                </text>
+              </g>
+            ))}
+          </svg>
+        </section>
+        <aside className="col g12">
+          <Card title={t("Node", "Node", "नोड")} icon={<Network className="ic" />}>
+            <div className="col g10">
+              <div className="field">
+                <label>{t("Title", "Title", "शीर्षक")}</label>
+                <input aria-label={t("Title", "Title", "शीर्षक")} className="input" defaultValue={pos(sel).t} key={sel} />
+              </div>
+              <div className="row between small">
+                <span>{t("Required", "Zaroori", "आवश्यक")}</span>
+                <Toggle on={!pos(sel).opt} onChange={() => {}} label="Required" />
+              </div>
+              <span className="eyebrow">{t("Linked content", "Judi content", "जुड़ी सामग्री")}</span>
+              {["Lesson · Stack: the LIFO idea", "Problem · Valid brackets", "Quiz · Stacks in 10"].map((x) => (
+                <div key={x} className="row g8 small">
+                  <Link2 style={{ width: 14, height: 14 }} />
+                  <span className="grow">{x}</span>
+                </div>
+              ))}
+              <input className="input sm" placeholder={t("Search lessons, problems, quizzes…", "Lessons, problems, quiz khojo…", "खोजें…")} />
+            </div>
+          </Card>
+        </aside>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- companies data ---------------- */
+
+export function AdmCompanies() {
+  const t = useT();
+  const toast = useToast();
+  const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState("list");
+  return (
+    <div className="col g16">
+      <AdmHead
+        title={t("Companies data", "Companies data", "कंपनी डेटा")}
+        sub={t("A fact shows to learners only when it has a source and a verifier. Company names in this mock are made up.", "Koi fact learners ko tabhi dikhega jab source aur verifier ho. Is mock me company naam nakli hain.", "स्रोत और सत्यापक के साथ।")}
+        actions={
+          <Gate mod="content" className="btn pri">
+            <Plus />
+            {t("Add company", "Company jodo", "कंपनी जोड़ें")}
+          </Gate>
+        }
+      />
+      <Tabs
+        value={tab}
+        onChange={setTab}
+        items={[
+          { id: "list", label: t("Companies", "Companies", "कंपनियाँ"), count: 412 },
+          { id: "queue", label: t("Facts to verify", "Verify karne wale facts", "सत्यापन"), count: 9 },
+          { id: "sources", label: t("Sources", "Sources", "स्रोत") },
+        ]}
+      />
+      {tab === "queue" && (
+        <section className="card">
+          <div className="tbl-wrap" tabIndex={0}>
+            <table className="tbl">
+              <thead>
+                <tr>
+                  <th>{t("Fact", "Fact", "तथ्य")}</th>
+                  <th>{t("Company", "Company", "कंपनी")}</th>
+                  <th>{t("Evidence", "Saboot", "प्रमाण")}</th>
+                  <th className="r">{t("Agree", "Mel", "सहमति")}</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  ["OA has 2 coding + 20 MCQ, 90 min", "Nimbu Labs", "9 experiences · 1 job post", "9/9"],
+                  ["Tech 2 asks LLD (parking lot)", "Kesar Cloud", "3 experiences", "2/3"],
+                  ["CTC for SDE 1 is ₹[x] LPA", "Nimbu Labs", t("1 learner claim, no letter", "1 claim, letter nahi", "1 दावा"), "1/1"],
+                  ["HR round asks to relocate", "Sitara Infotech", "5 experiences", "5/5"],
+                ].map(([f, c, e, a]) => (
+                  <tr key={f as string}>
+                    <td className="small">
+                      <b>{f}</b>
+                    </td>
+                    <td className="small">{c}</td>
+                    <td className="small muted">{e}</td>
+                    <td className="r num">{a}</td>
+                    <td>
+                      <span className="row g4">
+                        <Gate mod="content" className="btn sm" onClick={() => toast(t("Verified · now visible to learners", "Verified · ab learners ko dikhega", "सत्यापित"))}>
+                          <CircleCheck />
+                          {t("Verify", "Verify", "सत्यापित")}
+                        </Gate>
+                        <Gate mod="content" className="btn sm ghost">
+                          {t("Need more", "Aur chahiye", "और चाहिए")}
+                        </Gate>
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="card-f">
+            <span className="tiny faint">{t("Pay and CTC need an offer letter or a public job post; one learner's word is not enough.", "Salary/CTC ke liye offer letter ya public job post chahiye; ek learner ki baat kaafi nahi.", "वेतन के लिए प्रमाण चाहिए।")}</span>
+          </div>
+        </section>
+      )}
+      {tab === "sources" && (
+        <section className="card">
+          <div className="tbl-wrap" tabIndex={0}>
+            <table className="tbl">
+              <thead>
+                <tr>
+                  <th>{t("Source type", "Source type", "स्रोत")}</th>
+                  <th className="r">{t("Count", "Ginti", "संख्या")}</th>
+                  <th>{t("Trust", "Bharosa", "भरोसा")}</th>
+                  <th>{t("Rule", "Niyam", "नियम")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  [t("Interview experience with offer or invite mail", "Offer/invite mail wala experience", "ईमेल सहित"), "2,140", "tick", t("counts fully", "poora ginta", "पूरा")],
+                  [t("Public job post or careers page", "Public job post", "जॉब पोस्ट"), "860", "tick", t("counts fully; link kept", "poora; link rakha", "पूरा")],
+                  [t("Experience without proof", "Bina proof experience", "बिना प्रमाण"), "3,912", "coin", t("needs 3 that agree", "3 milne chahiye", "3 चाहिए")],
+                  [t("Social media post", "Social media post", "सोशल"), "412", "red", t("never alone", "akela kabhi nahi", "कभी अकेले नहीं")],
+                ].map(([k, c, tone, r]) => (
+                  <tr key={k as string}>
+                    <td className="small">{k}</td>
+                    <td className="r num">{c}</td>
+                    <td>
+                      <Badge tone={tone as "tick"}>{tone === "tick" ? t("High", "Zyada", "उच्च") : tone === "coin" ? t("Medium", "Beech", "मध्यम") : t("Low", "Kam", "कम")}</Badge>
+                    </td>
+                    <td className="small muted">{r}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+      {tab === "list" && (
+        <section className="card">
+          <div className="tbl-wrap" tabIndex={0}>
+            <table className="tbl">
+              <thead>
+                <tr>
+                  <th>{t("Company", "Company", "कंपनी")}</th>
+                  <th>{t("Type", "Type", "प्रकार")}</th>
+                  <th className="r">{t("Sources", "Sources", "स्रोत")}</th>
+                  <th>{t("Verified facts", "Verified facts", "सत्यापित")}</th>
+                  <th>{t("Last checked", "Last checked", "अंतिम जाँच")}</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  ["Nimbu Labs", "Product", 16, 92, "12 Oct"],
+                  ["Sitara Infotech", "Service", 24, 100, "8 Oct"],
+                  ["Kesar Cloud", "Product", 6, 67, "2 Sep"],
+                  ["Jugnu Apps", "Startup", 3, 40, "—"],
+                  ["Patang Tech", "Product", 11, 82, "10 Oct"],
+                  ["Megh Data", "Product", 7, 71, "29 Sep"],
+                  ["Bodhi Services", "Service", 19, 95, "14 Oct"],
+                  ["Tara Fintech", "Startup", 5, 60, "1 Oct"],
+                ].map(([n, ty, s, v, d]) => (
+                  <tr key={n as string} onClick={() => setOpen(true)} style={{ cursor: "pointer" }}>
+                    <td className="row g8">
+                      <Building2 style={{ width: 15, height: 15 }} className="faint" />
+                      <b className="small">{n}</b>
+                    </td>
+                    <td>{ty}</td>
+                    <td className="r num">{s}</td>
+                    <td style={{ minWidth: 160 }}>
+                      <div className="row g8">
+                        <div className="grow">
+                          <Meter v={v as number} tone={(v as number) > 80 ? "tick" : (v as number) > 50 ? "coin" : "red"} size="thin" />
+                        </div>
+                        <span className="tiny num">{v}%</span>
+                      </div>
+                    </td>
+                    <td className="faint small">{d}</td>
+                    <td>
+                      <ExternalLink style={{ width: 14, height: 14 }} className="faint" />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+      <Drawer open={open} onClose={() => setOpen(false)} title="Nimbu Labs · facts">
+        <div className="col g10">
+          {[
+            ["Rounds: OA → 2 tech → HR", "14 experiences", true],
+            ["OA: 90 min, 2 coding + 20 MCQ", "9 experiences · 1 job post", true],
+            ["CTC for SDE 1", "No source yet", false],
+          ].map(([f, s, ok]) => (
+            <div key={f as string} className={`fact-row ${ok ? "" : "bad"}`}>
+              {ok ? <ShieldCheck style={{ color: "var(--tick)" }} /> : <TriangleAlert style={{ color: "var(--red-text)" }} />}
+              <div className="grow">
+                <b className="small">{f as string}</b>
+                <span className="tiny faint" style={{ display: "block" }}>
+                  {s as string} {ok ? "· verified by Ananya" : "· hidden from learners"}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Drawer>
+    </div>
+  );
+}
+
+/* ---------------- factory ---------------- */
+
+export function AdmFactory() {
+  const t = useT();
+  const toast = useToast();
+  const [kill, setKill] = useState(false);
+  return (
+    <div className="col g16">
+      <AdmHead
+        title={t("Content factory", "Content factory", "कंटेंट फ़ैक्टरी")}
+        sub={t("AI drafts in batches at night; every item goes through machine checks, then a human reviewer.", "Raat me AI batches me draft karta hai; har item machine checks aur phir reviewer se guzarta hai.", "रात में बैच।")}
+        actions={
+          <Gate mod="factory" need="full" className="btn pri">
+            <Factory />
+            {t("New batch", "Naya batch", "नया बैच")}
+          </Gate>
+        }
+      />
+      <div className="stat-strip" style={{ ["--n" as string]: 4 }}>
+        {[
+          [t("Spend today", "Aaj kharch", "आज खर्च"), "$41.20", t("cap $60", "cap $60", "सीमा $60")],
+          [t("Items tonight", "Aaj raat items", "आज रात"), "320", "01:00–05:00"],
+          [t("Pass rate (checks)", "Pass rate", "पास दर"), "84%", "+3 pts"],
+          [t("Waiting for review", "Review baaki", "समीक्षा बाकी"), "64", t("SLA 48 h", "SLA 48 h", "SLA 48 घं")],
+        ].map(([k, v, d]) => (
+          <div key={k} className="stat">
+            <span className="k">{k}</span>
+            <span className="v">{v}</span>
+            <span className="d">{d}</span>
+          </div>
+        ))}
+      </div>
+      <section className="card">
+        <div className="tbl-wrap" tabIndex={0}>
+          <table className="tbl">
+            <thead>
+              <tr>
+                <th>{t("Batch", "Batch", "बैच")}</th>
+                <th>{t("Plan", "Plan", "योजना")}</th>
+                <th style={{ minWidth: 220 }}>{t("Stages", "Stages", "चरण")}</th>
+                <th className="r">{t("Spend", "Kharch", "खर्च")}</th>
+                <th>{t("Status", "Status", "स्थिति")}</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                ["#14", "DP problems × 60, L3–L4", [30, 18, 12, 0], "$12.80", "run"],
+                ["#13", "Aptitude · percentages × 200", [140, 40, 0, 20], "$6.10", "done"],
+                ["#12", "Lessons · CN Hindi × 24", [10, 6, 0, 8], "$9.40", "pause"],
+              ].map(([b, p, st, sp, s]) => {
+                const [ok, rev, fail, pub] = st as number[];
+                const tot = ok + rev + fail + pub;
+                return (
+                  <tr key={b as string}>
+                    <td className="mono">{b}</td>
+                    <td className="small">{p}</td>
+                    <td>
+                      <div className="stack-bar">
+                        <i style={{ width: `${(pub / tot) * 100}%`, background: "var(--tick)" }} />
+                        <i style={{ width: `${(ok / tot) * 100}%`, background: "var(--ai)" }} />
+                        <i style={{ width: `${(rev / tot) * 100}%`, background: "var(--coin)" }} />
+                        <i style={{ width: `${(fail / tot) * 100}%`, background: "var(--red)" }} />
+                      </div>
+                      <span className="tiny faint">
+                        {pub} {t("published", "publish", "प्रकाशित")} · {ok} {t("checked", "checked", "जाँचे")} · {rev} {t("review", "review", "समीक्षा")} · <span className="t-red">{fail} {t("failed", "fail", "विफल")}</span>
+                      </span>
+                    </td>
+                    <td className="r num">{sp}</td>
+                    <td>{s === "run" ? <Status s="info">{t("Running", "Chal raha", "चालू")}</Status> : s === "done" ? <Status s="live">{t("Done", "Ho gaya", "पूरा")}</Status> : <Status s="review">{t("Paused", "Ruka", "रुका")}</Status>}</td>
+                    <td>
+                      <span className="row g4">
+                        <Gate mod="factory" need="full" className="icon-btn sm" label={s === "pause" ? t("Resume batch", "Batch chalao", "बैच चलाएँ") : t("Pause batch", "Batch roko", "बैच रोकें")} onClick={() => toast(t("Batch paused", "Batch ruka", "बैच रुका"))}>
+                          {s === "pause" ? <Play /> : <Pause />}
+                        </Gate>
+                        <Gate mod="factory" need="full" className="icon-btn sm" label={t("Stop batch", "Batch band karo", "बैच बंद करें")} onClick={() => setKill(true)}>
+                          <Square />
+                        </Gate>
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <Card title={t("Batch #14 · why items failed", "Batch #14 · fail kyun", "विफलता के कारण")} icon={<Sparkles className="ic" />}>
+        <div className="col g8">
+          {[
+            ["Duplicate of an existing problem (> 0.8 similarity)", 7],
+            ["Reference solution TLE on generated tests", 3],
+            ["Second model disagrees on 1+ test", 2],
+          ].map(([r, n]) => (
+            <div key={r as string} className="row g10 small">
+              <span className="grow">{r}</span>
+              <b className="num">{n}</b>
+              <button className="btn sm">{t("Retry these", "Dobara", "पुनः")}</button>
+            </div>
+          ))}
+          <span className="tiny faint row g4">
+            <Clock style={{ width: 12, height: 12 }} />
+            {t("Night window 01:00–05:00 · daily cap $60 · duplicate threshold 0.8", "Raat 01:00–05:00 · cap $60 · duplicate 0.8", "रात 1–5")}
+          </span>
+        </div>
+      </Card>
+      <FourEyes open={kill} onClose={() => setKill(false)} title={t("Stop batch #14", "Batch #14 roko", "बैच रोकें")} what="Stops all running stages; drafted items stay for review." needs="Content admin" />
+    </div>
+  );
+}

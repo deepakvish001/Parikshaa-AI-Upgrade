@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Phone: Parsons puzzle</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&family=JetBrains+Mono:wght@400;600&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#3346c4}a:hover{color:#26338f}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden; background: #f6f7fb; color: #131a2e; font-family: 'Noto Sans', 'Noto Sans Devanagari', system-ui, sans-serif">
+  <header style="flex: 0 0 auto; display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: #ffffff; border-bottom: 1px solid #e2e6ef">
+    <a href="PhoneDaily.dc.html" aria-label="Wapas" style="width: 44px; height: 44px; display: grid; place-items: center; color: #373f52"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></a>
+    <div style="flex: 1"><div style="font-weight: 700">Parsons puzzle</div><div style="font-size: 12px; color: #5f687c">Binary search · 7 lines</div></div>
+    <span style="font-size: 13px; font-weight: 700; color: #a35200">+10 coins</span>
+  </header>
+  <div style="flex: 1; overflow-y: auto; padding: 16px">
+    <p style="margin: 0 0 14px; font-size: 15px; line-height: 1.5">Lines ko sahi kram me lagao. Upar-neeche ke button se khiskao. Indentation pehle se di hui hai.</p>
+    <ol style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px">
+      <sc-for list="{{rows}}" as="r" hint-placeholder-count="7">
+        <li style="display: flex; align-items: center; gap: 6px; padding: 6px 6px 6px 10px; border-radius: 12px; {{r.box}}">
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9aa3b5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+          <code style="flex: 1; min-width: 0; font-family: 'JetBrains Mono', monospace; font-size: 13px; white-space: pre; overflow-x: auto">{{r.text}}</code>
+          <button type="button" onClick="{{r.up}}" aria-label="{{r.upLabel}}" style="width: 44px; height: 44px; flex: 0 0 44px; border-radius: 10px; border: 1px solid #e2e6ef; background: #ffffff; display: grid; place-items: center; cursor: pointer"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#373f52" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button>
+          <button type="button" onClick="{{r.down}}" aria-label="{{r.downLabel}}" style="width: 44px; height: 44px; flex: 0 0 44px; border-radius: 10px; border: 1px solid #e2e6ef; background: #ffffff; display: grid; place-items: center; cursor: pointer"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#373f52" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg></button>
+        </li>
+      </sc-for>
+    </ol>
+    <sc-if value="{{checked}}" hint-placeholder-val="{{ false }}">
+      <div style="margin-top: 14px; padding: 14px; border-radius: 14px; {{fbBox}}">
+        <div style="font-weight: 800; margin-bottom: 4px">{{fbTitle}}</div>
+        <div style="font-size: 14px">{{fbText}}</div>
+      </div>
+    </sc-if>
+  </div>
+  <div style="flex: 0 0 auto; padding: 12px 16px 20px; background: #ffffff; border-top: 1px solid #e2e6ef">
+    <button type="button" onClick="{{check}}" style="width: 100%; min-height: 54px; border-radius: 14px; border: 0; background: #f28c28; color: #131a2e; font: inherit; font-size: 17px; font-weight: 700; cursor: pointer">Jaanchein</button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { order: [2, 0, 4, 1, 6, 3, 5], checked: false };
+  }
+  move(pos, d) {
+    const o = this.state.order.slice();
+    const t = pos + d;
+    if (t < 0 || t >= o.length) return;
+    const x = o[pos]; o[pos] = o[t]; o[t] = x;
+    this.setState({ order: o, checked: false });
+  }
+  renderVals() {
+    const lines = [
+      'lo, hi = 0, len(a) - 1',
+      'while lo <= hi:',
+      '    mid = (lo + hi) // 2',
+      '    if a[mid] == x: return mid',
+      '    if a[mid] < x: lo = mid + 1',
+      '    else: hi = mid - 1',
+      'return -1'
+    ];
+    const o = this.state.order;
+    const chk = this.state.checked;
+    const rightCount = o.filter((v, i) => v === i).length;
+    const rows = o.map((v, pos) => {
+      let box = 'background: #ffffff; border: 1px solid #e2e6ef';
+      if (chk) box = v === pos ? 'background: #e7f6ef; border: 1px solid #b9e2cf' : 'background: #fdeeec; border: 1px solid #f3c5bf';
+      return {
+        text: lines[v],
+        box,
+        upLabel: 'Line ' + (pos + 1) + ' upar',
+        downLabel: 'Line ' + (pos + 1) + ' neeche',
+        up: () => this.move(pos, -1),
+        down: () => this.move(pos, 1)
+      };
+    });
+    const all = rightCount === lines.length;
+    return {
+      rows, checked: chk,
+      fbTitle: all ? 'Bilkul sahi!' : rightCount + ' / 7 sahi jagah par',
+      fbText: all ? 'Socho: while me <= kyun, < kyun nahi? Agla card isi par hai.' : 'Hare wale sahi hain. Pehle socho: mid nikaalne se pehle kya chahiye?',
+      fbBox: all ? 'background: #e7f6ef; color: #0d5c42' : 'background: #fff5e3; color: #7a4600',
+      check: () => this.setState({ checked: true })
+    };
+  }
+}
+</script>
+</body>
+</html>

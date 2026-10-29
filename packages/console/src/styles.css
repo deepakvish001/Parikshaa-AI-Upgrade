@@ -325,7 +325,7 @@
   background:
     radial-gradient(40rem 30rem at 10% -10%, var(--chrome-glow), transparent 60%),
     radial-gradient(30rem 24rem at 110% 110%, var(--chrome-warm-glow), transparent 60%),
-    linear-gradient(160deg, var(--brand-900), var(--brand-950));
+    linear-gradient(160deg, var(--chrome-2), var(--chrome));
 }
 .signin-brand .brand-mark {
   font-size: var(--text-lg);

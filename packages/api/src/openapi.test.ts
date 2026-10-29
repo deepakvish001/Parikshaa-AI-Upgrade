@@ -75,6 +75,7 @@ describe("the OpenAPI document", () => {
     // likewise a candidate's admit card, by the code in their invitation link, and a
     // hiring manager's shortlist, by the code in theirs. And a Hire candidate asking
     // for a sign-in code, and entering it: the code from their email is the proof.
+    // And a company's public job and careers pages, which anyone may read (F7).
     const open = new Set([
       "get /health",
       "get /openapi.json",
@@ -107,6 +108,8 @@ describe("the OpenAPI document", () => {
       "get /scorecards/{code}",
       "post /candidate/code",
       "post /candidate/verify",
+      "get /hire/public/jobs/{company}/{code}",
+      "get /hire/public/careers/{company}",
     ]);
 
     expect(all.length).toBeGreaterThanOrEqual(30);
@@ -140,6 +143,12 @@ describe("the OpenAPI document", () => {
     // A Hire candidate's own account, under one root, never a page's path (F7).
     expect(tagged("Applicant").length).toBeGreaterThan(5);
     expect(tagged("Applicant").every((p) => p.startsWith("/candidate/"))).toBe(true);
+    // A company's jobs for its staff, never under a page's path (F7).
+    expect(tagged("Hiring").length).toBeGreaterThan(5);
+    expect(tagged("Hiring").every((p) => p.startsWith("/hire/") && !p.startsWith("/hire/public/"))).toBe(true);
+    // The public pages' data, under its own root (F7, F25).
+    expect(tagged("Jobs").length).toBe(2);
+    expect(tagged("Jobs").every((p) => p.startsWith("/hire/public/"))).toBe(true);
   });
 
   it("puts no answer key anywhere in a candidate-facing or learner-facing response", () => {

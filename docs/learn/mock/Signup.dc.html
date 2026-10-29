@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Signup</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&family=JetBrains+Mono:wght@400;600&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#3346c4}a:hover{color:#26338f}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; background: #f6f7fb; color: #131a2e; font-family: 'Noto Sans', 'Noto Sans Devanagari', system-ui, sans-serif">
+  <aside style="flex: 1 1 420px; min-width: 0; background: #141b4d; color: #ffffff; padding: 48px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; gap: 40px">
+    <a href="Main.dc.html" style="display: flex; align-items: center; gap: 10px; text-decoration: none; color: #ffffff">
+      <span style="width: 36px; height: 36px; border-radius: 10px; background: #f28c28; color: #131a2e; display: grid; place-items: center; font-family: 'Noto Sans Devanagari', sans-serif; font-weight: 700; font-size: 20px">प</span>
+      <span style="font-weight: 800; font-size: 20px">Parikshaa Learn</span>
+    </a>
+    <div>
+      <p style="font-family: 'Kalam', cursive; font-size: 34px; line-height: 1.3; margin: 0 0 20px; color: #fdebd4">"Pehle samjho, phir likho, phir jaancho."</p>
+      <p style="margin: 0; color: #c9cffa; font-size: 17px; max-width: 460px">Har problem chaar kadam me: samjho, raasta dhoondho, code likho, test aur sochna. Yahi tareeka poore platform par.</p>
+    </div>
+    <ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px; color: #e3e7fd">
+      <li style="display: flex; gap: 10px; align-items: center"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f28c28" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Free account se poora DSA sheet</li>
+      <li style="display: flex; gap: 10px; align-items: center"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f28c28" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Hindi, English ya Hinglish, kabhi bhi badlo</li>
+      <li style="display: flex; gap: 10px; align-items: center"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f28c28" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Aapka data aapka: export aur delete ek click me</li>
+    </ul>
+  </aside>
+
+  <main style="flex: 1 1 480px; min-width: 0; display: grid; place-items: center; padding: 48px 24px; box-sizing: border-box">
+    <div style="width: 100%; max-width: 420px">
+      <div role="tablist" aria-label="Account" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 4px; background: #eef0f6; border-radius: 12px; margin-bottom: 28px">
+        <button type="button" role="tab" aria-selected="{{isSignup}}" onClick="{{showSignup}}" style="height: 40px; border: 0; border-radius: 9px; font: inherit; font-weight: 600; cursor: pointer; {{tabSignup}}">Naya account</button>
+        <button type="button" role="tab" aria-selected="{{isLogin}}" onClick="{{showLogin}}" style="height: 40px; border: 0; border-radius: 9px; font: inherit; font-weight: 600; cursor: pointer; {{tabLogin}}">Log in</button>
+      </div>
+      <h1 style="margin: 0 0 6px; font-size: 30px">{{heading}}</h1>
+      <p style="margin: 0 0 24px; color: #4f586c">{{sub}}</p>
+
+      <a href="Onboarding.dc.html" style="display: flex; align-items: center; justify-content: center; gap: 10px; height: 48px; border: 1px solid #cdd3df; border-radius: 12px; background: #ffffff; color: #131a2e; font-weight: 600; text-decoration: none">
+        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.5 12.3c0-.8-.1-1.5-.2-2.2H12v4.2h5.9a5 5 0 0 1-2.2 3.3v2.7h3.5c2.1-1.9 3.3-4.7 3.3-8z"/><path fill="#34A853" d="M12 23c3 0 5.5-1 7.3-2.7l-3.5-2.7c-1 .7-2.3 1.1-3.8 1.1-2.9 0-5.4-2-6.3-4.6H2.1v2.8A11 11 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.7 14.1a6.6 6.6 0 0 1 0-4.2V7.1H2.1a11 11 0 0 0 0 9.8z"/><path fill="#EA4335" d="M12 5.4c1.6 0 3.1.6 4.2 1.7l3.1-3.1A11 11 0 0 0 2.1 7.1l3.6 2.8C6.6 7.4 9.1 5.4 12 5.4z"/></svg>
+        Google se aage badho
+      </a>
+      <div style="display: flex; align-items: center; gap: 12px; margin: 20px 0; color: #5f687c; font-size: 13px"><span style="flex: 1; height: 1px; background: #e2e6ef"></span>ya<span style="flex: 1; height: 1px; background: #e2e6ef"></span></div>
+
+      <form style="display: flex; flex-direction: column; gap: 16px">
+        <sc-if value="{{isSignup}}" hint-placeholder-val="{{ true }}">
+          <label style="display: flex; flex-direction: column; gap: 6px; font-weight: 600; font-size: 14px">Aapka naam
+            <input type="text" value="Aarav Sharma" style="height: 46px; padding: 0 14px; border: 1px solid #cdd3df; border-radius: 10px; font: inherit; font-weight: 400; font-size: 15px">
+          </label>
+        </sc-if>
+        <label style="display: flex; flex-direction: column; gap: 6px; font-weight: 600; font-size: 14px">Email ya phone number
+          <input type="text" value="aarav@example.com" style="height: 46px; padding: 0 14px; border: 1px solid #cdd3df; border-radius: 10px; font: inherit; font-weight: 400; font-size: 15px">
+        </label>
+        <label style="display: flex; flex-direction: column; gap: 6px; font-weight: 600; font-size: 14px">Password
+          <input type="password" value="secret-pass" style="height: 46px; padding: 0 14px; border: 1px solid #cdd3df; border-radius: 10px; font: inherit; font-weight: 400; font-size: 15px">
+          <span style="font-weight: 400; font-size: 13px; color: #5f687c">Kam se kam 10 akshar. Phone par OTP se bhi login ho sakta hai.</span>
+        </label>
+        <a href="Onboarding.dc.html" style="display: flex; align-items: center; justify-content: center; height: 50px; border-radius: 12px; background: #f28c28; color: #131a2e; font-weight: 700; font-size: 16px; text-decoration: none; margin-top: 4px">{{cta}}</a>
+      </form>
+      <p style="margin: 18px 0 0; font-size: 13px; color: #5f687c">Aage badh kar aap <a href="Settings.dc.html">Terms</a> aur <a href="Settings.dc.html">Privacy</a> maante hain. 18 se kam umar? Hum aapke guardian ki manzoori maangenge.</p>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { mode: 'signup' };
+  }
+  renderVals() {
+    const signup = this.state.mode === 'signup';
+    const on = 'background: #ffffff; color: #131a2e; box-shadow: 0 1px 2px rgba(19,26,46,0.12)';
+    const off = 'background: transparent; color: #4f586c';
+    return {
+      isSignup: signup,
+      isLogin: !signup,
+      tabSignup: signup ? on : off,
+      tabLogin: signup ? off : on,
+      heading: signup ? 'Shuru karte hain' : 'Wapas aane par swagat',
+      sub: signup ? '2 minute. Phir aapka plan taiyaar.' : 'Jahan chhoda tha, wahin se.',
+      cta: signup ? 'Account banao' : 'Log in',
+      showSignup: () => this.setState({ mode: 'signup' }),
+      showLogin: () => this.setState({ mode: 'login' })
+    };
+  }
+}
+</script>
+</body>
+</html>

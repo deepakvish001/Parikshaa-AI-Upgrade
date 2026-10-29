@@ -1,0 +1,314 @@
+/*
+ * Abhyas, the problems bank (LearnProblems.tsx, K2-4), from the mock's hub
+ * styles (docs/learn/mock-v3/app/src/styles/practice.css: `.tracks`,
+ * `.track`, `.tr-ic`) and today's problem table. Only that chunk loads this file.
+ */
+
+.lp-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-4);
+}
+.lp-head-text {
+  flex: 1 1 360px;
+  min-width: 0;
+}
+.lp-sub {
+  max-width: 68ch;
+  margin: 6px 0 0;
+  color: var(--ink-2);
+}
+.lp-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.lp-sheets-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.lp-sheets {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.lp-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 16px;
+  color: var(--ink);
+  text-decoration: none;
+}
+.lp-sheet:hover {
+  text-decoration: none;
+  border-color: var(--line-2);
+}
+.lp-sheet-ic {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  margin-bottom: 4px;
+  color: var(--pen-text);
+  background: var(--pen-soft);
+  border-radius: var(--radius-lg);
+}
+.lp-sheet-ic svg {
+  width: 18px;
+  height: 18px;
+}
+.lp-num {
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-signed-out {
+  flex-wrap: wrap;
+}
+
+.lp-bank {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: 16px;
+}
+.lp-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+.lp-search {
+  position: relative;
+  flex: 1 1 220px;
+  max-width: 340px;
+}
+.lp-search svg {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  width: 16px;
+  height: 16px;
+  color: var(--ink-3);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.lp-search .ln-input {
+  padding-left: 36px;
+}
+.lp-select .ln-input {
+  width: auto;
+  min-width: 150px;
+}
+.lp-topics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.lp-bank .lp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-2);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-full);
+  box-shadow: none;
+  transform: none;
+  cursor: pointer;
+}
+.lp-bank .lp-chip:hover {
+  color: var(--ink);
+  background: var(--hover);
+}
+.lp-bank .lp-chip[aria-pressed="true"] {
+  color: var(--pen-text);
+  background: var(--pen-soft);
+  border-color: var(--pen-line);
+}
+.lp-chip-n {
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-3);
+}
+.lp-count {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.lp-count p,
+.lp-none {
+  margin: 0;
+}
+.lp-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+.lp-scroll:focus-visible {
+  outline: 2px solid var(--pen);
+  outline-offset: 2px;
+}
+.lp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+.lp-table th {
+  padding: 8px 12px;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-2);
+  text-align: left;
+  background: var(--panel-2);
+  border-bottom: 1px solid var(--line);
+}
+.lp-table td {
+  padding: 8px 12px;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--line);
+}
+.lp-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.lp-table tbody tr:hover {
+  background: var(--hover);
+}
+.lp-table .lp-r {
+  text-align: right;
+}
+.lp-c-st {
+  width: 28px;
+}
+.lp-st {
+  display: inline-flex;
+}
+.lp-st svg {
+  width: 18px;
+  height: 18px;
+}
+.lp-st-open {
+  color: var(--line-2);
+}
+.lp-st-done {
+  color: var(--tick);
+}
+.lp-st-tried {
+  color: var(--coin);
+}
+.lp-link {
+  display: inline-block;
+  padding: 2px 0;
+  font-weight: var(--weight-medium);
+  color: var(--ink);
+  text-decoration: none;
+}
+.lp-link:hover {
+  color: var(--pen-text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.lp-is-done .lp-link {
+  color: var(--ink-3);
+}
+.lp-meta {
+  display: block;
+}
+.lp-co::before {
+  content: " · ";
+}
+.lp-lvl {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  white-space: nowrap;
+}
+.lp-lv-easy {
+  color: var(--tick-text);
+}
+.lp-lv-medium {
+  color: var(--coin-text, var(--coin));
+}
+.lp-lv-hard {
+  color: var(--red-text);
+}
+.lp-more {
+  align-self: center;
+}
+
+@media (max-width: 860px) {
+  .lp-acts .ln-btn,
+  .lp-more,
+  .lp-count .ln-btn {
+    min-height: 40px;
+  }
+  .lp-bank .lp-chip {
+    min-height: 40px;
+  }
+  .lp-search {
+    max-width: none;
+  }
+  .lp-select,
+  .lp-select .ln-input {
+    width: 100%;
+  }
+  /* The table becomes one card per problem. */
+  .lp-scroll {
+    overflow: visible;
+    border: 0;
+  }
+  .lp-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .lp-table tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 14px;
+    padding: 10px 4px;
+    border-bottom: 1px solid var(--line);
+  }
+  .lp-table td {
+    display: block;
+    padding: 0;
+    border: 0;
+  }
+  .lp-table td.lp-c-st {
+    width: 22px;
+  }
+  .lp-table td.lp-c-title {
+    flex: 1 1 calc(100% - 40px);
+    min-width: 0;
+  }
+  .lp-table td:nth-child(3),
+  .lp-table td:nth-child(5) {
+    margin-left: 36px;
+  }
+  .lp-table td[data-label]::before {
+    content: attr(data-label) " ";
+    color: var(--ink-3);
+    font-size: var(--text-xs);
+  }
+  .lp-table td.lp-r {
+    text-align: left;
+  }
+  .lp-link {
+    padding: 8px 0;
+  }
+}

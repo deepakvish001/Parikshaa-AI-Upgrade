@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Onboarding: aapka goal</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&family=JetBrains+Mono:wght@400;600&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#3346c4}a:hover{color:#26338f}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #f6f7fb; color: #131a2e; font-family: 'Noto Sans', 'Noto Sans Devanagari', system-ui, sans-serif">
+  <header style="max-width: 880px; margin: 0 auto; padding: 28px 24px 0; display: flex; align-items: center; gap: 16px">
+    <span style="width: 34px; height: 34px; border-radius: 10px; background: #3346c4; color: #ffffff; display: grid; place-items: center; font-family: 'Noto Sans Devanagari', sans-serif; font-weight: 700; font-size: 19px">प</span>
+    <div style="flex: 1">
+      <div style="font-size: 13px; color: #5f687c; font-weight: 600">Kadam {{stepNo}} / 4</div>
+      <div role="progressbar" aria-label="Onboarding progress" aria-valuemin="0" aria-valuemax="4" aria-valuenow="{{stepNo}}" style="height: 6px; background: #e2e6ef; border-radius: 999px; margin-top: 6px; overflow: hidden">
+        <div style="height: 6px; background: #3346c4; border-radius: 999px; width: {{pct}}"></div>
+      </div>
+    </div>
+    <a href="Home.dc.html" style="font-size: 14px; font-weight: 600">Baad me</a>
+  </header>
+
+  <main style="max-width: 880px; margin: 0 auto; padding: 40px 24px 48px">
+    <sc-if value="{{s1}}" hint-placeholder-val="{{ true }}">
+      <h1 style="margin: 0 0 8px; font-size: 34px">Aap kya paana chahte hain?</h1>
+      <p style="margin: 0 0 28px; color: #4f586c; font-size: 17px">Isi se aapka roz ka plan banega. Baad me badal sakte hain.</p>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px">
+        <sc-for list="{{goals}}" as="o" hint-placeholder-count="6">
+          <button type="button" onClick="{{o.pick}}" aria-pressed="{{o.on}}" style="text-align: left; padding: 20px; border-radius: 16px; font: inherit; cursor: pointer; {{o.style}}">
+            <div style="font-weight: 700; font-size: 17px">{{o.title}}</div>
+            <div style="color: #4f586c; font-size: 14px; margin-top: 4px">{{o.body}}</div>
+          </button>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{s2}}" hint-placeholder-val="{{ false }}">
+      <h1 style="margin: 0 0 8px; font-size: 34px">Abhi aap kahan hain?</h1>
+      <p style="margin: 0 0 28px; color: #4f586c; font-size: 17px">Sach batayein, galat jawab nahi hota. Chaahein to 10 minute ka chhota test dekar pata karein.</p>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px">
+        <sc-for list="{{levels}}" as="o" hint-placeholder-count="4">
+          <button type="button" onClick="{{o.pick}}" aria-pressed="{{o.on}}" style="text-align: left; padding: 20px; border-radius: 16px; font: inherit; cursor: pointer; {{o.style}}">
+            <div style="font-weight: 700; font-size: 17px">{{o.title}}</div>
+            <div style="color: #4f586c; font-size: 14px; margin-top: 4px">{{o.body}}</div>
+          </button>
+        </sc-for>
+      </div>
+      <a href="Aptitude.dc.html" style="display: inline-block; margin-top: 20px; font-weight: 600">10 minute ka level test do</a>
+    </sc-if>
+
+    <sc-if value="{{s3}}" hint-placeholder-val="{{ false }}">
+      <h1 style="margin: 0 0 8px; font-size: 34px">Roz kitna samay?</h1>
+      <p style="margin: 0 0 28px; color: #4f586c; font-size: 17px">Chhota aur roz, lamba aur kabhi-kabhi se behtar hai.</p>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px">
+        <sc-for list="{{times}}" as="o" hint-placeholder-count="4">
+          <button type="button" onClick="{{o.pick}}" aria-pressed="{{o.on}}" style="text-align: left; padding: 20px; border-radius: 16px; font: inherit; cursor: pointer; {{o.style}}">
+            <div style="font-weight: 800; font-size: 22px">{{o.title}}</div>
+            <div style="color: #4f586c; font-size: 14px; margin-top: 4px">{{o.body}}</div>
+          </button>
+        </sc-for>
+      </div>
+      <label style="display: flex; flex-direction: column; gap: 6px; margin-top: 24px; font-weight: 600; font-size: 14px; max-width: 320px">Placement / interview kab hai? (optional)
+        <input type="month" value="2027-01" style="height: 46px; padding: 0 14px; border: 1px solid #cdd3df; border-radius: 10px; font: inherit; font-weight: 400">
+      </label>
+    </sc-if>
+
+    <sc-if value="{{s4}}" hint-placeholder-val="{{ false }}">
+      <h1 style="margin: 0 0 8px; font-size: 34px">Bhasha chuniye</h1>
+      <p style="margin: 0 0 24px; color: #4f586c; font-size: 17px">Padhne ki bhasha aur code ki bhasha alag ho sakti hai.</p>
+      <div style="font-weight: 700; margin-bottom: 10px">Padhne ki bhasha</div>
+      <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 28px">
+        <sc-for list="{{langs}}" as="o" hint-placeholder-count="3">
+          <button type="button" onClick="{{o.pick}}" aria-pressed="{{o.on}}" style="min-height: 48px; padding: 0 20px; border-radius: 999px; font: inherit; font-weight: 600; cursor: pointer; {{o.style}}">{{o.title}}</button>
+        </sc-for>
+      </div>
+      <div style="font-weight: 700; margin-bottom: 10px">Code ki bhasha</div>
+      <div style="display: flex; flex-wrap: wrap; gap: 10px">
+        <sc-for list="{{codes}}" as="o" hint-placeholder-count="4">
+          <button type="button" onClick="{{o.pick}}" aria-pressed="{{o.on}}" style="min-height: 48px; padding: 0 20px; border-radius: 999px; font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 600; cursor: pointer; {{o.style}}">{{o.title}}</button>
+        </sc-for>
+      </div>
+      <div style="margin-top: 32px; padding: 22px; border-radius: 16px; background: #ffffff; border: 1px solid #e2e6ef">
+        <div style="font-size: 13px; font-weight: 700; color: #5f687c; text-transform: uppercase; letter-spacing: 0.06em">Aapka plan</div>
+        <div style="font-size: 20px; font-weight: 700; margin: 6px 0">{{summary}}</div>
+        <div style="color: #4f586c">Pehla hafta: Arrays aur Hashing, roz 1 lesson + 2 problems + Daily 10. Har Ravivaar chhota mock.</div>
+      </div>
+    </sc-if>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 36px">
+      <button type="button" onClick="{{back}}" disabled="{{atStart}}" style="min-height: 48px; padding: 0 20px; border-radius: 12px; border: 1px solid #cdd3df; background: #ffffff; color: #131a2e; font: inherit; font-weight: 600; cursor: pointer">Peeche</button>
+      <sc-if value="{{notLast}}" hint-placeholder-val="{{ true }}">
+        <button type="button" onClick="{{next}}" style="min-height: 48px; padding: 0 28px; border-radius: 12px; border: 0; background: #3346c4; color: #ffffff; font: inherit; font-weight: 700; cursor: pointer">Aage</button>
+      </sc-if>
+      <sc-if value="{{isLast}}" hint-placeholder-val="{{ false }}">
+        <a href="Home.dc.html" style="display: inline-flex; align-items: center; min-height: 48px; padding: 0 28px; border-radius: 12px; background: #f28c28; color: #131a2e; font-weight: 700; text-decoration: none">Mera plan shuru karo</a>
+      </sc-if>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { step: 1, goal: 'sde', level: 'some', time: '60', lang: 'hinglish', code: 'cpp' };
+  }
+  opts(list, key) {
+    const on = 'background: #f1f3fe; border: 2px solid #3346c4; color: #131a2e';
+    const off = 'background: #ffffff; border: 2px solid #e2e6ef; color: #131a2e';
+    return list.map((o) => ({ ...o, on: this.state[key] === o.id, style: this.state[key] === o.id ? on : off, pick: () => this.setState({ [key]: o.id }) }));
+  }
+  renderVals() {
+    const st = this.state.step;
+    const goals = [
+      { id: 'sde', title: 'SDE job / placement', body: 'DSA, CS core, aptitude, mock interviews' },
+      { id: 'intern', title: 'Internship', body: 'Basics pakke, 2 projects, resume' },
+      { id: 'cp', title: 'Competitive programming', body: 'Codeforces rating, contests, CP math' },
+      { id: 'web', title: 'Web developer', body: 'HTML se React/Node tak, projects ship karo' },
+      { id: 'data', title: 'Data / AI', body: 'Python, SQL, ML, GenAI labs' },
+      { id: 'start', title: 'Coding bilkul shuru se', body: 'Pehla program se loops, arrays tak' }
+    ];
+    const levels = [
+      { id: 'new', title: 'Bilkul naya', body: 'Abhi tak code nahi likha' },
+      { id: 'some', title: 'Thoda aata hai', body: 'Loops, arrays theek; DSA nahi' },
+      { id: 'mid', title: 'DSA chal raha hai', body: '100+ problems kiye hain' },
+      { id: 'pro', title: 'Interview ready banna hai', body: 'Mediums aate hain, speed chahiye' }
+    ];
+    const times = [
+      { id: '30', title: '30 min', body: 'Daily 10 + 1 problem' },
+      { id: '60', title: '1 ghanta', body: '1 lesson + 2 problems' },
+      { id: '120', title: '2 ghante', body: 'Lesson, 3 problems, revision' },
+      { id: 'flex', title: 'Roz alag', body: 'Hafte ka target, din aap chuno' }
+    ];
+    const langs = [ { id: 'en', title: 'English' }, { id: 'hi', title: 'हिंदी' }, { id: 'hinglish', title: 'Hinglish' } ];
+    const codes = [ { id: 'cpp', title: 'C++' }, { id: 'java', title: 'Java' }, { id: 'py', title: 'Python' }, { id: 'js', title: 'JavaScript' } ];
+    const g = goals.find((x) => x.id === this.state.goal);
+    const t = times.find((x) => x.id === this.state.time);
+    const c = codes.find((x) => x.id === this.state.code);
+    return {
+      stepNo: st,
+      pct: (st * 25) + '%',
+      s1: st === 1, s2: st === 2, s3: st === 3, s4: st === 4,
+      atStart: st === 1,
+      notLast: st < 4, isLast: st === 4,
+      goals: this.opts(goals, 'goal'),
+      levels: this.opts(levels, 'level'),
+      times: this.opts(times, 'time'),
+      langs: this.opts(langs, 'lang'),
+      codes: this.opts(codes, 'code'),
+      summary: g.title + ' · roz ' + t.title + ' · ' + c.title,
+      next: () => this.setState({ step: Math.min(4, st + 1) }),
+      back: () => this.setState({ step: Math.max(1, st - 1) })
+    };
+  }
+}
+</script>
+</body>
+</html>

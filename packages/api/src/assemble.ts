@@ -5,7 +5,7 @@ import type { CodeRunner } from "@parikshaa/runner";
 import type { JudgeOptions } from "./judge-queue.js";
 import { attemptId, examId, orgId, type OrgId } from "@parikshaa/core";
 import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCampusStore, ClassStore, PrepCommunityStore, PrepEngageStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, FeedbackStore, LabStore, RecheckStore, MarkingStore, PlacementStore, SeatStore, ShortlistStore, InterviewStore, AiInterviewStore,
-  AccommodationStore, ProxyStore, ReviewStore, DepartmentStore, staffScope, LibraryStore, CandidateStore, type BlobStore, type SqlExecutor } from "@parikshaa/store";
+  AccommodationStore, ProxyStore, ReviewStore, DepartmentStore, staffScope, LibraryStore, CandidateStore, HireStore, HireApplicationStore, HirePipelineStore, type BlobStore, type SqlExecutor } from "@parikshaa/store";
 import { LabService } from "./lab.js";
 import { RecheckService } from "./rechecks.js";
 import { MarkingService } from "./marking.js";
@@ -52,6 +52,10 @@ import { StaffSecurity } from "./staff-security.js";
 import { OperatorService, Operators } from "./operator.js";
 import { LibraryService } from "./library.js";
 import { Candidates } from "./candidates.js";
+import { HireService } from "./hire.js";
+import { HireApplications, type HireContact } from "./hire-apply.js";
+import { HireMessages } from "./hire-messages.js";
+import { HirePipeline } from "./hire-pipeline.js";
 import { Onboarding, type SignupPolicy } from "./onboarding.js";
 import { DailyPilotReport } from "./pilot-report.js";
 
@@ -102,6 +106,8 @@ export interface AssembleOptions {
   readonly blobs?: BlobStore | null;
   /** Parikshaa's operators by address (PARIKSHAA_OPERATORS): the operator panel is theirs alone. */
   readonly operators?: readonly string[];
+  /** Parikshaa's grievance officer, named in Hire's notice (S8). Absent or null: Hire takes no applications. */
+  readonly hireGrievance?: HireContact | null;
   readonly server?: Pick<ServerOptions, "clients" | "log" | "trustProxy" | "rateLimits" | "loginThrottle" | "attemptTtlSeconds" | "signupLimit" | "openerPolicy" | "androidApp">;
 }
 
@@ -243,7 +249,28 @@ export function assemble(o: AssembleOptions): {
     now: () => Date.now(),
   });
   const library = new LibraryService({ library: new LibraryStore(o.sql), operator, exams: service });
-  const candidates = new Candidates({ store: new CandidateStore(o.sql, keys.records("candidates"), { blobs: o.blobs ?? null }), keys, mailer: o.mailer ?? null });
+  const hireStore = new HireStore(o.sql);
+  const hire = new HireService({ store: hireStore, identity, recordAudit: (actor, action, target, detail) => service.recordAudit(actor, action, target, detail) });
+  const candidateStore = new CandidateStore(o.sql, keys.records("candidates"), { blobs: o.blobs ?? null });
+  const candidates = new Candidates({ store: candidateStore, keys, mailer: o.mailer ?? null });
+  const hireApplicationStore = new HireApplicationStore(o.sql, keys.records("hire"), { blobs: o.blobs ?? null });
+  const hireApplications = new HireApplications({
+    jobs: hireStore,
+    applications: hireApplicationStore,
+    accounts: candidateStore,
+    identity,
+    privacy: new PrivacyStore(o.sql),
+    keys,
+    grievance: o.hireGrievance ?? null,
+  });
+  const hirePipelineStore = new HirePipelineStore(o.sql, keys.records("hire"), { blobs: o.blobs ?? null });
+  const hirePipeline = new HirePipeline({
+    jobs: hireStore,
+    pipeline: hirePipelineStore,
+    identity,
+    recordAudit: (actor, action, target, detail) => service.recordAudit(actor, action, target, detail),
+  });
+  const hireMessages = new HireMessages({ applications: hireApplicationStore, identity, mailer: o.mailer ?? null, publicUrl: o.publicUrl });
   const onboarding = new Onboarding({
     identity,
     auth,
@@ -337,6 +364,9 @@ export function assemble(o: AssembleOptions): {
     operator,
     library,
     candidates,
+    hire,
+    hireApplications,
+    hirePipeline,
     hsts: o.publicUrl.startsWith("https://"),
     identity,
     bank,
@@ -377,7 +407,8 @@ export function assemble(o: AssembleOptions): {
             ? (dailyReport?.mail(item) ?? Promise.resolve({ skip: "No pilot report address" }))
             : onboarding.mail(item),
       learner_email: (item) => (item.purpose === "reminder" ? prepEngage.reminderMail(item) : item.purpose === "plan_late" ? prepEngage.lateMail(item) : practiceIdentity.verificationMail(item)),
-      student: (item) => studentMessages.deliver(item), interview: (item) => (item.purpose.startsWith("ai_") ? aiInterviews.deliver(item) : interviews.deliver(item)) },
+      student: (item) => studentMessages.deliver(item), interview: (item) => (item.purpose.startsWith("ai_") ? aiInterviews.deliver(item) : interviews.deliver(item)),
+      hire: (item) => hireMessages.deliver(item) },
   });
 
   const sweepMedia = async () => {

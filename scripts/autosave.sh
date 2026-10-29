@@ -5,8 +5,18 @@
 # perhaps on another account, picks the work up from GitHub. So the working
 # tree is pushed as it is, finished or not: a snapshot commit (parent = HEAD)
 # holding every tracked and untracked, not-ignored file, force-pushed to
-# refs/heads/autosave/<branch>. The branch itself, the real index and the
-# history are never touched. docs/HIRE-HANDOFF.md says how to restore it.
+# refs/heads/autosave/<branch>--<first 8 characters of the session id>. The
+# branch itself, the real index and the history are never touched.
+# docs/HIRE-HANDOFF.md §7 says how to restore it.
+#
+# Two guards, because a force-push replaces whatever the ref held:
+# - one ref per session, so two sessions on one branch never overwrite each
+#   other's snapshot;
+# - STALE_GUARD: a checkout whose HEAD is behind origin/<branch> (an old
+#   container resumed after another session moved on) pushes nothing, so an
+#   old snapshot never replaces a newer one under the same session id.
+# The outcome of the last attempt is in .git/autosave-status:
+# "ok <epoch> <commit>", "fail <epoch>" or "stale <epoch>".
 #
 # The snapshot also carries .claude/live/state.md: the session's task list,
 # the owner's latest message and Claude's latest messages, read from the
@@ -31,6 +41,12 @@ case "$branch" in worktree-*) exit 0 ;; esac
 gitdir=$(git rev-parse --git-dir) || exit 0
 mode=${1:-edit}
 now=$(date +%s)
+# The session's own ref. The id is the hook input's top-level "session_id" (its first occurrence: a quoted
+# "session_id" inside a tool's output is escaped, so it does not match); only [A-Za-z0-9_-] is kept.
+sid=$(printf '%s' "$input" | tr '\n' ' ' | grep -o '"session_id"[[:space:]]*:[[:space:]]*"[^"]*"' | head -n 1 |
+  sed 's/.*"\([^"]*\)"$/\1/' | tr -cd 'A-Za-z0-9_-' | cut -c 1-8)
+ref="refs/heads/autosave/$branch--${sid:-nosession}"
+status="$gitdir/autosave-status"
 
 stamp="$gitdir/autosave-at"
 if [ "$mode" = edit ] && [ -f "$stamp" ] && [ $((now - $(cat "$stamp" 2>/dev/null || echo 0))) -lt 30 ]; then exit 0; fi
@@ -125,26 +141,47 @@ fi
 tree=$(GIT_INDEX_FILE="$index" git write-tree 2>/dev/null) || exit 0
 # Nothing new since the last autosave: nothing to send.
 last="$gitdir/autosave-tree"
-if [ "$tree $head" = "$(cat "$last" 2>/dev/null)" ]; then
+if [ "$tree $head $ref" = "$(cat "$last" 2>/dev/null)" ]; then
   echo "$now" >"$stamp"
   exit 0
 fi
 
 message=$(printf 'autosave %s %s\n\nWork on top of %s, with .claude/live/state.md (restore: docs/HIRE-HANDOFF.md):\n%s\n' \
   "$branch" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$head" "$files")
-commit=$(printf '%s' "$message" | git commit-tree "$tree" -p "$head" 2>/dev/null) || exit 0
+commit=$(printf '%s' "$message" | git commit-tree "$tree" -p "$head" 2>/dev/null) || { echo "fail $now" >"$status"; exit 0; }
 echo "$now" >"$stamp"  # also on failure: a dead remote is retried every 30 s, not on every tool call
-# timeout(1) is GNU: macOS has none (gtimeout with Homebrew coreutils), so fall back to a watchdog.
-push() {
-  if command -v timeout >/dev/null 2>&1; then timeout 30 git push "$@"; return; fi
-  if command -v gtimeout >/dev/null 2>&1; then gtimeout 30 git push "$@"; return; fi
-  git push "$@" & local p=$!
-  ( sleep 30 && kill "$p" ) >/dev/null 2>&1 &
+# git with a time limit (seconds first). timeout(1) is GNU: macOS has none (gtimeout with Homebrew coreutils),
+# so fall back to a watchdog.
+timed_git() {
+  local s=$1
+  shift
+  if command -v timeout >/dev/null 2>&1; then timeout "$s" git "$@"; return; fi
+  if command -v gtimeout >/dev/null 2>&1; then gtimeout "$s" git "$@"; return; fi
+  git "$@" & local p=$!
+  ( sleep "$s" && kill "$p" ) >/dev/null 2>&1 &
   local w=$!
   wait "$p"; local rc=$?
   kill "$w" 2>/dev/null
   return $rc
 }
-push -q -f origin "$commit:refs/heads/autosave/$branch" >/dev/null 2>&1 || exit 0
-echo "$tree $head" >"$last"
+
+# STALE_GUARD: a checkout whose HEAD is behind its branch on origin (an old container resumed after another
+# session pushed) must not push: its snapshot is older than the work on origin, and on 13 Oct 2026 such a push
+# replaced a newer session's snapshot. A quick fetch first; if it fails, the last known origin ref decides.
+# Only the remote-tracking ref is updated: no FETCH_HEAD (a `git pull` may be running), no tags.
+fetch=(fetch -q --no-tags)
+git fetch -h 2>&1 | grep -q 'write-fetch-head' && fetch+=(--no-write-fetch-head)
+timed_git 15 "${fetch[@]}" origin "+refs/heads/$branch:refs/remotes/origin/$branch" >/dev/null 2>&1 || true
+upstream=$(git rev-parse -q --verify "refs/remotes/origin/$branch^{commit}" 2>/dev/null) || upstream=""
+if [ -n "$upstream" ] && [ "$upstream" != "$head" ] && git merge-base --is-ancestor "$head" "$upstream" 2>/dev/null; then
+  echo "stale $now" >"$status"
+  exit 0
+fi
+
+if ! timed_git 30 push -q -f origin "$commit:$ref" >/dev/null 2>&1; then
+  echo "fail $now" >"$status"
+  exit 0
+fi
+echo "ok $now $commit" >"$status"
+echo "$tree $head $ref" >"$last"
 exit 0

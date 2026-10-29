@@ -2,6 +2,10 @@ import type { PushSender } from "../push.js";
 import { OperatorService, Operators } from "../operator.js";
 import { LibraryService } from "../library.js";
 import { Candidates } from "../candidates.js";
+import { HireService } from "../hire.js";
+import { HireApplications, type HireContact } from "../hire-apply.js";
+import { HireMessages } from "../hire-messages.js";
+import { HirePipeline } from "../hire-pipeline.js";
 import { Onboarding, type SignupPolicy } from "../onboarding.js";
 import type Anthropic from "@anthropic-ai/sdk";
 import { PGlite } from "@electric-sql/pglite";
@@ -10,6 +14,9 @@ import { orgId, type OrgId, type Timestamp } from "@parikshaa/core";
 import {
   IdentityStore,
   CandidateStore,
+  HireApplicationStore,
+  HirePipelineStore,
+  HireStore,
   InvigilationStore,
   InvitationStore,
   LedgerStore,
@@ -106,6 +113,8 @@ export const TOKEN_SECRET = "a".repeat(40);
 export const PUBLIC_URL = "https://exam.test";
 /** Every API test seals, as production does. */
 export const DATA_KEY = Buffer.alloc(32, 9).toString("base64");
+/** Hire's grievance officer in tests (S8). */
+export const TEST_GRIEVANCE: HireContact = { name: "Grievance Officer", email: "grievance@parikshaa.test" };
 /** Parikshaa as the tests' supplier: registered in Karnataka. */
 export const SUPPLIER: Supplier = {
   legalName: "Parikshaa Assessments Pvt Ltd",
@@ -141,7 +150,13 @@ let hashed: Promise<string> | null = null;
 const passwordHash = () => (hashed ??= hashPassword(PASSWORD));
 
 export interface Wiring {
-  readonly handlers: ReturnType<typeof buildIntegrations>["handlers"] & { readonly staff_email: ItemHandler; readonly learner_email: ItemHandler; readonly student: ItemHandler; readonly interview: ItemHandler };
+  readonly handlers: ReturnType<typeof buildIntegrations>["handlers"] & {
+    readonly staff_email: ItemHandler;
+    readonly learner_email: ItemHandler;
+    readonly student: ItemHandler;
+    readonly interview: ItemHandler;
+    readonly hire: ItemHandler;
+  };
   /** For a delivery worker's candidate results (DeliveryWorkerOptions.result). */
   readonly results: ResultsService;
   /** For a delivery worker's recheck messages (DeliveryWorkerOptions.recheck). */
@@ -192,6 +207,8 @@ export async function wire(
     readonly blobs?: BlobStore;
     /** Parikshaa's operators, by address (PARIKSHAA_OPERATORS). */
     readonly operators?: readonly string[];
+    /** Hire's grievance officer (S8); null: Hire takes no applications. A test officer when absent. */
+    readonly hireGrievance?: HireContact | null;
   },
 ): Promise<Wiring> {
   const store = new LedgerStore(sql, { keys: new DataKeys(DATA_KEY), ...(options.now === undefined ? {} : { clock: options.now }) });
@@ -419,6 +436,16 @@ export async function wire(
     publicUrl: PUBLIC_URL,
     ...(options.now === undefined ? {} : { now: options.now }),
   });
+  const hireStore = new HireStore(sql);
+  const candidateStore = new CandidateStore(sql, new DataKeys(DATA_KEY).records("candidates"), { blobs: options.blobs ?? null });
+  const hireApplicationStore = new HireApplicationStore(sql, new DataKeys(DATA_KEY).records("hire"), { blobs: options.blobs ?? null });
+  const hireMessages = new HireMessages({
+    applications: hireApplicationStore,
+    identity,
+    mailer: options.mailer ?? null,
+    publicUrl: PUBLIC_URL,
+    ...(options.now === undefined ? {} : { now: options.now }),
+  });
   const app = buildServer({
     service,
     invitations,
@@ -459,11 +486,34 @@ export async function wire(
     onboarding,
     operator,
     library: new LibraryService({ library: new LibraryStore(sql), operator, exams: service }),
+    hire: new HireService({
+      store: hireStore,
+      identity,
+      recordAudit: (actor, action, target, detail) => service.recordAudit(actor, action, target, detail),
+      ...(options.now === undefined ? {} : { now: options.now }),
+    }),
     candidates: new Candidates({
-      store: new CandidateStore(sql, new DataKeys(DATA_KEY).records("candidates"), { blobs: options.blobs ?? null }),
+      store: candidateStore,
       keys: new DataKeys(DATA_KEY),
       mailer: options.mailer ?? null,
       ...(options.now === undefined ? {} : { now: () => new Date(options.now!()) }),
+    }),
+    hirePipeline: new HirePipeline({
+      jobs: hireStore,
+      pipeline: new HirePipelineStore(sql, new DataKeys(DATA_KEY).records("hire"), { blobs: options.blobs ?? null }),
+      identity,
+      recordAudit: (actor, action, target, detail) => service.recordAudit(actor, action, target, detail),
+      ...(options.now === undefined ? {} : { now: options.now }),
+    }),
+    hireApplications: new HireApplications({
+      jobs: hireStore,
+      applications: hireApplicationStore,
+      accounts: candidateStore,
+      identity,
+      privacy: new PrivacyStore(sql),
+      keys: new DataKeys(DATA_KEY),
+      grievance: options.hireGrievance === undefined ? TEST_GRIEVANCE : options.hireGrievance,
+      ...(options.now === undefined ? {} : { now: options.now }),
     }),
     identity,
     bank: new QuestionBank(sql),
@@ -502,7 +552,8 @@ export async function wire(
     results,
     rechecks,
     handlers: { ...integrations.handlers, staff_email: (item) =>
-      item.purpose === "password_reset" || item.purpose === "staff_invite" ? security.resetMail(item) : item.purpose === "results_file" ? results.mail(item) : onboarding.mail(item), learner_email: (item) => (item.purpose === "reminder" ? prepEngage.reminderMail(item) : item.purpose === "plan_late" ? prepEngage.lateMail(item) : practiceIdentity.verificationMail(item)), student: (item) => studentMessages.deliver(item), interview: (item) => (item.purpose.startsWith("ai_") ? aiInterviews.deliver(item) : interviews.deliver(item)) },
+      item.purpose === "password_reset" || item.purpose === "staff_invite" ? security.resetMail(item) : item.purpose === "results_file" ? results.mail(item) : onboarding.mail(item), learner_email: (item) => (item.purpose === "reminder" ? prepEngage.reminderMail(item) : item.purpose === "plan_late" ? prepEngage.lateMail(item) : practiceIdentity.verificationMail(item)), student: (item) => studentMessages.deliver(item), interview: (item) => (item.purpose.startsWith("ai_") ? aiInterviews.deliver(item) : interviews.deliver(item)),
+      hire: (item) => hireMessages.deliver(item) },
   };
 }
 

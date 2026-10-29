@@ -1,0 +1,474 @@
+/* Problem and SQL workspaces. */
+
+.task-timer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.tt-task {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.tt-task svg {
+  width: 14px;
+  height: 14px;
+}
+.task-timer .timer {
+  height: 32px;
+  font-size: 13px;
+}
+
+/* statement */
+.stmt {
+  padding: 20px 22px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.stmt-h {
+  font-family: var(--f-display);
+  font-weight: 700;
+  letter-spacing: -0.022em;
+  font-size: 24px;
+  line-height: 1.1;
+}
+.stmt-p {
+  font-size: 14.5px;
+}
+.ex {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ex-h {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.ex-b {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--code-bg);
+  border: 1px solid var(--line);
+  font-family: var(--f-mono);
+  font-size: 12.5px;
+  line-height: 1.75;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.cons {
+  padding: 10px 14px 10px 30px;
+  border-radius: 12px;
+  background: var(--code-bg);
+  border: 1px solid var(--line);
+  font-size: 12.5px;
+  line-height: 1.8;
+  list-style: disc;
+}
+.hints {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.hint {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.hint-h {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 13px;
+}
+.hint-h svg {
+  width: 15px;
+  height: 15px;
+  color: var(--ink-3);
+}
+.hint.open {
+  background: var(--marker-soft);
+  border-color: transparent;
+}
+.hint.open .hint-h svg {
+  color: var(--marker-ink);
+}
+.hint.open p {
+  padding: 0 12px 12px 35px;
+}
+.hint.next .hint-h:hover {
+  background: var(--hover);
+}
+.hint.lock {
+  opacity: 0.6;
+}
+.stmt-foot {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.subs {
+  padding: 8px 0;
+}
+
+/* editor */
+.file-tabs {
+  display: flex;
+  gap: 2px;
+  min-width: 0;
+  overflow: hidden;
+}
+.file-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-family: var(--f-mono);
+  font-size: 12px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.file-tab svg {
+  width: 13px;
+  height: 13px;
+}
+.file-tab.on {
+  background: var(--panel);
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+.editor {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 160px;
+  overflow: auto;
+  background: var(--code-bg);
+}
+.ed-code {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  min-height: 100%;
+  padding: 12px 0;
+}
+.ed-code .ln.bad {
+  box-shadow: inset 3px 0 0 var(--red);
+}
+.ed-code .ln.good {
+  box-shadow: inset 3px 0 0 var(--tick);
+}
+.ed-note {
+  position: absolute;
+  left: min(440px, 62%);
+  top: calc(12px + 3 * 1.7em);
+  pointer-events: none;
+  transform: rotate(-2deg);
+  white-space: nowrap;
+}
+.ed-note .pen-note {
+  font-size: 15px;
+}
+.verdict {
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: auto;
+  flex: 0 0 auto;
+  max-height: 52%;
+}
+.verdict-h {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px 8px 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel-2);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.mock-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 2px 2px 8px;
+  border: 1px dashed var(--line-2);
+  border-radius: 12px;
+}
+.mock-switch .seg button {
+  height: 24px;
+  padding: 0 9px;
+  font-size: 11.5px;
+}
+.v-body {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.v-ic {
+  width: 26px;
+  height: 26px;
+}
+.v-ic.bad {
+  color: var(--red-text);
+}
+.v-ic.warn {
+  color: var(--coin);
+}
+.v-title {
+  font-size: 17px;
+  font-weight: 640;
+}
+.testbar {
+  display: grid;
+  grid-template-columns: repeat(24, minmax(0, 1fr));
+  gap: 3px;
+}
+.testbar i {
+  height: 8px;
+  border-radius: 3px;
+  background: var(--tick);
+}
+.testbar i.bad {
+  background: var(--red);
+  box-shadow: 0 0 0 3px var(--red-soft);
+}
+.testbar i.slow {
+  background: var(--coin);
+}
+.testbar i.skip {
+  background: var(--sunk);
+}
+.small-test {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--red-line);
+  background: var(--panel);
+}
+.st-grid {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 6px 10px;
+  font-size: 12.5px;
+  word-break: break-all;
+}
+.io {
+  display: grid;
+  grid-template-columns: 60px minmax(0, 1fr);
+  gap: 8px 10px;
+  align-items: center;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--sunk);
+  font-size: 13px;
+}
+.ac-tick {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--tick-soft);
+}
+.ac-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.ac-grid .well {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+}
+.statusbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px 8px 14px;
+  border-top: 1px solid var(--line);
+  background: var(--panel-2);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.statusbar svg {
+  width: 13px;
+  height: 13px;
+}
+.statusbar .btn svg {
+  width: 14px;
+  height: 14px;
+}
+.spinner.on-pen {
+  width: 14px;
+  height: 14px;
+  border-color: rgba(255, 255, 255, 0.35);
+  border-top-color: var(--on-pen);
+}
+
+/* sql */
+.schema {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.sch-t {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--panel);
+}
+.sch-h {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-weight: 600;
+  font-size: 13px;
+  background: var(--panel-2);
+  border-bottom: 1px solid var(--line);
+}
+.sch-h svg {
+  width: 14px;
+  height: 14px;
+  color: var(--pen-text);
+}
+.sch-c {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 12px;
+  font-size: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.sch-c:last-child {
+  border-bottom: 0;
+}
+.sch-c span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.sch-c svg {
+  width: 12px;
+  height: 12px;
+}
+.sch-c .pk {
+  color: var(--coin);
+}
+.sch-c .fk {
+  color: var(--ai-text);
+}
+.row-miss td {
+  background: var(--red-soft);
+}
+/* SQL: schema cards side by side, example tables, steps */
+.sch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 10px;
+}
+.ex-tbls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-start;
+}
+.ex-arrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0 6px;
+}
+.ex-arrow svg {
+  width: 13px;
+  height: 13px;
+  transform: rotate(90deg);
+}
+.mt-wrap {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+}
+.mt-name {
+  padding: 5px 10px;
+  font-size: 11.5px;
+  color: var(--ink-3);
+  background: var(--panel-2);
+  border-bottom: 1px solid var(--line);
+}
+.mini-tbl {
+  width: auto;
+  min-width: 100%;
+}
+.mini-tbl th,
+.mini-tbl td {
+  padding: 4px 10px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.mini-tbl .r {
+  text-align: right;
+}
+.mini-tbl tr.row-miss td {
+  background: var(--red-soft);
+  color: var(--red-text);
+}
+.sql-steps {
+  display: grid;
+  gap: 12px;
+  margin: 12px 0 16px;
+  padding-left: 22px;
+}
+.sql-steps li {
+  display: grid;
+  gap: 3px;
+  font-size: 14px;
+}
+.sql-steps li span {
+  color: var(--ink-2);
+}
+.pane-in > .sahayak,
+.pane > .sahayak {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+}
+@media (max-width: 860px) {
+  .ed-note {
+    display: none;
+  }
+  .verdict {
+    max-height: none;
+  }
+  .panes.is-phone .pane {
+    overflow: auto;
+  }
+  .panes.is-phone .editor {
+    flex: 0 0 auto;
+    max-height: 300px;
+  }
+}

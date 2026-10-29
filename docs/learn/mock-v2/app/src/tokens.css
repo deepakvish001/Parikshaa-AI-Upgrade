@@ -1,0 +1,224 @@
+/*
+  Parikshaa Learn, mock v2 tokens.
+  Layout concept: one shell everywhere (top bar, section menu on the left, the work in the middle,
+  a quiet rail on the right); dense rows instead of cards; one indigo for action, saffron only for
+  streak, coins and Plus. Dark-first: dark values on bare :root, light values under the guards.
+*/
+:root {
+  color-scheme: dark;
+  --page: #0b0d12;
+  --panel: #12151c;
+  --raised: #181c25;
+  --raised-2: #1e2330;
+  --sunk: #090b10;
+  --line: #232836;
+  --line-strong: #31384a;
+  --text: #e6e8ee;
+  --text-2: #a3aabb;
+  --text-3: #7a8296;
+  --text-on-solid: #ffffff;
+
+  --action: #8b95ff;
+  --action-solid: #5b66f2;
+  --action-solid-hover: #6d77f6;
+  --action-soft: rgb(110 123 255 / 0.14);
+  --action-line: rgb(110 123 255 / 0.45);
+
+  --plus: #f5a524;
+  --plus-ink: #1a1204;
+  --plus-soft: rgb(245 165 36 / 0.14);
+  --plus-line: rgb(245 165 36 / 0.45);
+
+  --ok: #3dd68c;
+  --ok-solid: #1f9d5c;
+  --ok-soft: rgb(61 214 140 / 0.13);
+  --bad: #f87171;
+  --bad-solid: #dc3b3b;
+  --bad-soft: rgb(248 113 113 / 0.13);
+  --warn: #fbbf24;
+  --warn-soft: rgb(251 191 36 / 0.13);
+  --info: #60a5fa;
+  --info-soft: rgb(96 165 250 / 0.13);
+  --review: #c084fc;
+  --review-soft: rgb(192 132 252 / 0.14);
+
+  --lv1: #3dd68c;
+  --lv2: #2dd4bf;
+  --lv3: #facc15;
+  --lv4: #fb923c;
+  --lv5: #f87171;
+
+  --t-dsa: #2dd4bf;
+  --t-core: #c084fc;
+  --t-dev: #38bdf8;
+  --t-apt: #fb7185;
+  --t-sys: #fb923c;
+  --t-data: #a3e635;
+  --t-career: #f5a524;
+
+  --coral: #f6a496;
+  --mint: #9fd8b8;
+  --ink: #e8ebf5;
+  --paper: #141a2c;
+
+  --heat-0: #1a1f2b;
+  --heat-1: #26306b;
+  --heat-2: #3b47a8;
+  --heat-3: #5b66f2;
+  --heat-4: #9aa3ff;
+
+  --shadow-pop: 0 16px 40px rgb(0 0 0 / 0.5), 0 0 0 1px var(--line);
+  --shadow-soft: 0 1px 0 rgb(255 255 255 / 0.03) inset;
+  --glow-action: 0 0 0 1px var(--action-line), 0 0 48px -8px rgb(110 123 255 / 0.45);
+  --glow-plus: 0 0 0 1px var(--plus-line), 0 0 48px -10px rgb(245 165 36 / 0.4);
+  --scrim: rgb(5 6 10 / 0.66);
+
+  --font-ui: "Plus Jakarta Sans Variable", "Noto Sans Devanagari", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --font-hand: "Kalam", "Noto Sans Devanagari", "Comic Sans MS", cursive;
+
+  --fs-11: 0.6875rem;
+  --fs-12: 0.75rem;
+  --fs-13: 0.8125rem;
+  --fs-14: 0.875rem;
+  --fs-16: 1rem;
+  --fs-18: 1.125rem;
+  --fs-22: 1.375rem;
+  --fs-28: 1.75rem;
+  --fs-36: 2.25rem;
+  --fs-56: 3.5rem;
+
+  --r-chip: 6px;
+  --r-row: 10px;
+  --r-card: 14px;
+  --r-stage: 20px;
+
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --top-h: 56px;
+  --side-w: 236px;
+  --rail-w: 312px;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+    --page: #f6f7fb;
+    --panel: #ffffff;
+    --raised: #f1f3f8;
+    --raised-2: #e9ecf3;
+    --sunk: #f9fafc;
+    --line: #e2e6ef;
+    --line-strong: #cdd3df;
+    --text: #131a2e;
+    --text-2: #4f586c;
+    --text-3: #5f687c;
+    --action: #3346c4;
+    --action-solid: #3346c4;
+    --action-solid-hover: #26338f;
+    --action-soft: rgb(51 70 196 / 0.09);
+    --action-line: rgb(51 70 196 / 0.4);
+    --plus: #b45309;
+    --plus-ink: #1a1204;
+    --plus-soft: rgb(242 140 40 / 0.13);
+    --plus-line: rgb(242 140 40 / 0.5);
+    --ok: #117a57;
+    --ok-solid: #117a57;
+    --ok-soft: rgb(17 122 87 / 0.1);
+    --bad: #c23a2b;
+    --bad-solid: #c23a2b;
+    --bad-soft: rgb(194 58 43 / 0.09);
+    --warn: #a35200;
+    --warn-soft: rgb(163 82 0 / 0.09);
+    --info: #1f63b8;
+    --info-soft: rgb(31 99 184 / 0.09);
+    --review: #6b3fd4;
+    --review-soft: rgb(107 63 212 / 0.09);
+    --lv1: #117a57;
+    --lv2: #0f766e;
+    --lv3: #8a6a00;
+    --lv4: #b45309;
+    --lv5: #c23a2b;
+    --t-dsa: #0f766e;
+    --t-core: #7e3fc4;
+    --t-dev: #0369a1;
+    --t-apt: #be123c;
+    --t-sys: #c2410c;
+    --t-data: #4d7c0f;
+    --t-career: #b45309;
+    --coral: #e8806d;
+    --mint: #4aa77a;
+    --ink: #111111;
+    --paper: #fefefe;
+    --heat-0: #eceff5;
+    --heat-1: #c9cff7;
+    --heat-2: #929de9;
+    --heat-3: #5b66f2;
+    --heat-4: #3346c4;
+    --shadow-pop: 0 16px 40px rgb(19 26 46 / 0.14), 0 0 0 1px var(--line);
+    --shadow-soft: 0 1px 2px rgb(19 26 46 / 0.04);
+    --glow-action: 0 0 0 1px var(--action-line), 0 10px 40px -12px rgb(51 70 196 / 0.35);
+    --glow-plus: 0 0 0 1px var(--plus-line), 0 10px 40px -12px rgb(242 140 40 / 0.35);
+    --scrim: rgb(19 26 46 / 0.4);
+  }
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --page: #f6f7fb;
+  --panel: #ffffff;
+  --raised: #f1f3f8;
+  --raised-2: #e9ecf3;
+  --sunk: #f9fafc;
+  --line: #e2e6ef;
+  --line-strong: #cdd3df;
+  --text: #131a2e;
+  --text-2: #4f586c;
+  --text-3: #5f687c;
+  --action: #3346c4;
+  --action-solid: #3346c4;
+  --action-solid-hover: #26338f;
+  --action-soft: rgb(51 70 196 / 0.09);
+  --action-line: rgb(51 70 196 / 0.4);
+  --plus: #b45309;
+  --plus-ink: #1a1204;
+  --plus-soft: rgb(242 140 40 / 0.13);
+  --plus-line: rgb(242 140 40 / 0.5);
+  --ok: #117a57;
+  --ok-solid: #117a57;
+  --ok-soft: rgb(17 122 87 / 0.1);
+  --bad: #c23a2b;
+  --bad-solid: #c23a2b;
+  --bad-soft: rgb(194 58 43 / 0.09);
+  --warn: #a35200;
+  --warn-soft: rgb(163 82 0 / 0.09);
+  --info: #1f63b8;
+  --info-soft: rgb(31 99 184 / 0.09);
+  --review: #6b3fd4;
+  --review-soft: rgb(107 63 212 / 0.09);
+  --lv1: #117a57;
+  --lv2: #0f766e;
+  --lv3: #8a6a00;
+  --lv4: #b45309;
+  --lv5: #c23a2b;
+  --t-dsa: #0f766e;
+  --t-core: #7e3fc4;
+  --t-dev: #0369a1;
+  --t-apt: #be123c;
+  --t-sys: #c2410c;
+  --t-data: #4d7c0f;
+  --t-career: #b45309;
+  --coral: #e8806d;
+  --mint: #4aa77a;
+  --ink: #111111;
+  --paper: #fefefe;
+  --heat-0: #eceff5;
+  --heat-1: #c9cff7;
+  --heat-2: #929de9;
+  --heat-3: #5b66f2;
+  --heat-4: #3346c4;
+  --shadow-pop: 0 16px 40px rgb(19 26 46 / 0.14), 0 0 0 1px var(--line);
+  --shadow-soft: 0 1px 2px rgb(19 26 46 / 0.04);
+  --glow-action: 0 0 0 1px var(--action-line), 0 10px 40px -12px rgb(51 70 196 / 0.35);
+  --glow-plus: 0 0 0 1px var(--plus-line), 0 10px 40px -12px rgb(242 140 40 / 0.35);
+  --scrim: rgb(19 26 46 / 0.4);
+}

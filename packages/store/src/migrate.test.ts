@@ -1,9 +1,9 @@
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { copyFile, mkdtemp, readdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { migrate, pendingMigrations } from "./migrate.js";
+import { MIGRATIONS_DIR, migrate, pendingMigrations } from "./migrate.js";
 import { pgliteExecutor, type SqlExecutor } from "./sql.js";
 
 let db: PGlite;
@@ -164,6 +164,9 @@ describe("migrate", () => {
       "0069_code_timeline.sql",
       "0070_candidate_accounts.sql",
       "0071_hire.sql",
+      "0072_hire_apply.sql",
+      "0073_hire_pipeline.sql",
+      "0074_hire_privacy.sql",
     ]);
     const tables = await sql.query<{ tablename: string }>(
       `SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename`,
@@ -223,6 +226,50 @@ describe("migrate", () => {
     expect(loose).toEqual([]);
     // Removed with the tech-only focus (0055).
     for (const gone of ["answer_scripts", "answer_script_pages", "exam_outcomes"]) expect(tables.map((t) => t.tablename)).not.toContain(gone);
+  });
+
+  it("counts an application's time in its round from when it was made, for those made before 0073 (H2c)", async () => {
+    const all = (await readdir(MIGRATIONS_DIR)).filter((f) => f.endsWith(".sql")).sort();
+    for (const f of all.filter((f) => f < "0073")) await copyFile(join(MIGRATIONS_DIR, f), join(dir, f));
+    await migrate(sql, dir);
+    await sql.exec(`
+      INSERT INTO organisations (id, name) VALUES ('org-a', 'A');
+      INSERT INTO hire_jobs (org_id, id, title) VALUES ('org-a', 'job-1', 'Backend engineer');
+      INSERT INTO hire_applications (org_id, id, job_id, ref, name, email, email_hash, email_canonical_hash, source, status, created_at)
+        VALUES ('org-a', 'app-1', 'job-1', 'A1', 'Asha', 's', 'e', 'e', 'link', 'active', '2026-09-01T10:00:00Z');
+    `);
+    for (const f of all.filter((f) => f >= "0073")) await copyFile(join(MIGRATIONS_DIR, f), join(dir, f));
+    await migrate(sql, dir);
+    const [row] = await sql.query<{ round_since: Date; rejection_line: string }>(
+      `SELECT a.round_since, j.rejection_line FROM hire_applications a JOIN hire_jobs j ON j.org_id = a.org_id AND j.id = a.job_id`,
+    );
+    expect(new Date(row!.round_since).toISOString()).toBe("2026-09-01T10:00:00.000Z");
+    expect(row!.rejection_line).toBe("");
+  });
+
+  it("lets only a company's own staff blank its events, and only a signed-in candidate look up invitations (H2d)", async () => {
+    await migrate(sql);
+    await sql.exec(`
+      INSERT INTO organisations (id, name) VALUES ('org-a', 'A'), ('org-b', 'B');
+      INSERT INTO hire_jobs (org_id, id, title) VALUES ('org-a', 'job-1', 'Backend engineer');
+      INSERT INTO hire_applications (org_id, id, job_id, ref, name, email, email_hash, email_canonical_hash, source, status, claim_hash)
+        VALUES ('org-a', 'app-1', 'job-1', 'A1', 'Asha', 's', 'e', 'e', 'import', 'invited', 'claim-1');
+      INSERT INTO hire_events (org_id, id, application_id, kind, by, detail) VALUES ('org-a', 'e1', 'app-1', 'note', 'u1', '{"text": "sealed"}');
+      SET ROLE parikshaa_app;
+    `);
+    const as = (settings: Record<string, string>, query: string) => sql.transaction((tx) => tx.query(query), settings);
+    const staff = (org: string) => ({ "parikshaa.org_id": org, "parikshaa.actor": "staff" });
+    const applicant = { "parikshaa.org_id": "", "parikshaa.actor": "applicant", "parikshaa.candidate_id": "c1" };
+    await expect(as(staff("org-b"), `SELECT hire_erase_events('org-a', 'app-1')`)).rejects.toThrow(/only staff/);
+    await expect(as(applicant, `SELECT hire_erase_events('org-a', 'app-1')`)).rejects.toThrow(/only staff/);
+    expect(await as(staff("org-a"), `SELECT hire_erase_events('org-a', 'app-1') AS n`)).toEqual([{ n: 1 }]);
+    expect(await as(staff("org-a"), `SELECT detail FROM hire_events`)).toEqual([{ detail: {} }]);
+    await expect(as(staff("org-a"), `SELECT * FROM hire_claimable('claim-1')`)).rejects.toThrow(/signed-in candidate/);
+    expect(await as(applicant, `SELECT * FROM hire_claimable('claim-1')`)).toEqual([{ org_id: "org-a", application_id: "app-1" }]);
+    expect(await as(applicant, `SELECT * FROM hire_claimable('other')`)).toEqual([]);
+    // A claimed invitation keeps no claim hash, and an erased application says why.
+    await expect(as(staff("org-a"), `UPDATE hire_applications SET status = 'active' WHERE id = 'app-1'`)).rejects.toThrow(/claim_hash/);
+    await expect(as(staff("org-a"), `UPDATE hire_applications SET erased_at = now() WHERE id = 'app-1'`)).rejects.toThrow(/erased_reason/);
   });
 
   it("leaves Supabase's API roles, the secret key's included, no privilege on any table, then or later", async () => {

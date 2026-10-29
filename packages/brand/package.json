@@ -8,17 +8,23 @@
     "./tokens.css": "./src/tokens.css",
     "./base.css": "./src/base.css",
     "./fonts.css": "./src/fonts.css",
+    "./learn.css": "./src/learn.css",
     "./react": "./src/react.tsx",
     "./markdown": "./src/markdown.tsx",
     "./ui": "./src/ui.tsx",
-    "./ui.css": "./src/ui.css"
+    "./ui.css": "./src/ui.css",
+    "./kit": "./src/kit.tsx",
+    "./kit.css": "./src/kit.css"
   },
   "peerDependencies": {
     "react": "^19.3.0"
   },
   "dependencies": {
-    "@fontsource-variable/inter": "^5.3.0",
+    "@fontsource-variable/ibm-plex-sans": "^5.3.0",
+    "@fontsource/ibm-plex-sans-devanagari": "^5.3.0",
+    "@fontsource/ibm-plex-serif": "^5.3.0",
     "@fontsource/jetbrains-mono": "^5.3.0",
+    "@fontsource/kalam": "^5.3.0",
     "@fontsource/noto-sans-bengali": "^5.3.0",
     "@fontsource/noto-sans-devanagari": "^5.3.0",
     "@fontsource/noto-sans-gujarati": "^5.3.0",

@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Contests</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&family=JetBrains+Mono:wght@400;600&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#3346c4}a:hover{color:#26338f}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #f6f7fb; color: #131a2e; font-family: 'Noto Sans', 'Noto Sans Devanagari', system-ui, sans-serif">
+  <dc-import name="TopBar" hint-size="100%,64px"></dc-import>
+  <div style="display: flex; flex-wrap: wrap; align-items: stretch">
+    <dc-import name="SideNav" active="contests" hint-size="240px,980px"></dc-import>
+    <main style="flex: 999 1 560px; min-width: 0; padding: 28px 32px 48px; box-sizing: border-box">
+      <div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; align-items: flex-end; margin-bottom: 18px">
+        <div>
+          <h1 style="margin: 0 0 6px; font-size: 28px">Contests</h1>
+          <p style="margin: 0; color: #4f586c">Har Ravivaar weekly, mahine me ek CP round, college ke apne contests.</p>
+        </div>
+        <div role="tablist" aria-label="Contests" style="display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: #eef0f6">
+          <sc-for list="{{tabs}}" as="t" hint-placeholder-count="3">
+            <button type="button" role="tab" aria-selected="{{t.on}}" onClick="{{t.pick}}" style="min-height: 38px; padding: 0 16px; border: 0; border-radius: 9px; font: inherit; font-weight: 600; cursor: pointer; {{t.style}}">{{t.label}}</button>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+        <div style="flex: 2 1 520px; min-width: 0">
+          <sc-if value="{{isUp}}" hint-placeholder-val="{{ true }}">
+            <div style="display: flex; flex-direction: column; gap: 12px">
+              <sc-for list="{{upcoming}}" as="c" hint-placeholder-count="4">
+                <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: center; padding: 18px 20px; border-radius: 16px; background: #ffffff; border: 1px solid #e2e6ef">
+                  <div style="flex: 0 0 64px; height: 64px; border-radius: 14px; background: {{c.bg}}; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #131a2e"><span style="font-size: 12px; font-weight: 700">{{c.mon}}</span><span style="font-size: 22px; font-weight: 800; line-height: 1">{{c.day}}</span></div>
+                  <div style="flex: 1 1 240px">
+                    <div style="font-weight: 700; font-size: 17px">{{c.name}}</div>
+                    <div style="color: #4f586c; font-size: 14px">{{c.meta}}</div>
+                  </div>
+                  <button type="button" onClick="{{c.toggle}}" style="min-height: 44px; padding: 0 18px; border-radius: 10px; font: inherit; font-weight: 700; cursor: pointer; {{c.btnStyle}}">{{c.btn}}</button>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{isLive}}" hint-placeholder-val="{{ false }}">
+            <div style="padding: 20px; border-radius: 18px; background: #141b4d; color: #ffffff; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 14px">
+              <div><div style="font-weight: 800; font-size: 20px">College Cup: VIT Bhopal round</div><div style="color: #c9cffa; font-size: 14px">ICPC style · 5 problems · penalty 20 min</div></div>
+              <div style="font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 600; color: #fdebd4">00:47:12</div>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 16px">
+              <sc-for list="{{liveProblems}}" as="p" hint-placeholder-count="5">
+                <a href="Problem.dc.html" style="padding: 14px; border-radius: 14px; background: #ffffff; text-decoration: none; color: #131a2e; {{p.border}}">
+                  <div style="font-weight: 800; font-size: 18px">{{p.id}}</div>
+                  <div style="font-size: 14px; font-weight: 600">{{p.name}}</div>
+                  <div style="font-size: 12px; color: #5f687c; margin-top: 4px">{{p.solved}}</div>
+                </a>
+              </sc-for>
+            </div>
+            <div style="overflow-x: auto; border-radius: 16px; border: 1px solid #e2e6ef; background: #ffffff">
+              <div style="padding: 14px 16px 4px; font-weight: 700">Live standings (freeze aakhri 15 min)</div>
+              <div role="table" aria-label="Live standings" style="min-width: 620px; font-size: 14px">
+                <div role="row" style="display: grid; grid-template-columns: 52px minmax(0, 1.6fr) 56px 80px repeat(5, minmax(0, 1fr)); color: #5f687c; font-size: 13px; font-weight: 700">
+                  <span role="columnheader" style="padding: 10px 16px">#</span><span role="columnheader" style="padding: 10px 16px">Naam</span><span role="columnheader" style="padding: 10px 16px">Hal</span><span role="columnheader" style="padding: 10px 16px">Penalty</span><span role="columnheader" style="padding: 10px 16px">A</span><span role="columnheader" style="padding: 10px 16px">B</span><span role="columnheader" style="padding: 10px 16px">C</span><span role="columnheader" style="padding: 10px 16px">D</span><span role="columnheader" style="padding: 10px 16px">E</span>
+                </div>
+                <sc-for list="{{standings}}" as="s" hint-placeholder-count="6">
+                  <div role="row" style="display: grid; grid-template-columns: 52px minmax(0, 1.6fr) 56px 80px repeat(5, minmax(0, 1fr)); border-top: 1px solid #eef0f6; {{s.me}}">
+                    <span role="cell" style="padding: 10px 16px; font-weight: 700">{{s.rank}}</span>
+                    <span role="cell" style="padding: 10px 16px; font-weight: 600">{{s.name}}</span>
+                    <span role="cell" style="padding: 10px 16px; font-weight: 800">{{s.solved}}</span>
+                    <span role="cell" style="padding: 10px 16px; font-family: 'JetBrains Mono', monospace">{{s.pen}}</span>
+                    <sc-for list="{{s.cells}}" as="c" hint-placeholder-count="5">
+                      <span role="cell" style="padding: 10px 16px; font-family: 'JetBrains Mono', monospace; font-size: 13px; {{c.style}}">{{c.t}}</span>
+                    </sc-for>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{isPast}}" hint-placeholder-val="{{ false }}">
+            <div style="overflow-x: auto; border-radius: 16px; border: 1px solid #e2e6ef; background: #ffffff">
+              <div role="table" aria-label="Purane contests" style="min-width: 620px; font-size: 14px">
+                <div role="row" style="display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1.2fr) 70px 80px minmax(0, 1.6fr); color: #5f687c; font-size: 13px; font-weight: 700; background: #fbfbfd">
+                  <span role="columnheader" style="padding: 12px 16px">Contest</span><span role="columnheader" style="padding: 12px 16px">Rank</span><span role="columnheader" style="padding: 12px 16px">Hal</span><span role="columnheader" style="padding: 12px 16px">Rating</span><span role="columnheader" style="padding: 12px 16px">Aage</span>
+                </div>
+                <sc-for list="{{past}}" as="p" hint-placeholder-count="4">
+                  <div role="row" style="display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1.2fr) 70px 80px minmax(0, 1.6fr); border-top: 1px solid #eef0f6">
+                    <span role="cell" style="padding: 12px 16px; font-weight: 600">{{p.name}}</span>
+                    <span role="cell" style="padding: 12px 16px">{{p.rank}}</span>
+                    <span role="cell" style="padding: 12px 16px">{{p.solved}}</span>
+                    <span role="cell" style="padding: 12px 16px; font-weight: 700; {{p.deltaStyle}}">{{p.delta}}</span>
+                    <span role="cell" style="padding: 12px 16px"><a href="Editorial.dc.html">Editorial</a> · <a href="Problem.dc.html">Virtual do</a></span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+
+        <aside style="flex: 1 1 280px; min-width: 0; display: flex; flex-direction: column; gap: 14px">
+          <div style="padding: 20px; border-radius: 18px; background: #ffffff; border: 1px solid #e2e6ef">
+            <div style="display: flex; justify-content: space-between; align-items: baseline"><span style="font-weight: 700">Aapki rating</span><span style="font-size: 24px; font-weight: 800; color: #3346c4">1384</span></div>
+            <svg role="img" aria-label="Rating 6 contests me 1200 se 1384" viewBox="0 0 280 110" style="width: 100%; height: 110px; margin-top: 10px">
+              <line x1="0" y1="80" x2="280" y2="80" stroke="#eef0f6" stroke-width="1"/>
+              <line x1="0" y1="40" x2="280" y2="40" stroke="#eef0f6" stroke-width="1"/>
+              <polyline points="10,92 60,80 110,86 160,62 210,50 260,30" fill="none" stroke="#3346c4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="260" cy="30" r="5" fill="#f28c28"/>
+            </svg>
+            <div style="font-size: 13px; color: #5f687c">Agla padaav 1400: "Specialist"</div>
+          </div>
+          <div style="padding: 20px; border-radius: 18px; background: #ffffff; border: 1px solid #e2e6ef; font-size: 14px">
+            <div style="font-weight: 700; margin-bottom: 6px">Niyam saaf</div>
+            <ul style="margin: 0; padding-left: 18px; color: #4f586c">
+              <li>AI tools contest ke dauraan band (check hota hai)</li>
+              <li>Copy check har submission par</li>
+              <li>Hindi/English dono me statement</li>
+            </ul>
+          </div>
+          <a href="AdminContests.dc.html" style="display: block; padding: 18px; border-radius: 18px; background: #fdebd4; color: #131a2e; text-decoration: none">
+            <div style="font-weight: 700">Apne college ka contest banao</div>
+            <div style="font-size: 14px; color: #373f52; margin-top: 4px">TPO ya club, 5 minute me.</div>
+          </a>
+        </aside>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1300}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { tab: 'up', reg: { w12: false, cp4: true } };
+  }
+  renderVals() {
+    const tab = this.state.tab;
+    const tabs = [['up', 'Aane wale'], ['live', 'Live'], ['past', 'Purane']].map(([id, label]) => ({
+      label, on: tab === id,
+      style: tab === id ? 'background: #ffffff; color: #131a2e; box-shadow: 0 1px 2px rgba(19,26,46,0.12)' : 'background: transparent; color: #4f586c',
+      pick: () => this.setState({ tab: id })
+    }));
+    const up = [
+      { id: 'w12', mon: 'OCT', day: '25', name: 'Weekly Contest 12', meta: 'Ravivaar 8:00 PM · 90 min · 4 problems · rated', bg: '#fdebd4' },
+      { id: 'cp4', mon: 'NOV', day: '01', name: 'CP Round 4 (Div. 2)', meta: 'Shanivaar 7:30 PM · 2 ghante · 6 problems · rated', bg: '#f1ebff' },
+      { id: 'apt', mon: 'NOV', day: '02', name: 'Aptitude Sprint', meta: 'Ravivaar 11:00 AM · 30 min · 30 sawaal', bg: '#e7f6ef' },
+      { id: 'sql', mon: 'NOV', day: '08', name: 'SQL Showdown', meta: 'Shanivaar 6:00 PM · 60 min · 5 queries', bg: '#eaf2fc' }
+    ];
+    const upcoming = up.map((c) => {
+      const r = !!this.state.reg[c.id];
+      return {
+        ...c, btn: r ? 'Registered' : 'Register',
+        btnStyle: r ? 'border: 1px solid #b9e2cf; background: #e7f6ef; color: #0d5c42' : 'border: 0; background: #f28c28; color: #131a2e',
+        toggle: () => this.setState({ reg: { ...this.state.reg, [c.id]: !r } })
+      };
+    });
+    const liveProblems = [
+      ['A', 'Seedhi line', '412 hal', 'ac'], ['B', 'Do dukaan', '230 hal', 'ac'], ['C', 'Sabse lamba raasta', '61 hal', 'wa'], ['D', 'Toll plaza', '12 hal', 'none'], ['E', 'Bijli ka grid', '0 hal', 'none']
+    ].map(([id, name, solved, st]) => ({ id, name, solved, border: st === 'ac' ? 'border: 2px solid #117a57' : st === 'wa' ? 'border: 2px solid #c23a2b' : 'border: 1px solid #e2e6ef' }));
+    const cs = { ac: 'background: #e7f6ef; color: #0d5c42', wa: 'background: #fdeeec; color: #9c2d21', none: 'color: #9aa3b5' };
+    const standings = [
+      ['1', 'riya_k', 4, '312', ['12', '25', '41', '88', '—']],
+      ['2', 'dev.codes', 4, '355', ['9', '30', '52', '+2 101', '—']],
+      ['3', 'sameer07', 3, '160', ['15', '+1 38', '67', '—', '—']],
+      ['…', '', '', '', ['', '', '', '', '']],
+      ['47', 'Aarav (aap)', 2, '61', ['14', '27', '−2', '—', '—']],
+      ['48', 'nisha_s', 2, '74', ['18', '36', '—', '—', '—']]
+    ].map(([rank, name, solved, pen, cells]) => ({
+      rank, name, solved, pen,
+      me: name.indexOf('aap') > -1 ? 'background: #f1f3fe' : '',
+      cells: cells.map((t) => ({ t, style: t === '—' || t === '' ? cs.none : t.indexOf('−') === 0 ? cs.wa : cs.ac }))
+    }));
+    const past = [
+      ['Weekly Contest 11', '214 / 1,902', '3 / 4', '+46', true], ['Weekly Contest 10', '388 / 1,760', '2 / 4', '−12', false], ['CP Round 3 (Div. 2)', '502 / 2,310', '3 / 6', '+58', true], ['Weekly Contest 9', '296 / 1,640', '3 / 4', '+31', true]
+    ].map(([name, rank, solved, delta, up2]) => ({ name, rank, solved, delta, deltaStyle: up2 ? 'color: #117a57' : 'color: #c23a2b' }));
+    return { tabs, isUp: tab === 'up', isLive: tab === 'live', isPast: tab === 'past', upcoming, liveProblems, standings, past };
+  }
+}
+</script>
+</body>
+</html>

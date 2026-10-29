@@ -11,6 +11,7 @@ import type {
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import { z } from "zod";
 import { LtiError, type LtiService } from "./lti.js";
+import { RateLimiter, type RateLimit } from "./rate-limit.js";
 import * as S from "./schemas.js";
 import type { Actor, Permission } from "./staff-auth.js";
 
@@ -19,11 +20,18 @@ type Routes = FastifyInstance<RawServerDefault, RawRequestDefaultExpression, Raw
 export interface LtiRouteDeps {
   readonly lti: LtiService;
   readonly staff: (request: FastifyRequest, reply: FastifyReply, permission: Permission | null) => Promise<Actor | null>;
+  /** Requests from one address to the open login and launch; `LAUNCHES` unless given. */
+  readonly limit?: RateLimit;
 }
 
 const TAG = ["LTI"];
 const SECURED = [{ staffAuth: [] }];
 const OPEN: { ltiPlatform: never[] }[] = [];
+/**
+ * The open login and launch, per client address (ROADMAP §10): enough for a
+ * lab of learners behind one NAT opening an exam together, not for a loop.
+ */
+const LAUNCHES: RateLimit = { perSecond: 20, burst: 600 };
 const refusals = { 400: S.errorResponse, 401: S.errorResponse, 403: S.errorResponse, 404: S.errorResponse, 409: S.errorResponse, 422: S.errorResponse } as const;
 
 const platformBody = z.object({
@@ -57,7 +65,7 @@ const escape = (text: string) => text.replace(/[&<>"']/g, (c) => ({ "&": "&amp;"
 /** A small page for the browser, which is what an LMS launch lands on. */
 function page(title: string, body: string): string {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escape(title)}</title>
-<style>body{font:16px/1.55 system-ui,sans-serif;margin:0;background:#f6f7fb;color:#131a2e}main{max-width:36rem;margin:3rem auto;padding:1.5rem 16px;background:#fff;border:1px solid #e2e6ef;border-radius:12px}h1{font-size:1.3rem;margin:0 0 .5rem}code{background:#f1f3fe;padding:.1rem .3rem;border-radius:4px}a{color:#3346c4}</style>
+<style>body{font:16px/1.55 "IBM Plex Sans",system-ui,sans-serif;margin:0;background:#f6f6f4;color:#0a0a0b}main{max-width:36rem;margin:3rem auto;padding:1.5rem 16px;background:#fff;border:1px solid #e2e2de;border-radius:12px}h1{font-size:1.3rem;margin:0 0 .5rem}code{background:#ebefff;padding:.1rem .3rem;border-radius:4px}a{color:#2349e6}</style>
 </head><body><main><h1>${escape(title)}</h1>${body}</main></body></html>`;
 }
 
@@ -144,6 +152,19 @@ export function registerLtiRoutes(routes: Routes, deps: LtiRouteDeps): void {
     });
     const r = forms.withTypeProvider<ZodTypeProvider>();
 
+    // Anyone can call these, and each looks up a platform: one bucket per address, shared by
+    // login and launch. A route names its limiter as `config.rateLimit`; this hook applies it.
+    const launches = new RateLimiter(deps.limit ?? LAUNCHES);
+    forms.addHook("onRequest", async (request, reply) => {
+      const verdict = (request.routeOptions.config as { rateLimit?: RateLimiter }).rateLimit?.take(request.ip);
+      if (verdict === undefined || verdict.ok) return;
+      return reply
+        .code(429)
+        .header("retry-after", String(verdict.retryAfterSeconds))
+        .type("text/html")
+        .send(page("Too many launches from this network", "<p>Wait a minute, then go back to the course and open the activity again.</p>"));
+    });
+
     const login = async (params: Record<string, string | undefined>, reply: FastifyReply) => {
       try {
         return reply.redirect(await lti.login(params), 302);
@@ -156,12 +177,12 @@ export function registerLtiRoutes(routes: Routes, deps: LtiRouteDeps): void {
 
     r.get(
       "/lti/login",
-      { schema: { tags: TAG, summary: "The LMS starts a launch (OpenID Connect third-party login)", security: OPEN, querystring: loginParams } },
+      { schema: { tags: TAG, summary: "The LMS starts a launch (OpenID Connect third-party login)", security: OPEN, querystring: loginParams }, config: { rateLimit: launches } },
       async (request, reply) => login(request.query, reply),
     );
     r.post(
       "/lti/login",
-      { schema: { tags: TAG, summary: "The LMS starts a launch, by form post", security: OPEN, body: loginParams } },
+      { schema: { tags: TAG, summary: "The LMS starts a launch, by form post", security: OPEN, body: loginParams }, config: { rateLimit: launches } },
       async (request, reply) => login(request.body, reply),
     );
 
@@ -176,6 +197,7 @@ export function registerLtiRoutes(routes: Routes, deps: LtiRouteDeps): void {
           security: OPEN,
           body: z.object({ id_token: z.string().min(10).max(20_000), state: z.string().min(10).max(4000) }).passthrough(),
         },
+        config: { rateLimit: launches },
       },
       async (request, reply) => {
         try {

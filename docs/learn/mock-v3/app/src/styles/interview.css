@@ -1,0 +1,340 @@
+/* AI mock interview (#interview): talk | code while live; a rubric after. */
+
+.iv-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  background: var(--page);
+}
+.iv-phase-phone {
+  display: none;
+  padding: 10px 12px 0;
+}
+.iv-setup,
+.iv-report {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 36px 24px 60px;
+  animation: rise 0.3s var(--ease);
+}
+.iv-kinds {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.iv-kind {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  text-align: left;
+  transition:
+    border-color 0.16s,
+    transform 0.16s var(--ease);
+}
+.iv-kind:hover {
+  transform: translateY(-1px);
+  border-color: var(--line-2);
+}
+.iv-kind.on {
+  border-color: var(--pen);
+  box-shadow: 0 0 0 1px var(--pen);
+}
+.iv-kind > svg {
+  width: 20px;
+  height: 20px;
+  color: var(--pen-text);
+}
+.iv-opts {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) auto auto;
+  gap: 14px;
+  align-items: end;
+}
+.iv-trust {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--tick-line);
+  background: var(--tick-soft);
+}
+.iv-trust svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  color: var(--tick-text);
+}
+.iv-setup > .btn {
+  align-self: flex-start;
+}
+.iv-live {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 12px;
+  height: 100%;
+  min-height: 560px;
+  padding: 12px;
+}
+.iv-talk,
+.iv-code {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  box-shadow: var(--edge);
+  overflow: hidden;
+}
+.iv-agent {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.iv-ava {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--ai-soft);
+  color: var(--ai-text);
+  border: 1px solid var(--ai-line);
+}
+.iv-ava svg {
+  width: 22px;
+  height: 22px;
+}
+.iv-wave {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 24px;
+}
+.iv-wave i {
+  width: 3px;
+  height: 6px;
+  border-radius: 2px;
+  background: var(--ink-4);
+}
+.iv-wave.on i {
+  background: var(--ai);
+  animation: iv-wave 0.9s ease-in-out infinite;
+}
+@keyframes iv-wave {
+  50% {
+    height: 22px;
+  }
+}
+.iv-q {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel-2);
+}
+.iv-q p {
+  margin-top: 4px;
+  font-size: 15px;
+}
+.iv-chat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  overflow: auto;
+}
+.iv-msg {
+  max-width: 88%;
+  padding: 9px 12px;
+  border-radius: 12px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  animation: rise 0.3s var(--ease) both;
+}
+.iv-msg.ai {
+  align-self: flex-start;
+  background: var(--ai-soft);
+  border: 1px solid var(--ai-line);
+}
+.iv-msg.me {
+  align-self: flex-end;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+}
+.iv-msg.live {
+  border-style: dashed;
+}
+.iv-ctrls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--line);
+}
+.iv-mic {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1px solid var(--line-2);
+  background: var(--panel-2);
+  color: var(--ink-2);
+}
+.iv-mic.on {
+  background: var(--red);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 0 0 6px var(--red-soft);
+}
+.iv-mic svg {
+  width: 20px;
+  height: 20px;
+}
+.iv-lock {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ink-3);
+}
+.iv-lock svg {
+  width: 13px;
+  height: 13px;
+}
+.iv-code-h {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.iv-timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+.iv-timer svg {
+  width: 14px;
+  height: 14px;
+}
+.iv-editor {
+  flex: 1;
+  overflow: auto;
+  background: var(--code-bg);
+}
+.iv-editor .code {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.iv-tests {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--line);
+}
+.iv-tests span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.iv-tests svg {
+  width: 14px;
+  height: 14px;
+}
+.iv-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--line);
+}
+.iv-score {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 10px 18px;
+  border-radius: 16px;
+  border: 1px solid var(--line-2);
+  background: var(--panel);
+}
+.iv-score b {
+  font-size: 40px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+.iv-rubric {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+  gap: 12px;
+}
+.iv-rb {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+}
+.iv-box {
+  padding: 14px 16px;
+  display: grid;
+  gap: 6px;
+}
+.iv-box b {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.iv-box svg {
+  width: 15px;
+  height: 15px;
+}
+.iv-box.good b {
+  color: var(--tick-text);
+}
+.iv-box.fix b {
+  color: var(--coin);
+}
+@media (max-width: 900px) {
+  .iv-live {
+    grid-template-columns: minmax(0, 1fr);
+    height: auto;
+  }
+  .iv-code {
+    min-height: 420px;
+  }
+  .iv-kinds {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .iv-opts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 760px) {
+  .iv-phase-phone {
+    display: block;
+  }
+  .iv-setup,
+  .iv-report {
+    padding: 20px 14px 90px;
+  }
+  .iv-live {
+    padding: 10px 10px 90px;
+  }
+}

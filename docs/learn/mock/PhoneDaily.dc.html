@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Phone: Daily 10</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&family=JetBrains+Mono:wght@400;600&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#3346c4}a:hover{color:#26338f}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden; background: #f6f7fb; color: #131a2e; font-family: 'Noto Sans', 'Noto Sans Devanagari', system-ui, sans-serif">
+  <header style="flex: 0 0 auto; padding: 10px 12px 12px; background: #ffffff; border-bottom: 1px solid #e2e6ef">
+    <div style="display: flex; align-items: center; gap: 8px">
+      <a href="PhoneHome.dc.html" aria-label="Band karo" style="width: 44px; height: 44px; display: grid; place-items: center; color: #373f52"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></a>
+      <div style="flex: 1; height: 8px; border-radius: 999px; background: #e2e6ef"><div style="height: 8px; border-radius: 999px; background: #3346c4; width: {{pct}}"></div></div>
+      <span style="font-weight: 700; font-size: 14px; width: 44px; text-align: center">{{n}}/10</span>
+    </div>
+  </header>
+  <div style="flex: 1; overflow-y: auto; padding: 20px 16px">
+    <div style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em; color: #5f687c">{{q.kind}}</div>
+    <h1 style="margin: 6px 0 14px; font-size: 20px; line-height: 1.4">{{q.prompt}}</h1>
+    <pre style="margin: 0 0 18px; padding: 14px; border-radius: 14px; background: #0c1020; color: #e8ebf5; font-family: 'JetBrains Mono', monospace; font-size: 15px; line-height: 1.6; white-space: pre; overflow-x: auto">{{q.code}}</pre>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+      <sc-for list="{{opts}}" as="o" hint-placeholder-count="4">
+        <button type="button" onClick="{{o.pick}}" aria-pressed="{{o.on}}" style="min-height: 56px; border-radius: 14px; font-family: 'JetBrains Mono', monospace; font-size: 17px; font-weight: 600; cursor: pointer; {{o.style}}">{{o.label}}</button>
+      </sc-for>
+    </div>
+    <sc-if value="{{checked}}" hint-placeholder-val="{{ false }}">
+      <div style="margin-top: 16px; padding: 14px; border-radius: 14px; {{fbBox}}">
+        <div style="font-weight: 800; margin-bottom: 4px">{{fbTitle}}</div>
+        <div style="font-size: 14px; line-height: 1.5">{{q.why}}</div>
+      </div>
+    </sc-if>
+    <sc-if value="{{showKeys}}" hint-placeholder-val="{{ false }}">
+      <div aria-label="Code keyboard" style="margin-top: 16px; display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px">
+        <sc-for list="{{keys}}" as="k" hint-placeholder-count="8">
+          <span style="height: 40px; border-radius: 8px; background: #ffffff; border: 1px solid #cdd3df; display: grid; place-items: center; font-family: 'JetBrains Mono', monospace; font-weight: 700">{{k.k}}</span>
+        </sc-for>
+      </div>
+    </sc-if>
+  </div>
+  <div style="flex: 0 0 auto; padding: 12px 16px 20px; background: #ffffff; border-top: 1px solid #e2e6ef">
+    <sc-if value="{{notChecked}}" hint-placeholder-val="{{ true }}">
+      <button type="button" onClick="{{check}}" style="width: 100%; min-height: 54px; border-radius: 14px; border: 0; font: inherit; font-size: 17px; font-weight: 700; cursor: pointer; {{checkStyle}}">Jaanchein</button>
+    </sc-if>
+    <sc-if value="{{checked}}" hint-placeholder-val="{{ false }}">
+      <button type="button" onClick="{{next}}" style="width: 100%; min-height: 54px; border-radius: 14px; border: 0; background: #3346c4; color: #ffffff; font: inherit; font-size: 17px; font-weight: 700; cursor: pointer">Agla</button>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { i: 0, pick: null, checked: false };
+  }
+  renderVals() {
+    const qs = [
+      { kind: 'OUTPUT BATAO', prompt: 'Is code ka output kya hoga?', code: 'a = [1, 2, 3]\nfor x in a[::-1]:\n    print(x, end="")', opts: ['123', '321', '3 2 1', 'Error'], ans: 1, why: 'a[::-1] ulta array deta hai: [3, 2, 1]. end="" se beech me space nahi.', keys: false },
+      { kind: 'KHAALI JAGAH BHARO', prompt: 'Binary search me mid kaise nikaalein taaki overflow na ho?', code: 'int mid = lo + (____) / 2;', opts: ['hi - lo', 'hi + lo', 'hi', 'lo - hi'], ans: 0, why: 'lo + (hi − lo) / 2: (lo + hi) bade numbers par int se bahar ja sakta hai.', keys: true },
+      { kind: 'BUG DHOONDHO', prompt: 'Kaunsi line galat hai? (sum of 1..n)', code: '1  int s = 0;\n2  for (int i = 1; i < n; i++)\n3      s += i;\n4  return s;', opts: ['Line 1', 'Line 2', 'Line 3', 'Line 4'], ans: 1, why: 'i < n me n chhoot jaata hai. i <= n chahiye.', keys: false }
+    ];
+    const q = qs[this.state.i % qs.length];
+    const n = 3 + (this.state.i % qs.length);
+    const chk = this.state.checked;
+    const opts = q.opts.map((label, idx) => {
+      const on = this.state.pick === idx;
+      let style = on ? 'background: #f1f3fe; border: 2px solid #3346c4; color: #131a2e' : 'background: #ffffff; border: 2px solid #e2e6ef; color: #131a2e';
+      if (chk) {
+        if (idx === q.ans) style = 'background: #e7f6ef; border: 2px solid #117a57; color: #131a2e';
+        else if (on) style = 'background: #fdeeec; border: 2px solid #c23a2b; color: #131a2e';
+      }
+      return { label, on, style, pick: () => { if (!chk) this.setState({ pick: idx }); } };
+    });
+    const right = this.state.pick === q.ans;
+    return {
+      q, n, pct: (n * 10) + '%', opts,
+      checked: chk, notChecked: !chk,
+      fbTitle: right ? 'Sahi!' : 'Abhi nahi',
+      fbBox: right ? 'background: #e7f6ef; color: #0d5c42' : 'background: #fdeeec; color: #9c2d21',
+      checkStyle: this.state.pick === null ? 'background: #eef0f6; color: #5f687c' : 'background: #f28c28; color: #131a2e',
+      check: () => { if (this.state.pick !== null) this.setState({ checked: true }); },
+      next: () => this.setState({ i: this.state.i + 1, pick: null, checked: false }),
+      showKeys: q.keys,
+      keys: ['{', '}', '(', ')', '[', ']', ';', '=', '<', '>', '+', '-', '*', '/', '"', ':'].map((k) => ({ k }))
+    };
+  }
+}
+</script>
+</body>
+</html>

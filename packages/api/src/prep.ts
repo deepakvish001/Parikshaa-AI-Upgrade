@@ -423,7 +423,7 @@ export class PrepService {
       dueCards: Math.min(REVISE_PER_DAY, cards.filter((c) => c.dueOn <= today).length),
       focusMinutesToday: Math.round((focus[0]?.seconds ?? 0) / 60),
       potd: potd.today,
-      plan: plan === null ? null : { track: plan.track, finishOn: plan.finishOn, deadline: plan.deadline, sprint: plan.sprint, sprints: plan.sprints, today: plan.today, moved: plan.moved },
+      plan: plan === null ? null : { track: plan.track, startedAt: plan.startedAt, finishOn: plan.finishOn, deadline: plan.deadline, sprint: plan.sprint, sprints: plan.sprints, today: plan.today, moved: plan.moved },
       continue: active ?? continuing[0] ?? null,
       solved: state.solved.size,
       frozenToday: state.frozen.has(today),
@@ -882,10 +882,23 @@ export class PrepService {
     const problemOf = new Map(problems.map((p) => [p.id, p]));
     const noteOf = new Map(notes.filter((n) => n.refKind === "problem").map((n) => [n.refId, n.body]));
     const due = cards.filter((c) => c.dueOn <= today && problemOf.has(c.problemId));
+    const at = new Date(this.#now()).toISOString();
+    // What each grade would set, so a learner sees it before choosing (Learn's revision, K2-3).
+    const days = (c: (typeof cards)[number], grade: Grade) => review(c, grade, today, at).intervalDays;
     return {
       due: due.slice(0, REVISE_PER_DAY).map((c) => {
         const p = problemOf.get(c.problemId)!;
-        return { slug: p.slug, title: p.title, difficulty: p.difficulty, tags: p.tags, dueOn: c.dueOn, lastReviewedAt: c.reviewedAt, reps: c.reps, note: noteOf.get(p.id) ?? null };
+        return {
+          slug: p.slug,
+          title: p.title,
+          difficulty: p.difficulty,
+          tags: p.tags,
+          dueOn: c.dueOn,
+          lastReviewedAt: c.reviewedAt,
+          reps: c.reps,
+          note: noteOf.get(p.id) ?? null,
+          next: { again: days(c, "again"), hard: days(c, "hard"), good: days(c, "good"), easy: days(c, "easy") },
+        };
       }),
       later: Math.max(0, due.length - REVISE_PER_DAY),
       upcoming: cards.filter((c) => c.dueOn > today).length,
@@ -1024,13 +1037,29 @@ export class PrepService {
 
   // --- the problem of the day ---------------------------------------------------------------------------
 
-  async potd(site: PracticeSite, learner: Learner | null) {
+  /**
+   * Today's problem and a calendar: the last 30 days, or one month's days up
+   * to today (`month`, YYYY-MM), newest first; with today's date and the
+   * learner's days off in that range, so a month can be drawn whole.
+   */
+  async potd(site: PracticeSite, learner: Learner | null, month?: string) {
     const today = this.#today();
+    let from = addDays(today, -29);
+    let to = today;
+    if (month !== undefined) {
+      if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) throw new PracticeError("invalid", "A month is written YYYY-MM");
+      const [y, m] = month.split("-").map(Number) as [number, number];
+      from = `${month}-01`;
+      const last = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+      to = last < today ? last : today;
+    }
     const scope = practiceLearner(site.orgId, learner?.id ?? null);
-    const [days, problems, progress] = await Promise.all([
-      this.#store.potd(scope, addDays(today, -29), today),
+    const [days, todays, problems, progress, frozen] = await Promise.all([
+      from <= to ? this.#store.potd(scope, from, to) : Promise.resolve([]),
+      to < today ? this.#store.potd(scope, today, today) : Promise.resolve([]),
       this.#practice.problems(scope),
       this.#practice.progress(scope),
+      learner === null ? Promise.resolve([] as readonly string[]) : this.#store.freezes(scope),
     ]);
     const problemOf = new Map(problems.map((p) => [p.id, p]));
     const solvedOn = new Map(progress.solved.map((s) => [s.problemId, istDay(Date.parse(s.at))]));
@@ -1041,7 +1070,9 @@ export class PrepService {
       return { day: d.day, slug: p.slug, title: p.title, difficulty: p.difficulty, solved: solved !== undefined, solvedThatDay: solved === d.day };
     };
     const calendar = days.map(view).filter((d): d is NonNullable<typeof d> => d !== null);
-    return { today: calendar.find((d) => d.day === today) ?? null, calendar: calendar.reverse() };
+    const now = [...calendar, ...todays.map(view)].find((d) => d?.day === today) ?? null;
+    const daysOff = [...new Set(frozen)].filter((d) => d >= from && d <= to).sort();
+    return { today: now, calendar: calendar.reverse(), date: today, daysOff };
   }
 
   // --- coins -----------------------------------------------------------------------------------------------

@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Phone: weekly league</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&family=JetBrains+Mono:wght@400;600&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#3346c4}a:hover{color:#26338f}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden; background: #f6f7fb; color: #131a2e; font-family: 'Noto Sans', 'Noto Sans Devanagari', system-ui, sans-serif">
+  <header style="flex: 0 0 auto; padding: 16px; background: #141b4d; color: #ffffff">
+    <div style="display: flex; justify-content: space-between; align-items: center">
+      <div><div style="font-size: 12px; font-weight: 700; color: #c9cffa; letter-spacing: 0.06em">IS HAFTE</div><div style="font-size: 22px; font-weight: 800">Silver league</div></div>
+      <div style="text-align: right"><div style="font-size: 12px; color: #c9cffa">3 din baaki</div><div style="font-weight: 800">420 XP</div></div>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 14px; font-size: 13px">
+      <div style="padding: 8px; border-radius: 10px; background: #26338f; text-align: center"><div style="font-weight: 800; font-size: 18px">12</div>din streak</div>
+      <div style="padding: 8px; border-radius: 10px; background: #26338f; text-align: center"><div style="font-weight: 800; font-size: 18px">7th</div>league me</div>
+      <div style="padding: 8px; border-radius: 10px; background: #26338f; text-align: center"><div style="font-weight: 800; font-size: 18px">340</div>coins</div>
+    </div>
+  </header>
+  <div style="flex: 1; overflow-y: auto; padding: 12px 14px">
+    <div style="font-size: 13px; color: #4f586c; margin: 4px 2px 10px">Top 10 Gold me jaayenge. XP sirf sahi kaam se: problem, lesson, revision. Sirf time bitaane se nahi.</div>
+    <ol style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px">
+      <sc-for list="{{rows}}" as="r" hint-placeholder-count="12">
+        <li style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; {{r.box}}">
+          <span style="width: 26px; font-weight: 800; text-align: center; {{r.rankStyle}}">{{r.rank}}</span>
+          <span aria-hidden="true" style="width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 13px; background: {{r.bg}}">{{r.init}}</span>
+          <span style="flex: 1; font-weight: 600">{{r.name}}</span>
+          <span style="font-size: 14px; font-weight: 700; color: #373f52">{{r.xp}}</span>
+        </li>
+        <sc-if value="{{r.lineAfter}}" hint-placeholder-val="{{ false }}">
+          <li aria-hidden="true" style="display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: #117a57; padding: 2px 4px"><span style="flex: 1; height: 0; border-top: 2px dashed #117a57"></span>Gold ki line<span style="flex: 1; height: 0; border-top: 2px dashed #117a57"></span></li>
+        </sc-if>
+      </sc-for>
+    </ol>
+    <a href="Settings.dc.html" style="display: block; margin-top: 14px; font-size: 13px; color: #4f586c">League pasand nahi? Settings me chhupa sakte ho.</a>
+  </div>
+  <dc-import name="PhoneTabs" active="me" hint-size="100%,76px"></dc-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const people = [
+      ['riya_k', 910], ['dev.codes', 840], ['sameer07', 702], ['nisha_s', 650], ['ankit.dev', 560], ['pooja_m', 470], ['Aarav (aap)', 420],
+      ['kabir_r', 401], ['tanya.s', 388], ['rohit99', 350], ['meera_v', 290], ['arjun_p', 210]
+    ];
+    const bgs = ['#fdebd4', '#eaf2fc', '#e7f6ef', '#f1ebff'];
+    const rows = people.map(([name, xp], i) => {
+      const me = name.indexOf('aap') > -1;
+      return {
+        rank: i + 1, name, xp: xp + ' XP', init: name[0].toUpperCase(), bg: bgs[i % 4],
+        box: me ? 'background: #f1f3fe; border: 2px solid #3346c4' : 'background: #ffffff; border: 1px solid #e2e6ef',
+        rankStyle: i < 3 ? 'color: #a35200' : 'color: #5f687c',
+        lineAfter: i === 9
+      };
+    });
+    return { rows };
+  }
+}
+</script>
+</body>
+</html>

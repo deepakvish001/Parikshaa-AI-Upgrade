@@ -9,7 +9,7 @@ Branch ya PR badle to pehle HANDOFF.md ki table update karo.
 ## 1. Naya session (kisi bhi account se): pehle ye, isi kram me
 
 1. **Branch:** canonical branch aur PR [HANDOFF.md](HANDOFF.md) me likhe hain (abhi `claude/festive-maxwell-pb4k5v`,
-   PR [#65](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/65)). Owner ne permission di hai ki har session
+   PR [#66](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/66); #65 merge ho chuka). Owner ne permission di hai ki har session
    usi branch par kaam aur push kare, chahe session ko koi aur branch mili ho.
    ```bash
    git fetch origin claude/festive-maxwell-pb4k5v && git checkout -B claude/festive-maxwell-pb4k5v origin/claude/festive-maxwell-pb4k5v
@@ -53,7 +53,7 @@ saare factor lagao ki final bachcha achha hi ho." Learn (user platform), college
 | T1 | Map existing Hire code against job→offer flow | ✅ | Workflow W1; output `docs/hire/code-map/` |
 | T2 | Design the Hire pipeline (jobs, apply, AI screen, OA, integrity, rounds, offer, portals, admin) | ✅ | `docs/HIRE-V2.md` + §10 (critique ke faisle) |
 | T2a | Design ka "fit" critique (design asli code se mel khata hai ya nahi) | ✅ | Workflow W3; W2 me ye hissa limit par ruka tha. H1 ke saath chalao |
-| T3 | Build Hire slices with tests | ⬜ | §6 ke slices, build order H1 → H2 → H3 → H4 → H5 → H7 → H8 → H9 → H6 |
+| T3 | Build Hire slices with tests | 🟡 | H1, H2a, H2b, H2c ✅; H2d kadam 1 ✅, agla kadam 2 (§5). Build order H1 → H2 → H3 → H4 → H5 → H7 → H8 → H9 → H6 |
 | T2b | Resume flow ki jaanch + fixes (W4) | ✅ | Zaroori fixes ho gaye; chhote baaki §5 me |
 | T4 | Review, e2e, tracker, PR | ⬜ | H10 + poora review + PR #65 ko ready |
 
@@ -65,6 +65,7 @@ saare factor lagao ki final bachcha achha hi ho." Learn (user platform), college
 | W2 | Design critique (security, product, fit) | [hire/workflows/w2-design-critique.js](hire/workflows/w2-design-critique.js) | ✅ security, product; fit → W3 (W2 dobara mat chalao) | `docs/hire/critique-*.md` |
 | W3 | Sirf "fit" critique (W2 ka bacha hissa) | [hire/workflows/w3-fit-critique.js](hire/workflows/w3-fit-critique.js) | ✅ session 2 (Agent tool se; limit par ek baar ruka, wahin se poora). Dobara mat chalao | `docs/hire/critique-fit.md` + HIRE-V2.md §10 "Fit (F#)" |
 | W4 | Resume flow ki jaanch (naya account ban kar, autosave test, kamiyan) | [hire/workflows/w4-handoff-verify.js](hire/workflows/w4-handoff-verify.js) | ✅ chal chuka (dobara mat chalao) | `docs/hire/handoff-verify.md`; zaroori fixes ho gaye, baaki §5 me |
+| W5 | Autosave overwrite fix + H2c (pipeline) build, review, check | [hire/workflows/w5-h2c-pipeline.js](hire/workflows/w5-h2c-pipeline.js) | ✅ session 3 + 4 (Final check session 4 ne khud chalaya, token bachane ke liye; §4 ka niyam). Dobara mat chalao | H2c code + `docs/hire/h2c-review.md` |
 
 **Niyam (sab sessions ke liye):**
 - **Chalane se pehle:** workflow ki script `docs/hire/workflows/wN-<naam>.js` me save karo, upar table me row jodo
@@ -92,10 +93,26 @@ saare factor lagao ki final bachcha achha hi ho." Learn (user platform), college
    "Fit (F#)". Bade slices toot gaye (critique-fit.md "Splits"): H1a/H1b, H2a–d, H4a–c, H5a/b, H8a/b, H9a/b.
 2. ✅ **(session 2)** F# faisle neeche H1a/H1b checklist me jud gaye. **H1a poora ✅**.
 3. ✅ **(session 2)** H1b (resume).
-4. **AB AGLA: H2a** (Jobs): critique-fit.md "Splits" ki H2a row se checklist neeche "Agle slice" wale dhaanche me likho, phir banao. Migration `0071_hire.sql` (F29: saare status values ek saath; F3 `verified_*`).
+4. ✅ **(session 2)** H2a (Jobs), neeche ki checklist.
+5. ✅ **(session 2)** H2b (Apply + portal), neeche ki checklist. HIRE-V2 §10 me B6–B11.
+6. ✅ **(session 3 + 4)** H2c (Pipeline), neeche ki checklist. HIRE-V2 §10 me B12–B17.
+7. **AB AGLA: H2d kadam 2** (Privacy + import): checklist neeche (session 5, 18 Oct; kadam 1 ✅). Detail: H2d me:
+   `HireErasure.eraseApplication(orgId, appId, reason)` (S3: PII columns NULL, files delete, screening `result` NULL,
+   integrity reasons → codes, `hire_events.detail` blank (column grant ya SECURITY DEFINER), offer note NULL, links
+   delete; har org ka apna transaction; full-DB text search me kuch na mile), candidate account delete ka hook (H1a
+   ka `deleteAccount` har org ki application mitaaye; accepted offer company ke paas bina contact ke), `HireRetention.sweep()`
+   (F4: `hire_keep_days ?? privacy retentionDays ?? 180`, privacy settings na ho tab bhi; withdrawn 30 din (S8);
+   `main.ts` ka hourly loop + harness), P11 import (CSV, dry run) aur "Add one" → `invited` + `candidate_id NULL`, mail
+   "Complete your application", sign-in par usi email se claim (consent + resume, `claimed` event), 14 din baad
+   `not_claimed`. Pehle H2c ka purana text (neeche) sirf sandarbh ke liye: H2c me: pipeline
+   table, move/reject/restore (override ke niyam ke saath; B9: Restore mana jab usi job par naya live application ho),
+   notes, events, bulk (ginti ke saath), `reject_reason`, P14 message thread + note to candidates + rejection mail 24 h
+   baad (Restore par cancel), reply-to/sender (F23: `EmailMessage.replyTo`, `fromName`), S21/S22 (viewer ko contact nahi).
+   H2b me: `/hire/public/*` (F7), apply (account, consent S8, snapshot, ref F5, hashes, `candidate_links` S2,
+   limits S17), suspension ka asar (F2), `hire-messages.ts` + outbox `{later}`, portal projection (S4), withdraw.
 W2 aur W4 **dobara mat chalao** (unke nateeje `docs/hire/critique-*.md` aur `docs/hire/handoff-verify.md` me hain).
-W4 ke baaki sudhaar jo abhi nahi hue (`handoff-verify.md` me): redaction, session-wise autosave ref, workflow journals
-snapshot me, bootstrap PR to main. Ye chhote hain, kabhi bhi kar lena.
+W4 ke baaki sudhaar jo abhi nahi hue (`handoff-verify.md` me): redaction, workflow journals snapshot me, bootstrap PR
+to main. Ye chhote hain, kabhi bhi kar lena. (Session-wise autosave ref aur stale guard 13 Oct ko ho gaye, §7.)
 
 **Limit kaise dekhein (pakka tareeka):** har kadam aur har workflow se pehle `get_session` (claude-code-remote) se session
 id lo, phir `list_events(session_id, kinds:["rate_limit_event"], limit:100)`. **Session 2 me `list_events` tool tha hi nahi.** Tab
@@ -153,14 +170,154 @@ ek line ki kya baaki):
 - [x] 2. `staff-auth.ts`: `hire:manage|review|decide|offer`; roles (owner/author sab; reviewer review+decide; viewer
   review; recruiter P3; hiring_manager sirf review+decide F6); S7 (decide/offer sirf insaan; manage/offer
   `UNTIL_VERIFIED`); `StaffRole` store + console labels; tests (role matrix, API key)
-- [ ] 3. `store/src/hire-store.ts` (`HireScope` candidate-store se): jobs CRUD, rounds config, publish/pause/close,
+- [x] 3. `store/src/hire-store.ts` (`HireScope` candidate-store se): jobs CRUD, rounds config, publish/pause/close,
   duplicate (P20), list + counts; store tests (do org alag)
-- [ ] 4. `api/src/hire.ts`: validation (≤10 screening questions; S23 protected-topic knockout mana), S18 (unverified:
+- [x] 4. `api/src/hire.ts`: validation (≤10 screening questions; S23 protected-topic knockout mana), S18 (unverified:
   ≤2 open jobs, fee/deposit wala JD operator ke liye hold, auto-screen band), P1 (`max_applicants`, `screen_daily_max`),
   pehli publish par `public_code`, managers (staff ids) + tests
-- [ ] 5. `api/src/hire-routes.ts` staff `/hire/jobs*` (F7: `/jobs` nahi), tag `Hiring`, wiring + openapi, audit ACTIONS
+- [x] 5. `api/src/hire-routes.ts` staff `/hire/jobs*` (F7: `/jobs` nahi), tag `Hiring`, wiring + openapi, audit ACTIONS
   ke shabd + route tests
-- [ ] 6. `npm run check`; tracker row 112 🟡; §6 + §10; push
+- [x] 6. `npm run check` EXIT 0 (API 791), `build:clients` + `budget` theek; tracker row 112 🟡; push
+
+**H2b checklist (Apply + portal)** (critique-fit.md "Splits" H2b; har kadam: code + tests → `WIP(H2b)` commit → push → `[x]`):
+
+- [x] 1. Migration `0072_hire_apply.sql` (0071 `main` par hai, use mat badlo): ek job par ek insaan ki ek hi *chalti*
+  application (rejected/withdrawn/did_not_join ke baad dobara apply ho sake, `reapply_after_days` service jaanche).
+  Outbox: `OutboxItem.kind` me `hire`; handler ka teesra nateeja `{ later: Date }` + `OutboxStore.defer` (F2: attempts
+  nahi gine jaate). `migrate.test.ts`, `outbox-store` aur `delivery` tests
+- [x] 2. `hire-store.ts` + naya `hire-application-store.ts`: public job/careers padhna (draft/held kabhi nahi), application likhna (sealed snapshot "hire"
+  key, AAD `hire/{org}/{app}/{field}`; hashes S20; ref F5; pehle round ka result; `applied` event; outbox ek hi
+  transaction me), ginti (job ki, candidate ki 24 h), duplicate/reapply padhna, candidate ki apni application, withdraw.
+  Tests: applicant RLS (sirf apni), do org alag
+- [x] 3. `api/src/hire-apply.ts` (`HireApplications`): public job + careers (suspended org/draft/held → 404, F2),
+  S8 notice (English + Hindi, `notice_hash`, retention `privacy ?? 180` (F4), do grievance contacts), apply (job open,
+  `apply_by` 23:59 IST, `max_applicants` + unverified 100, S17 20/din, duplicate, reapply, sawaalon ki jaanch,
+  knockout → rejected), `candidate_links` (S2), portal projection (S4: round ki haalat, koi score nahi; suspended →
+  "paused"), withdraw. `hire-messages.ts`: applied / withdrawn mail, "never pay" line (S18), suspended org → `{later}`.
+  Tests
+- [x] 4. Routes: `/hire/public/jobs/{company}/{code}`, `/hire/public/careers/{company}` (tag `Jobs`, open list F25),
+  `/candidate/applications` (GET, POST), `/candidate/applications/{id}` (GET), `/candidate/applications/{id}/withdraw`;
+  wiring (server, assemble handler `hire`, harness, openapi); `npm run openapi`; route tests (suspended 404, apply_by
+  ke baad mana, limits, duplicate)
+- [x] 5. `npm run check` EXIT 0 (API 816 tests); tracker row 112; §6, §10; push
+
+**H2c checklist (Pipeline)** (critique-fit.md "Splits" H2c; HIRE-V2 §5 Move/Reject/Restore + §10 S4, S7, S15, S18,
+S21, S22, P14, P15, P20, F23, B9; har kadam: code + tests → `WIP(H2c)` commit → push → `[x]`; aadha ho to `[~]` + ek
+line ki kya baaki). Pipeline ke saare kaam `hire:decide` maangte hain (padhna `hire:review`), API key ke liye decide
+mana (S7), hiring manager sirf apni jobs (F6, `hire.ts` ka "sees" niyam). Audit `detail` me sirf ids aur ginti (S3).
+
+- [x] 1. Migration `0073_hire_pipeline.sql` (0071/0072 mat chhedo; critique-fit "Splits" me H5b ke aage 0073 likha
+  hai, wo ab 0074+ lega, HIRE-V2 §10 pehle se "next free numbers" kehta hai): `hire_jobs.rejection_line` (P14: har job ki ek editable line, `NOT NULL DEFAULT ''`, ≤500);
+  `hire_applications.round_since timestamptz NOT NULL DEFAULT now()` (purani rows `created_at` se bharo; pipeline ka
+  "is kadam me n din", P13/P15) aur H2b ka `apply()` ise `now` se likhe. `migrate.test.ts` me 0073. Outbox, events
+  ke CHECK pehle se kaafi hain (`message`, `note`, `override`, `restored`; `candidate_visible` CHECK S4)
+  → ✅ `e07a0bf` (session 3): 0073 + `apply()` me `round_since`; `migrate.test.ts` (purani row ka `round_since` = `created_at`), store tests 18/18
+- [x] 2. Store `packages/store/src/hire-pipeline-store.ts` (`HirePipelineStore`, `hireScoped` + `hireStaff`, H2b jaisa
+  sealing; `index.ts` export): `pipeline(orgId, jobId, filter)` ek hi query (P15: application + current round ka
+  result + har round ka status/score + screening score/recommendation + integrity level, `null` → `not_checked`;
+  round aur status ki ginti; filters round, status, naam search, recommendation, integrity, past SLA);
+  `application(orgId, id)` (drawer: snapshot, round results, events + `by`); `move(orgId, ids, to | "next", by, now,
+  {overrideReason})` har item ka nateeja (`moved` / `not_active` / `last_round` / `integrity_high` / `not_found`),
+  row `FOR UPDATE`, purane round ka result `passed` (aage) aur naye ka `pending`, `round_since`, `moved` event
+  (candidate_visible, detail me koi reason/score/staff naam nahi), override hua to alag `override` event (private),
+  round config `sendOnMove` (P20) ho to outbox `mail_moved`; `reject(orgId, ids, rejectReason, by, now, {mail})`:
+  `rejected` + `reject_reason` (P20 enum) + `decided_at`, current round `failed`, `rejected` event, mail ho to outbox
+  `mail_rejected` `sendAfter = now + 24 h`, subject `{applicationId, decidedAt}` (sirf ids, P14); `restore(orgId, id,
+  by, now)`: sirf `rejected` (withdrawn kabhi nahi, consent), B9: usi job par usi insaan (`email_canonical_hash`) ki
+  nayi live application ho to `newer_application` (unique index ka 23505 bhi yahi), round result wapas `pending`,
+  `reject_reason`/`decided_at` NULL, `restored` event, aur usi transaction me pending `mail_rejected` outbox row
+  `skipped`; `note(...)` (event `note`, private) aur `message(...)` (event `message`, visible, outbox `mail_message`
+  `{applicationId, eventId}`): text ≤2000, `detail` me sealed, AAD `hire/{org}/{app}/event:{eventId}`. Tests
+  `hire-pipeline-store.test.ts`: do org alag, har move par event, override event, reject → outbox +24 h, restore par
+  mail `skipped`, B9 refusal, applicant scope `message` dekhe par `note`/`override` nahi (RLS), 1 000 applications ka
+  pipeline read < 1 s (P15)
+  → ✅ `f1c062a` (session 3): `hire-pipeline-store.test.ts` 13 tests (1 000 rows ≈0.3–0.45 s PGlite me, best of 3); extra outcome `same_round`, `move` jawab `{roundFound, results}`; `resumeFile()`, `jobOf()` (`thread()` aur `messageText()` baad me `fa9251a`/`fa6e90f` me hata diye: portal `forCandidate` ke `message` events padhta hai, mail `mailFacts({messageId})`); `by` = staff user id (naam service dega); type `ScreenRecommendation` (`Recommendation` interview-store me pehle se)
+- [x] 3. Service `packages/api/src/hire-pipeline.ts` (`HirePipeline`): permission + manager niyam (upar); S22
+  projection: email, phone, answers, profile, resume text/download sirf `hire:decide` wale ko (manager apni job par),
+  viewer ko naam, ref, round, status, scores bas; resume download attachment, saaf filename, sniffed type, audit
+  `hire.resume_downloaded` (S21), unverified company ko mana (S18); override: integrity `high` aur verdict `genuine`
+  nahi → bina `overrideReason` (≥10 akshar) ke refuse (`override_needs_reason`); `reject_reason` zaroori (P20); bulk
+  ≤200 ids, jawab `{done, refused: [{id, reason}]}`; S15: bulk reject AI recommendation ke filter par ho to typed
+  reason (≥10) zaroori, audit me filter + ginti; job/round input me `rejectionLine` aur round config `sendOnMove`
+  (`roundProblems` jaanche). Portal (`hire-apply.ts`): application detail me message thread (khula text) aur job ka
+  `noteToCandidates`; note/override kabhi nahi (S4). Audit shabd `hire.moved`, `hire.rejected`, `hire.restored`,
+  `hire.override`, `hire.note_added`, `hire.messaged`, `hire.resume_downloaded` → console `Home.tsx` ACTIONS. Tests
+  `hire-pipeline.test.ts`: role matrix (viewer ko contact nahi, manager doosri job par 404, API key decide par 403),
+  override bina reason refuse + reason ke saath `override` event + audit, bulk ginti, B9, portal me message hai note nahi
+  → ✅ `fa9251a` (session 3): `hire-pipeline.test.ts` 10 tests; bulk jawab `{done: ids[], refused: [{id, reason}]}`; S15 ka typed
+  reason har rejected par private note (audit me sirf filter + ginti, S3); viewer ko timeline ka text bhi nahi; `rejectionLine`
+  (JobFields, routes zod, openapi) aur `sendOnMove` boolean (`roundProblems`) yahi aa gaye; portal `MyApplication` me
+  `messages` + `noteToCandidates` (route schema step 4 me); 0073 me `hire_events.seq` (same pal ke events ka kram; H2b ka
+  flaky portal test bhi theek). ACTIONS ke 7 shabd console me
+- [x] 4. Routes `packages/api/src/hire-pipeline-routes.ts` (tag `Hiring`, `/hire/*` F7, refusals H2a jaise):
+  `GET /hire/jobs/{jobId}/applications` (filters), `POST /hire/jobs/{jobId}/applications/move` aur `.../reject`
+  (bulk), `GET /hire/applications/{applicationId}`, `GET .../resume` (attachment), `POST .../restore`, `.../notes`,
+  `.../messages`; `hire-routes.ts` job schema me `rejectionLine`; wiring `server.ts` (`hirePipeline?`), `assemble.ts`,
+  `testing/harness.ts`, `openapi.ts`; `npm run openapi`; `hire-pipeline-routes.test.ts` (viewer ke jawab me
+  email/phone nahi, resume download ke headers, doosri org 404, override 422, bulk ginti)
+  → ✅ `dc354f0` (session 3): `hire-pipeline-routes.test.ts` 6 tests (viewer/API key 403, beta 404, override 422, S15 422,
+  restore par mail `skipped`, portal me `messages` + `noteToCandidates`, resume headers + audit); `hireRefusals`/`hireStatus`
+  `hire-routes.ts` se share; `openapi.json` naya
+- [x] 5. Mails (F23, P14, S18): `delivery.ts` `EmailMessage.replyTo?` + `fromName?`; `SmtpMailer` naam `from` me daale
+  (nodemailer address object, CR/LF hata kar) aur `replyTo` bheje, `fromName` ko `...rest` se bahar rakhe; `OutboxLog`
+  dono rakhe; `delivery.test.ts`. `hire-messages.ts`: har Hire mail "<Company> via Parikshaa" + reply-to job ka
+  `contact_email` (H2b ki applied/withdrawn mails bhi); naye purpose `mail_moved` (round ka naam + note to
+  candidates), `mail_rejected` (vinamra, koi reason nahi, job ki `rejection_line`; bhejte waqt application `rejected`
+  na ho ya `decided_at` subject se alag ho → skip), `mail_message` (verified company: text; unverified: sirf "aapke
+  liye sandesh hai, /my par padhein", S18: unverified ki mail me staff ka koi free text nahi, note/rejection line bhi
+  nahi); `mailFacts` me jo chahiye (`decidedAt`, verified, round, note, rejection line, message). Tests
+  `hire-messages.test.ts`: restore ke baad mail skip, reply-to/sender, unverified me free text nahi, suspended → `{later}`
+  → ✅ `fa6e90f` (session 3): `hire-messages.test.ts` 6 tests, `delivery.test.ts` +3 (`smtpOptions`); `mail_moved` bhi skip jab
+  application us round se aage/peeche ja chuki ho; `mail_message` withdrawn par skip; `mailFacts(org, app, {messageId})`
+  (pipeline store ka `messageText` hata diya). Agla: step 6 (poora check, tracker, §6, §10, B12+)
+- [x] 5b. Review fixes (do reviewers, `docs/hire/h2c-review.md`): `254cf50` + `a487f72` (session 3): S18 round
+  title (unverified ko kind ka naam, `asksForMoney` round titles bhi padhe), message mail me "Reply" sirf `contactEmail`
+  ho to, S15 note reject ke transaction me, Restore purana round status wapas, move `from` → `stale`, `total` page ke
+  paar, portal me company rejection 24 h tak "in progress" (HIRE-V2 §10 B12 likh diya; step 6 ke naye faisle B13+)
+- [x] 6. `npm run check` EXIT 0 (API test ginti likho); `npm run openapi`; console badla (ACTIONS) to `build:clients` +
+  `budget`; naye faisle HIRE-V2 §10 me B12+ (jaise rejection line per job, `round_since`, restore par mail cancel);
+  tracker row 112 me H2c (kya bana, Kahan: 0073, `hire-pipeline-store.ts`, `hire-pipeline.ts`,
+  `hire-pipeline-routes.ts`, `hire-messages.ts`; baaki H2d, H8, H9); §6 table; §10 Log; §5 me "AB AGLA: H2d"; push
+  → [~] session 3 (13 Oct ~05:35 UTC, 5 ghante ki limit 91% par ruka): ho gaya: HIRE-V2 §10 B13–B17, tracker row 112 me
+  H2c + Build log line (#66). Baaki: `npm run check` dobara chalao (typecheck EXIT 0 tha, API tests ka nateeja aane se
+  pehle ruka; koi fail ho to theek karo), `npm run openapi` (badle to commit), `build:clients` + `budget` (ACTIONS badle
+  the), §6 H2 row, §10 Log, §5 me "AB AGLA: H2d" (critique-fit "Splits" H2d: `HireErasure` S3, account delete hook,
+  `HireRetention` F4, P11 import + "Add one" + sign-in par claim + `not_claimed`), phir commit "H2c: the pipeline (check passes)"
+  → ✅ session 4 (13 Oct): `npm run check` EXIT 0 (API 843 tests; baaki packages bhi pass), `npm run openapi` (koi badlav nahi),
+  `build:clients` + `budget` EXIT 0
+
+**H2d checklist (Privacy + import)** (critique-fit.md "Splits" H2d; HIRE-V2 §10 S2, S3, S8, S9, S17, S18, F4, P11, B8;
+har kadam: code + tests → `WIP(H2d)` commit → push → `[x]`; aadha ho to `[~]` + ek line):
+
+- [x] 1. Migration `0074_hire_privacy.sql` (0071–0073 mat chhedo): `organisations.hire_keep_days` (NULL, 30–3650, F4);
+  `hire_applications.erased_reason` (`account_deleted|retention|operator`); `hire_applications.claim_hash` (S2: global
+  blind index `hire-claim` of the canonical email, sirf `invited`, `candidate_id NULL` ke liye; partial index);
+  SECURITY DEFINER `hire_erase_events(org, app)` (events append-only hain: sirf staff, apni org, `detail` → `{}`,
+  `search_path = ''`) aur `hire_claimable(claim_hash)` (sirf applicant actor; ids lautaye, koi PII nahi). `migrate.test.ts`
+  → ✅ `b52ea00` session 5 (18 Oct): `migrate.test.ts` 9/9 (naya test: dono functions ke actor/org niyam, `claim_hash` aur
+  `erased_reason` ke CHECK). **Agla session pehle** packages/store me `npx vitest run src/hire-*.test.ts` chalaye: naya CHECK
+  `(erased_at IS NULL) = (erased_reason IS NULL)` kisi purane code ko tode to wahin theek karo. Poora `npm run check` abhi nahi chala
+- [ ] 2. Store `hire-privacy-store.ts`: `erase(org, app, {reason, keepRecord, now})` ek staff transaction me (S3): PII
+  columns NULL/placeholder, hashes + ref → `erased:<id>` (duplicate/reapply se bahar), resume file (row ya bucket),
+  screening `result`/`reason` NULL, integrity reasons → sirf codes, note NULL, offer note NULL, `hire_erase_events`,
+  `candidate_unlink`; `keepRecord` (hired/joined, accepted offer): naam + offer rahe, contact/resume/answers jaayein.
+  Retention ke liye `due(org, cutoffs)`. Test: erase ke baad poore DB ki text search me naam/email/phone/resume ka
+  koi shabd nahi; do org alag; bucket ki file bhi gayi
+- [ ] 3. Service `hire-privacy.ts`: `HireErasure` (`eraseApplication`, `eraseCandidate`: account delete par har link,
+  chalti application pehle withdrawn, hired/joined `keepRecord`), H1a ka `deleteAccount` iska hook chalaye (account
+  mitne se pehle); `HireRetention.sweep()` (F4: `hire_keep_days ?? privacy retentionDays ?? 180`, privacy settings na
+  ho tab bhi; withdrawn 30 din (S8); `not_claimed` bhi; jobs `apply_by + 90` din par auto-close); notice ka "kitne din"
+  bhi isi niyam se (B8 ka 180 ab `hire_keep_days` padhe); `main.ts` hourly loop + harness. Audit me sirf ginti (S3).
+  Tests
+- [ ] 4. P11 import + "Add one": `POST /hire/jobs/{jobId}/applications/import` (CSV name,email,phone; dry run; ginti
+  aur galat rows) aur `POST /hire/jobs/{jobId}/applications` (ek): `invited`, `candidate_id NULL`, source
+  `import|manual`, hashes + ref + `claim_hash`, duplicate (S17) aur unverified 100 (S18) ki jaanch; outbox
+  `mail_invited` ("Complete your application", S18 wording). Routes + openapi + tests
+- [ ] 5. Claim: signed-in candidate ko `hire_claimable` se uske naam ki invitations (portal list me "Complete your
+  application"); `POST /candidate/invitations/{applicationId}/claim` (notice hash, 18+, answers, resume: apply jaisi
+  jaanch) → `candidate_id`, `active`, snapshot, link, `claimed` event, pehla round; 14 din baad sweep `not_claimed`.
+  Tests: claim flow, doosre email se claim mana, `not_claimed`
+- [ ] 6. `npm run check` EXIT 0; `npm run openapi`; tracker row 112 (H2 ✅ jab sab ho), §6, §10, §5 "AB AGLA: H3"; push
 
 Agle slice (H2…) ki checklist usi slice ko shuru karte waqt yahan likho, isi shakal me:
 migration → store + tests → service + tests → routes + wiring + openapi → UI + budget (agar ho) → check → tracker + handoff → push.
@@ -171,7 +328,7 @@ migration → store + tests → service + tests → routes + wiring + openapi �
 |---|---|---|---|
 | H0 | Design, code map, critique, tracker rows 110–120 (pehle 100–110; main merge par badle), ye file, autosave | ✅ | `e387e4f` critique; §10 decisions; `4af00dd` autosave |
 | H1 | Candidate accounts (email code sign-in S5, sessions S19, profile, resume PDF/DOCX → text worker me S1), blind index S20, `withScope` guard S24, trustProxy S6, `/candidate/*` | ✅ | H1a + H1b ✅ session 2 (H1 ka baaki: delete par company ki copy H2d me, web pages H9 me). W3 ke baad: H2a–d, H4a–c, H5a/b, H8a/b, H9a/b (critique-fit.md "Splits") |
-| H2 | Jobs + rounds config + publish + job/careers page + apply (consent S8, limits S17, unverified S18) + import/claim P11 + pipeline core + timeline + mails P14 + roles recruiter/hiring_manager P3 + erasure S3 + retention S9 | ⬜ | |
+| H2 | 🟡 H2a ✅ (jobs, rounds, publish, roles, 0071), H2b ✅ (apply, job/careers page, portal, withdraw, 0072), H2c ✅ (pipeline, move/reject/restore, notes, messages, mails, 0073). Baaki H2d. Jobs + rounds config + publish + job/careers page + apply (consent S8, limits S17, unverified S18) + import/claim P11 + pipeline core + timeline + mails P14 + roles recruiter/hiring_manager P3 + erasure S3 + retention S9 | ⬜ | |
 | H3 | AI screening (evidence quotes server par jaanche, score server ka, knockouts, fairness S15, injection S16, eval script P16) | ⬜ | |
 | H4 | Rounds: test (credits P4, reuse/retake P5, reminders P6), settle event-driven P15, AI interview, live interview (slots/reschedule P10), review, digest P13; offers S13, joined P17 | ⬜ | |
 | H5 | Integrity: reasons + `not_checked`/coverage P2, auto face check P7, AI interview signals P8, duplicates P9, high sirf S14 wale; overall score, compare, job report | ⬜ | |
@@ -187,11 +344,18 @@ migration → store + tests → service + tests → routes + wiring + openapi �
 
 **b. Autosave (apne aap, owner ki manzoori se, 12 Oct 2026).** `.claude/settings.json` ke hooks `scripts/autosave.sh`
 chalate hain: har edit/command ke baad (30 s me ek baar), aur har turn ya session ke aakhir me. Ye **commit na hua kaam
-bhi** branch `autosave/<branch>` par push karta hai, ek snapshot commit ke roop me jiska parent us waqt ka HEAD hai.
+bhi** branch `autosave/<branch>--<session id ke pehle 8 akshar>` par push karta hai (har session ki apni ref, taaki do
+session ek doosre ka snapshot na mitaayein), ek snapshot commit ke roop me jiska parent us waqt ka HEAD hai.
 Asli branch aur history ko ye nahi chhoota. `.env*`, `*.pem`, `*.key` aur 5 MB se badi files bahar rehti hain.
 Snapshot me `.claude/live/state.md` bhi hota hai (sirf snapshot me, git-ignored): us session ki task list, owner ka
-aakhri sandesh, aur Claude ke aakhri 4 sandesh. Padhne ke liye:
-`git show origin/autosave/<branch>:.claude/live/state.md`.
+aakhri sandesh, aur Claude ke aakhri 4 sandesh. Padhne ke liye neeche restore ke commands.
+
+**Stale guard (13 Oct 2026):** push se pehle script `origin/<branch>` fetch karta hai (15 s ki seema). HEAD usse peeche
+ho (purana container, jo doosre session ke push ke baad jaaga), to kuch push nahi hota. Aakhri koshish ka nateeja
+`.git/autosave-status` me: `ok <epoch> <commit>`, `fail <epoch>` ya `stale <epoch>`. `stale` ya `fail` dikhe to
+pehle `git pull --rebase origin <branch>` (ya remote theek karo); tab tak autosave tumhara kaam nahi bacha raha. Test:
+`scripts/test/autosave.test.sh` (local bare remote par; asli origin ko nahi chhoota; CI me bhi). Purani shared ref
+`autosave/<branch>` (bina `--`) ab koi nahi likhta: restore me use mat lo.
 
 **Limit watch:** `scripts/limit-watch.sh` (PostToolUse hook) transcript me rate-limit ki entry dekhta hai. Status
 "allowed" ke alawa kuch ho, ya 85% se zyada use ho chuka ho (aur reset ka samay abhi aage ho), to wo turant autosave
@@ -203,16 +367,22 @@ Restore (har naye session ki shuruaat me; tested in W4):
 
 ```bash
 B=<HANDOFF.md wali canonical branch>
-git fetch origin "+refs/heads/autosave/$B:refs/remotes/origin/autosave/$B"
-A=origin/autosave/$B                                      # sirf canonical branch ka; autosave/worktree-* kabhi nahi
-git show "$A":.claude/live/state.md                       # tasks + aakhri sandesh: sirf padho, kabhi commit nahi
-git diff --stat HEAD "$A" -- . ':(exclude).claude/live'   # khaali = sab commit ho chuka, kuch mat karo
+git fetch origin '+refs/heads/autosave/*:refs/remotes/origin/autosave/*'
+snaps() { git for-each-ref --sort=-committerdate --format='%(refname:short)' "refs/remotes/origin/autosave/$B--*"; }
+git for-each-ref --sort=-committerdate --format='%(committerdate:iso) %(objectname:short) %(refname:short)' \
+  "refs/remotes/origin/autosave/$B--*"                    # sirf canonical branch ke, naya upar; autosave/worktree-* kabhi nahi
+A=$(for r in $(snaps); do [ "$(git rev-parse "$r^")" = "$(git rev-parse HEAD)" ] && { echo "$r"; break; }; done)
+echo "A=$A"                                               # sabse naya snapshot jiska parent == HEAD; khaali = koi nahi
+for r in $(snaps); do echo "== $r"; git show "$r":.claude/live/state.md; done           # sab: tasks + aakhri sandesh, sirf padho
+[ -n "$A" ] && git diff --stat HEAD "$A" -- . ':(exclude).claude/live'   # khaali = sab commit ho chuka, kuch mat karo
 ```
 
-- Parent == HEAD (`[ "$(git rev-parse "$A^")" = "$(git rev-parse HEAD)" ]`): `git cherry-pick --no-commit "$A" && git reset -q`.
-  `git reset -q` zaroori hai, warna `.claude/live/state.md` agle commit me chala jaata.
-- Parent HEAD ke peeche (branch aage badh chuki): cherry-pick MAT karo. `git diff --stat "$A^" "$A" -- . ':(exclude).claude/live'`
-  dekho, aur sirf wo files haath se lao jo baad ke kisi commit ne nahi chhui.
+- `A` mila (parent == HEAD): `git cherry-pick --no-commit "$A" && git reset -q`.
+  `git reset -q` zaroori hai, warna `.claude/live/state.md` agle commit me chala jaata. Baaki snapshots se sirf unka
+  `state.md` padho (kaunsa session kya kar raha tha), unka code mat lagao.
+- `A` khaali (har snapshot ka parent HEAD ke peeche, branch aage badh chuki): cherry-pick MAT karo. Sabse naye
+  snapshot `S` ke liye `git diff --stat "$S^" "$S" -- . ':(exclude).claude/live'` dekho, aur sirf wo files haath se
+  lao jo baad ke kisi commit ne nahi chhui (`git diff --name-only "$S^" HEAD` me na hon).
 - Conflict par `git checkout "$A" -- <file>` MAT karo, commit hua kaam mit jaata hai. Dono hisse milao.
 - Snapshot beech-edit ka ho sakta hai. Pehle typecheck + tests chalao; fail ho to state.md se samjho kya adhoora tha aur
   poora karo. Restore se koi kadam `[x]` nahi hota, sirf tests pass hone par hota hai. Sessions row ke liye sirf
@@ -239,10 +409,49 @@ git diff --stat HEAD "$A" -- . ':(exclude).claude/live'   # khaali = sab commit 
 | # | Tareekh | Session | Kya kiya | Status / kahan ruka |
 |---|---|---|---|---|
 | 1 | 12 Oct 2026 | account 1, `session_01B56n3byNkp5ns8fAHpGtC6` | W1, design (HIRE-V2.md + §10), W2 (fit chhoota), tracker rows 100–110, handoff, autosave, reminder tests ki time bomb | Khatam: hafte ki limit 98%. Agla: main merge → W3 → H1 (§5) |
-| 2 | 12 Oct 2026 | account 2 (jisne PR #47 G0–G4a banaya), `session_018vRviyFgDfdAVh2GzLcBn3` | Shuru 14:40 UTC: autosave restore (kuch adhoora nahi tha). §5 kadam 0 ✅ (`5536252`, check EXIT 0). W3 shuru (Agent tool) | Chal raha. 14:58 UTC: limit `allowed_warning` (5 ghante wali window 15:20 UTC par reset). Agar yahin ruke: W3 dobara chalao (§4), phir H1 kadam 1 |
+| 2 | 12 Oct 2026 | account 2 (jisne PR #47 G0–G4a banaya), `session_018vRviyFgDfdAVh2GzLcBn3` | Shuru 14:40 UTC: autosave restore (kuch adhoora nahi tha). §5 kadam 0 ✅ (`5536252`, check EXIT 0). W3 shuru (Agent tool) | Khatam (aakhri commit 22:21 UTC `12970ab` H2b; uska aakhri autosave `d58667d` me koi adhoora code nahi tha) |
+| 3 | 13 Oct 2026 | account 1 (session 1 dobara, hafte ki limit reset ke baad), `session_01B56n3byNkp5ns8fAHpGtC6` | Shuru 04:21 UTC. Purane container ke HEAD (`63f9919`) se autosave hook ne session 2 ka snapshot overwrite kiya (reflog se `d58667d` mila; usme kuch adhoora nahi tha). W5 shuru: autosave fix, phir H2c | Khatam: 5 ghante ki limit 92% (owner ne bataya). Autosave fix ✅, H2c kadam 1–5 + review ✅. Agla: H2c kadam 6 (`npm run check`, `npm run openapi`, `build:clients` + `budget`, §6/§10, AB AGLA H2d), phir H2d |
+| 4 | 13 Oct 2026 | account 2 (session 2 dobara), `session_018vRviyFgDfdAVh2GzLcBn3` | Shuru 12:35 UTC: branch `b295801` par fast-forward; autosave ke dono snapshots (`--4a0a2180`, `--9ae3c313`) me koi adhoora code nahi. Limit: 7 din ki window `allowed_warning` (utilization ka number nahi milta), isliye sirf H2c kadam 6 | Khatam: H2c ✅ (check EXIT 0, API 843). H2d shuru nahi kiya (7 din ki limit chetavni par). Agla: H2d (§5 kadam 7) |
+| 5 | 18 Oct 2026 | account 2 (wahi `session_018vRviyFgDfdAVh2GzLcBn3`, naya container) | Owner ke kehne par Learn vs takeUforward ka plan (`docs/LEARN-TUF-GAP.md`, tracker row 121; build baad me). REA setup auto mode ne roka (self-modification); TUF par REA nahi chalega (copyright). Phir H2d shuru | Khatam (owner ne doosre account par jaane ko kaha): H2d checklist likhi, kadam 1 (0074) ✅. Baad me sirf docs: Learn ke aur plan (`LEARN-TUF-GAP.md` §3–§6, `LEARN-BUILD-LABS.md`, rows 121–122) aur poore platform ka roadmap + kharch (`ROADMAP-END-TO-END.md`, row 123). Hire code nahi badla. Agla: H2d kadam 2 (§5), pehle store ke hire tests |
 
 ## 10. Log (naya upar)
 
+- 18 Oct 2026 (session 5): Owner ke kehne par Learn vs takeUforward ka plan (`docs/LEARN-TUF-GAP.md`, tracker row 121 +
+  Faisle: features TUF jaise, code/content apna, TUF ka kuch copy ya reverse engineer nahi). H2d checklist likhi; kadam 1
+  (`b52ea00`): migration 0074 (`hire_keep_days`, `erased_reason`, `claim_hash`, `hire_erase_events()`, `hire_claimable()`).
+  Owner ne doosre account par jaane ko kaha: agla kadam H2d 2.
+
+- 13 Oct 2026 (session 4): H2c poora. Session 3 ka kadam 6 yahan khatam: `npm run check` EXIT 0 (API 843), openapi me badlav
+  nahi, `build:clients` + `budget` theek. W5 ✅. Limit: 7 din ki window `allowed_warning`, isliye H2d shuru nahi kiya; agla
+  session H2d ki checklist likhe (§5 kadam 7).
+
+- 13 Oct 2026 (session 3): W5: autosave ab har session ka apna ref (`autosave/<branch>--<id>`) aur purane HEAD par push nahi (STALE_GUARD). H2c kadam 1–5 + do reviewers ke sudhaar (`docs/hire/h2c-review.md`), faisle B12–B17. Kadam 6 (poora check) 5 ghante ki limit par ruka.
+- 13 Oct 2026 (13, session 3): Autosave ka data-loss bug theek (W5 ka pehla hissa). 13 Oct ko purane container (HEAD
+  bahut peeche) ke pehle tool call par hook ne `autosave/<branch>` force-push karke session 2 ka naya snapshot mita
+  diya tha (sirf reflog se bacha). Ab: har session ki apni ref `autosave/<branch>--<session id ke 8 akshar>`
+  (failure-modes #9), STALE_GUARD (HEAD `origin/<branch>` se peeche ho to push nahi, `stale`), aur
+  `.git/autosave-status` (`ok`/`fail`/`stale`). §7 ke restore commands naye: saare `autosave/*` fetch, `$B--*` date se,
+  parent == HEAD wala sabse naya lagao, baaki ka sirf `state.md` padho. Test `scripts/test/autosave.test.sh` (20 jaanch,
+  local bare remote; purani script par 14 fail) CI me bhi.
+
+- 12 Oct 2026 (12, session 2): CI ke saare jobs GitHub billing ki wajah se shuru hi nahi hue (PR #66 aur `main` dono);
+  PR par comment aur tracker "Ruka hua kaam" me. H2b poora: 0072 (ek job par ek insaan ki ek live application),
+  outbox `{later}` + `defer` (F2), `hire-application-store.ts` (sealed copy, blind index, job lock ke saath apply),
+  `hire-apply.ts` (public job/careers, S8 notice English+Hindi, apply ki saari jaanch, portal projection, withdraw),
+  `hire-messages.ts`, routes `/hire/public/*` + `/candidate/applications*`. Faisle B6–B11 HIRE-V2 §10 me. Naya env:
+  `HIRE_GRIEVANCE_NAME`, `HIRE_GRIEVANCE_EMAIL` (owner se, tracker "Ruka hua kaam").
+
+- 12 Oct 2026 (11, session 2): Owner ne PR #65 `main` me merge kiya (`a861b2b`), usse pehle GitHub par `main` ko is
+  branch me merge kiya (`9cef709`); us merge ne `package-lock.json` ko kharab JSON bana diya, isliye `main` par `npm ci`
+  fail hota tha. Is branch me `main` merge kiya (history nahi badli) aur lockfile npm se dobara banaya
+  (`349949b` ka sahi lockfile + `npm install --package-lock-only`). H2a (`bbd86f8`) #65 ke baad ka hai: owner ki haan se PR #66 khuli.
+  Dependabot ke jsdom 30.1.2 se console ka editor test toot gaya (click ke baad focus question box me nahi jaata, test
+  galat field me type karta hai; browser par asar nahi): jsdom 30.1.1 par pin (console, web, root devDependency +
+  `overrides`), aur `.github/dependabot.yml` me 30.1.2 ignore. Agla jsdom release aaye to dobara aazmao.
+- 12 Oct 2026 (10, session 2): H2a: migration 0071 (saari Hire tables + statuses F29, `organisations.verified_*` F3,
+  roles recruiter/hiring_manager P3/F6), `hire-store.ts`, `hire.ts` (S18 limits, S23 knockouts, fee wali JD hold),
+  `/hire/jobs*` (409/422 me `problems`). Test ne pakda: ek transaction me fail hua INSERT poora transaction rollback
+  karta hai (test theek kiya).
 - 12 Oct 2026 (9, session 2): H1b poora (resume): `resume.ts` + `resume-worker.ts` (unpdf 1.8.1, fflate stream),
   store me file sealed (bucket ho to wahan), `PUT/GET/DELETE /candidate/resume`. HIRE-V2 §10 me "Build decisions"
   B1–B5. `npm run check` EXIT 0 (API 771). H2a ki checklist likhi.

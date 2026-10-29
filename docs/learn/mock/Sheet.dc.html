@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>DSA A2Z sheet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&family=JetBrains+Mono:wght@400;600&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#3346c4}a:hover{color:#26338f}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #f6f7fb; color: #131a2e; font-family: 'Noto Sans', 'Noto Sans Devanagari', system-ui, sans-serif">
+  <dc-import name="TopBar" hint-size="100%,64px"></dc-import>
+  <div style="display: flex; flex-wrap: wrap; align-items: stretch">
+    <dc-import name="SideNav" active="sheet" hint-size="240px,980px"></dc-import>
+    <main style="flex: 999 1 560px; min-width: 0; padding: 28px 32px 48px; box-sizing: border-box">
+      <div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px; align-items: flex-end; margin-bottom: 20px">
+        <div>
+          <h1 style="margin: 0 0 6px; font-size: 28px">DSA A2Z sheet</h1>
+          <p style="margin: 0; color: #4f586c">520 problems, kram me. Har ek par editorial, dry run, 4 bhashaon me code.</p>
+        </div>
+        <a href="Problem.dc.html" style="display: inline-flex; align-items: center; min-height: 46px; padding: 0 20px; border-radius: 12px; background: #f28c28; color: #131a2e; font-weight: 700; text-decoration: none">Agla problem: Pair with sum K</a>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 20px">
+        <div style="padding: 18px; border-radius: 16px; background: #ffffff; border: 1px solid #e2e6ef"><div style="font-size: 13px; color: #5f687c; font-weight: 600">Kul</div><div style="font-size: 26px; font-weight: 800">142 <span style="font-size: 15px; color: #5f687c; font-weight: 500">/ 520</span></div></div>
+        <div style="padding: 18px; border-radius: 16px; background: #ffffff; border: 1px solid #e2e6ef"><div style="font-size: 13px; color: #117a57; font-weight: 700">Easy (L1–L2)</div><div style="font-size: 26px; font-weight: 800">88 <span style="font-size: 15px; color: #5f687c; font-weight: 500">/ 180</span></div></div>
+        <div style="padding: 18px; border-radius: 16px; background: #ffffff; border: 1px solid #e2e6ef"><div style="font-size: 13px; color: #a35200; font-weight: 700">Medium (L3)</div><div style="font-size: 26px; font-weight: 800">47 <span style="font-size: 15px; color: #5f687c; font-weight: 500">/ 250</span></div></div>
+        <div style="padding: 18px; border-radius: 16px; background: #ffffff; border: 1px solid #e2e6ef"><div style="font-size: 13px; color: #c23a2b; font-weight: 700">Hard (L4)</div><div style="font-size: 26px; font-weight: 800">7 <span style="font-size: 15px; color: #5f687c; font-weight: 500">/ 90</span></div></div>
+      </div>
+
+      <div role="tablist" aria-label="Topic" style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px">
+        <sc-for list="{{topics}}" as="t" hint-placeholder-count="8">
+          <button type="button" role="tab" aria-selected="{{t.on}}" onClick="{{t.pick}}" style="min-height: 40px; padding: 0 14px; border-radius: 10px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; {{t.style}}">{{t.label}} <span style="opacity: 0.75; font-weight: 500">{{t.count}}</span></button>
+        </sc-for>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; font-size: 14px">
+        <label style="display: flex; align-items: center; gap: 8px">Status
+          <select style="height: 38px; border: 1px solid #cdd3df; border-radius: 8px; padding: 0 8px; font: inherit; background: #ffffff"><option>Sab</option><option>Baaki</option><option>Ho gaye</option><option>Revision</option></select>
+        </label>
+        <label style="display: flex; align-items: center; gap: 8px">Level
+          <select style="height: 38px; border: 1px solid #cdd3df; border-radius: 8px; padding: 0 8px; font: inherit; background: #ffffff"><option>Sab</option><option>L1</option><option>L2</option><option>L3</option><option>L4</option></select>
+        </label>
+        <label style="display: flex; align-items: center; gap: 8px">Pattern
+          <select style="height: 38px; border: 1px solid #cdd3df; border-radius: 8px; padding: 0 8px; font: inherit; background: #ffffff"><option>Sab</option><option>Two pointers</option><option>Sliding window</option><option>Hashing</option></select>
+        </label>
+        <label style="display: flex; align-items: center; gap: 8px"><input type="checkbox" style="width: 18px; height: 18px">Sirf jinka company source verified hai</label>
+      </div>
+
+      <div style="overflow-x: auto; border-radius: 16px; border: 1px solid #e2e6ef; background: #ffffff">
+        <div role="table" aria-label="Problems" style="min-width: 760px; font-size: 14px">
+          <div role="row" style="display: grid; grid-template-columns: 76px minmax(0, 2.4fr) 70px minmax(0, 1.4fr) 90px 90px; color: #5f687c; font-size: 13px; font-weight: 700; background: #fbfbfd">
+            <span role="columnheader" style="padding: 12px 16px">Status</span><span role="columnheader" style="padding: 12px 16px">Problem</span><span role="columnheader" style="padding: 12px 16px">Level</span><span role="columnheader" style="padding: 12px 16px">Pattern</span><span role="columnheader" style="padding: 12px 16px">Solve rate</span><span role="columnheader" style="padding: 12px 16px">Editorial</span>
+          </div>
+          <sc-for list="{{rows}}" as="r" hint-placeholder-count="10">
+            <div role="row" style="display: grid; grid-template-columns: 76px minmax(0, 2.4fr) 70px minmax(0, 1.4fr) 90px 90px; align-items: center; border-top: 1px solid #eef0f6">
+              <span role="cell" style="padding: 12px 16px"><span style="display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; font-size: 12px; font-weight: 700; {{r.dot}}">{{r.mark}}</span></span>
+              <span role="cell" style="padding: 12px 16px"><a href="Problem.dc.html" style="color: #131a2e; font-weight: 600; text-decoration: none">{{r.title}}</a> <span style="font-size: 12px; color: #5f687c">{{r.extra}}</span></span>
+              <span role="cell" style="padding: 12px 16px"><span style="font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 6px; {{r.levelStyle}}">{{r.level}}</span></span>
+              <span role="cell" style="padding: 12px 16px; color: #373f52">{{r.pattern}}</span>
+              <span role="cell" style="padding: 12px 16px; color: #373f52">{{r.rate}}</span>
+              <span role="cell" style="padding: 12px 16px"><a href="Editorial.dc.html" style="font-weight: 600">Padho</a></span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <p style="margin: 12px 0 0; font-size: 13px; color: #5f687c">Solve rate hamare apne learners ka hai. Company tag sirf tab jab source ki jaanch hui ho.</p>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1300}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { topic: 'arr' };
+  }
+  renderVals() {
+    const topics = [
+      ['basics', 'Shuruaat', '12/12'], ['arr', 'Arrays', '26/64'], ['bs', 'Binary search', '0/48'], ['ll', 'Linked list', '0/36'],
+      ['st', 'Stack, queue', '0/40'], ['tree', 'Trees', '0/70'], ['graph', 'Graphs', '0/80'], ['dp', 'DP', '0/110']
+    ].map(([id, label, count]) => ({
+      label, count, on: this.state.topic === id,
+      style: this.state.topic === id ? 'background: #141b4d; color: #ffffff; border: 1px solid #141b4d' : 'background: #ffffff; color: #373f52; border: 1px solid #cdd3df',
+      pick: () => this.setState({ topic: id })
+    }));
+    const lv = {
+      L1: 'background: #e7f6ef; color: #117a57', L2: 'background: #e7f6ef; color: #117a57',
+      L3: 'background: #fdebd4; color: #a35200', L4: 'background: #fdeeec; color: #c23a2b'
+    };
+    const dot = {
+      done: 'background: #117a57; color: #ffffff', tried: 'background: #fdebd4; color: #a35200', todo: 'background: #ffffff; border: 2px solid #cdd3df', rev: 'background: #f1ebff; color: #6b3fd4'
+    };
+    const mark = { done: '✓', tried: '…', todo: '', rev: 'R' };
+    const data = [
+      ['Running sum of array', 'L1', 'Prefix sum', '91%', 'done', ''],
+      ['Range sum query', 'L2', 'Prefix sum', '78%', 'done', ''],
+      ['Subarray sum equals K', 'L3', 'Prefix sum + hashing', '44%', 'rev', 'revision 2 din me'],
+      ['Pair with sum K', 'L2', 'Two pointers', '67%', 'tried', '1 galat submit'],
+      ['Three numbers ka jod zero', 'L3', 'Two pointers', '38%', 'todo', ''],
+      ['Sabse zyada paani wala container', 'L3', 'Two pointers', '41%', 'todo', ''],
+      ['Duplicate hatao (sorted)', 'L1', 'Two pointers', '83%', 'todo', ''],
+      ['Lambi substring bina repeat', 'L3', 'Sliding window', '35%', 'todo', ''],
+      ['K size window ka max', 'L4', 'Sliding window + deque', '21%', 'todo', ''],
+      ['Barish ka paani rokna', 'L4', 'Two pointers', '24%', 'todo', '']
+    ];
+    const rows = data.map(([title, level, pattern, rate, st, extra]) => ({
+      title, level, pattern, rate, extra, levelStyle: lv[level], dot: dot[st], mark: mark[st]
+    }));
+    return { topics, rows };
+  }
+}
+</script>
+</body>
+</html>

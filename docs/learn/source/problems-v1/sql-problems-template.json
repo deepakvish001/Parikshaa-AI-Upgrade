@@ -1,0 +1,54 @@
+[
+  {
+    "slug": "top-3-earners",
+    "title": "Top 3 Earners",
+    "difficulty": "medium",
+    "topics": [
+      "SQL",
+      "Aggregation",
+      "Sorting"
+    ],
+    "description": "You are given an `employees` table. Return the **names** of the top 3\nemployees by salary, highest first. If fewer than 3 rows exist, return\nall of them.\n\n**Schema:**\n```\nemployees(id INT, name TEXT, salary INT)\n```",
+    "examples": [
+      {
+        "input": "employees = [(1,'A',100),(2,'B',300),(3,'C',200),(4,'D',250)]",
+        "output": "B\nD\nC",
+        "explanation": "Sorted by salary desc: B(300), D(250), C(200)."
+      }
+    ],
+    "constraints": [
+      "1 <= employees.length <= 10^5",
+      "All salaries are non-negative integers."
+    ],
+    "hints": [
+      "Use ORDER BY salary DESC.",
+      "Cap the row count with LIMIT 3."
+    ],
+    "cpu_time_limit_sec": 2,
+    "memory_limit_kb": 131072,
+    "is_published": false,
+    "starter_code": {},
+    "reference_solution": {},
+    "sample_tests": [],
+    "hidden_tests": [],
+    "sql_spec": {
+      "schema_sql": "CREATE TABLE employees (id INT, name TEXT, salary INT);",
+      "seed_sql": "INSERT INTO employees VALUES (1,'A',100),(2,'B',300),(3,'C',200),(4,'D',250);",
+      "reference_query": "SELECT name FROM employees ORDER BY salary DESC LIMIT 3;",
+      "order_matters": true,
+      "starter": "-- Write your SQL query below\nSELECT name FROM employees\n"
+    },
+    "companies": [
+      {
+        "name": "Meta",
+        "domain": "meta.com",
+        "frequency": 9.1
+      },
+      {
+        "name": "Uber",
+        "domain": "uber.com",
+        "frequency": 4.7
+      }
+    ]
+  }
+]

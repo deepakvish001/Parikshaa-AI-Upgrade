@@ -1,0 +1,320 @@
+/*
+ * The lesson reader (LearnLesson.tsx, K2-4), from the mock's lesson styles
+ * (docs/learn/mock-v3/app/src/styles/learn.css: `.lesson-top`, `.lesson`,
+ * `.try`, `.option`, `.lesson-foot`, `.toc`). Only that chunk loads this file.
+ */
+
+.ll-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: var(--space-6);
+  align-items: start;
+}
+.ll-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+  max-width: 76ch;
+}
+.ll-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+.ll-head {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ll-title {
+  margin: 0;
+  font-size: var(--text-3xl);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.ll-acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.ll-acts .ln-badge {
+  height: 36px;
+}
+.ll-body {
+  font-size: var(--text-md);
+  line-height: 1.7;
+}
+
+.ll-locked {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 18px;
+  background: var(--panel-2);
+  border-style: dashed;
+  border-color: var(--line-2);
+}
+.ll-locked > svg {
+  width: 22px;
+  height: 22px;
+  color: var(--ink-3);
+}
+.ll-locked p {
+  margin: 4px 0 0;
+}
+
+.ll-signin {
+  flex-wrap: wrap;
+}
+
+.ll-quiz,
+.ll-note {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: 18px;
+}
+.ll-quiz > p,
+.ll-note > p {
+  margin: 0;
+}
+.ll-qs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0;
+  padding-left: 22px;
+}
+.ll-qs > li::marker {
+  font-weight: var(--weight-semibold);
+  color: var(--ink-3);
+}
+.ll-q {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.ll-stem {
+  margin-bottom: 8px;
+}
+.ll-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ll-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 8px 12px;
+  font-size: var(--text-sm);
+  color: var(--ink);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.ll-option:hover {
+  border-color: var(--line-2);
+}
+.ll-option.ll-on {
+  border-color: var(--pen);
+  background: var(--pen-soft);
+}
+.ll-option input {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--pen);
+}
+.ll-option:has(input:disabled) {
+  cursor: default;
+}
+.ll-num {
+  max-width: 260px;
+}
+.ll-verdict {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border-left: 3px solid;
+}
+.ll-verdict p {
+  margin: 0;
+}
+.ll-verdict .ln-md {
+  margin-top: 6px;
+  font-size: var(--text-sm);
+}
+.ll-v-right {
+  color: var(--tick-text);
+  background: var(--tick-soft);
+  border-color: var(--tick);
+}
+.ll-v-wrong {
+  color: var(--red-text);
+  background: var(--red-soft);
+  border-color: var(--red);
+}
+.ll-v-right .ln-md,
+.ll-v-wrong .ln-md {
+  color: var(--ink);
+}
+.ll-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+.ll-score {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+}
+.ll-score:focus {
+  outline: none;
+}
+.ll-score:focus-visible {
+  outline: 2px solid var(--pen);
+  outline-offset: 2px;
+}
+
+.ll-note-h {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.ll-note-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.ll-note-form p {
+  margin: 0;
+}
+.ll-note-text {
+  min-height: 140px;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  resize: vertical;
+}
+.ll-note-body {
+  padding: 12px 14px;
+  background: var(--panel-2);
+  border-radius: var(--radius-sm);
+}
+
+.ll-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line);
+}
+
+.ll-toc {
+  position: sticky;
+  top: 72px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+}
+.ll-toc p {
+  margin: 0;
+}
+.ll-toc-title {
+  font-size: var(--text-sm);
+}
+.ll-toc ol {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.ll-toc li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ll-toc-n {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-3);
+  background: var(--sunk);
+  border-radius: 50%;
+}
+.ll-toc-n svg {
+  width: 12px;
+  height: 12px;
+}
+.ll-done .ll-toc-n {
+  color: var(--on-tick);
+  background: var(--tick);
+}
+.ll-toc a {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 4px;
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.ll-toc a:hover {
+  color: var(--pen-text);
+  text-decoration: underline;
+}
+.ll-here .ll-toc-n {
+  color: var(--on-pen);
+  background: var(--pen);
+}
+.ll-here a {
+  font-weight: var(--weight-semibold);
+  color: var(--ink);
+}
+
+@media (max-width: 1180px) {
+  .ll-page {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ll-toc {
+    position: static;
+  }
+}
+@media (max-width: 860px) {
+  .ll-title {
+    font-size: var(--text-2xl);
+  }
+  .ll-foot .ln-btn,
+  .ll-acts .ln-btn,
+  .ll-row .ln-btn,
+  .ll-top .ln-btn {
+    min-height: 40px;
+  }
+  .ll-foot .ln-btn {
+    width: 100%;
+  }
+  .ll-foot .ln-grow {
+    display: none;
+  }
+}

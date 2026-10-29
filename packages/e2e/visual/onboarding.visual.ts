@@ -20,7 +20,7 @@ test.beforeAll(async ({ request }) => {
   token = ((await res.json()) as { token: string }).token;
 });
 
-/** Signed in as the new owner, on Home, with the clock-bound greeting and the run's own address worded the same every run. */
+/** Signed in as the new owner, on Home, with the clock-bound greeting and the run's own address and Company ID worded the same every run. */
 async function home(page: Page) {
   await page.addInitScript((session) => sessionStorage.setItem("parikshaa.console.session", session), token);
   await page.goto("/console/");
@@ -32,6 +32,8 @@ async function home(page: Page) {
 async function settle(page: Page) {
   await page.evaluate(() => {
     document.querySelectorAll(".home-greeting").forEach((el) => (el.textContent = "Good morning, Meera."));
+    // Sign-up gives the organisation a random tail (organisationId), so its Company ID is new to every run too.
+    document.querySelectorAll(".org-id").forEach((el) => (el.textContent = "PKC-5A1D7E"));
     // The address is new to every run; the words around it are what is held.
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {

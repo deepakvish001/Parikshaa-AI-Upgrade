@@ -118,6 +118,12 @@ async function main(): Promise<void> {
     blobs,
     // Parikshaa's own operators, by address: they see and open every organisation (docs/STAGING.md).
     operators: (process.env["PARIKSHAA_OPERATORS"] ?? "").split(","),
+    // Parikshaa's grievance officer for Hire, named in every apply notice (S8).
+    // Without both, job pages and applying answer 503: no notice, no applications.
+    hireGrievance:
+      (process.env["HIRE_GRIEVANCE_NAME"] ?? "") !== "" && (process.env["HIRE_GRIEVANCE_EMAIL"] ?? "") !== ""
+        ? { name: process.env["HIRE_GRIEVANCE_NAME"]!, email: process.env["HIRE_GRIEVANCE_EMAIL"]! }
+        : null,
     signup,
     pilotReportTo,
     sql,

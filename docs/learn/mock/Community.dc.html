@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Community forum</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&family=JetBrains+Mono:wght@400;600&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#3346c4}a:hover{color:#26338f}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #f6f7fb; color: #131a2e; font-family: 'Noto Sans', 'Noto Sans Devanagari', system-ui, sans-serif">
+  <dc-import name="TopBar" hint-size="100%,64px"></dc-import>
+  <div style="display: flex; flex-wrap: wrap; align-items: stretch">
+    <dc-import name="SideNav" active="community" hint-size="240px,980px"></dc-import>
+    <main style="flex: 999 1 560px; min-width: 0; padding: 24px 28px 48px; box-sizing: border-box">
+      <div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; align-items: flex-end; margin-bottom: 14px">
+        <div>
+          <h1 style="margin: 0 0 6px; font-size: 28px">Community</h1>
+          <p style="margin: 0; color: #4f586c">Doubts, interview experiences, project feedback. Spoiler chhupe rehte hain.</p>
+        </div>
+        <button type="button" style="min-height: 46px; padding: 0 20px; border-radius: 12px; border: 0; background: #f28c28; color: #131a2e; font: inherit; font-weight: 700; cursor: pointer">Sawaal poochho</button>
+      </div>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px">
+        <span style="padding: 8px 14px; border-radius: 999px; background: #141b4d; color: #ffffff; font-weight: 600; font-size: 14px">Sab</span>
+        <span style="padding: 8px 14px; border-radius: 999px; background: #ffffff; border: 1px solid #cdd3df; font-weight: 600; font-size: 14px">DSA doubts</span>
+        <span style="padding: 8px 14px; border-radius: 999px; background: #ffffff; border: 1px solid #cdd3df; font-weight: 600; font-size: 14px">Interview experiences</span>
+        <span style="padding: 8px 14px; border-radius: 999px; background: #ffffff; border: 1px solid #cdd3df; font-weight: 600; font-size: 14px">Project feedback</span>
+        <a href="Cohort.dc.html" style="padding: 8px 14px; border-radius: 999px; background: #ffffff; border: 1px solid #cdd3df; font-weight: 600; font-size: 14px; text-decoration: none; color: #131a2e">Mera college chapter</a>
+        <span style="padding: 8px 14px; border-radius: 999px; background: #fff5e3; border: 1px solid #f3d59f; font-weight: 600; font-size: 14px; color: #7a4600">Jawab nahi mila (14)</span>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start">
+        <section aria-label="Threads" style="flex: 1 1 380px; min-width: 0; display: flex; flex-direction: column; gap: 8px">
+          <sc-for list="{{threads}}" as="t" hint-placeholder-count="6">
+            <button type="button" onClick="{{t.pick}}" aria-pressed="{{t.on}}" style="text-align: left; padding: 14px 16px; border-radius: 14px; font: inherit; cursor: pointer; color: #131a2e; {{t.style}}">
+              <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px">
+                <span style="font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: #eef0f6; color: #373f52">{{t.cat}}</span>
+                <span style="font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; {{t.stateStyle}}">{{t.state}}</span>
+              </div>
+              <div style="font-weight: 700">{{t.title}}</div>
+              <div style="font-size: 13px; color: #5f687c; margin-top: 2px">{{t.meta}}</div>
+            </button>
+          </sc-for>
+        </section>
+
+        <article aria-label="Thread" style="flex: 1.4 1 460px; min-width: 0; padding: 22px; border-radius: 18px; background: #ffffff; border: 1px solid #e2e6ef">
+          <div style="font-size: 13px; color: #5f687c">{{cur.cat}} · {{cur.meta}}</div>
+          <h2 style="margin: 6px 0 10px; font-size: 21px">{{cur.title}}</h2>
+          <p style="margin: 0 0 12px; line-height: 1.65">{{cur.body}}</p>
+          <details style="margin-bottom: 16px; padding: 10px 12px; border-radius: 10px; border: 1px dashed #cdd3df">
+            <summary style="cursor: pointer; font-weight: 600">Code (spoiler: is problem ka hal)</summary>
+            <pre style="margin: 8px 0 0; padding: 10px 12px; background: #0c1020; color: #e8ebf5; border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 13px; overflow-x: auto">while (l &lt; r) {
+    int s = a[l] + a[r];
+    ...</pre>
+          </details>
+          <div style="display: flex; flex-direction: column; gap: 12px">
+            <div style="padding: 14px; border-radius: 14px; background: #e7f6ef; border: 1px solid #b9e2cf">
+              <div style="display: flex; gap: 8px; align-items: center; font-size: 13px; margin-bottom: 6px"><b>riya_k</b><span style="font-weight: 700; color: #117a57">Accepted jawab</span><span style="color: #5f687c">· 12 upvote</span></div>
+              <div style="line-height: 1.6">Seema dekho: 10⁹ + 10⁹ int me nahi aata. Pehle khud socho ki s ka type kya hona chahiye; hal neeche spoiler me hai.</div>
+            </div>
+            <div style="padding: 14px; border-radius: 14px; background: #f6f7fb">
+              <div style="display: flex; gap: 8px; align-items: center; font-size: 13px; margin-bottom: 6px"><b>Sahayak</b><span style="font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: #eaf2fc; color: #1f63b8">AI ka pehla draft · mentor ne jaancha</span></div>
+              <div style="line-height: 1.6">Ye problem "bade numbers" wale test group par fail hota hai jab jod int me rakhte hain. Revision ke liye: mistake notebook me "integer overflow".</div>
+            </div>
+          </div>
+          <label style="display: block; margin-top: 16px; font-weight: 600; font-size: 14px" for="reply">Jawab likho</label>
+          <textarea id="reply" rows="3" style="width: 100%; box-sizing: border-box; margin-top: 6px; padding: 10px 12px; border: 1px solid #cdd3df; border-radius: 10px; font: inherit"></textarea>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; flex-wrap: wrap; gap: 8px">
+            <span style="font-size: 12px; color: #5f687c">Izzat se baat. Pura hal spoiler me. <a href="Settings.dc.html">Niyam</a> · <a href="AdminLearners.dc.html">Report</a></span>
+            <button type="button" style="min-height: 40px; padding: 0 16px; border-radius: 10px; border: 0; background: #3346c4; color: #ffffff; font: inherit; font-weight: 700; cursor: pointer">Bhejo</button>
+          </div>
+        </article>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1200}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { sel: 0 };
+  }
+  renderVals() {
+    const ok = 'background: #e7f6ef; color: #117a57';
+    const open = 'background: #fff5e3; color: #7a4600';
+    const data = [
+      { cat: 'DSA doubts', state: 'Hal hua', ss: ok, title: 'Pair with sum K: samples pass, test 14 fail', meta: 'aarav · 2 ghante pehle · 3 jawab', body: 'Mera code samples par sahi hai par test 14 par Wrong Answer. Two pointers hi use kiya hai. Kya galat ho sakta hai?' },
+      { cat: 'Interview experiences', state: 'Kahani', ss: 'background: #f1f3fe; color: #26338f', title: 'SDE intern interview, 2 round: kya poocha', meta: 'nisha_s · kal · 18 jawab', body: 'Round 1 me arrays aur hashing ke 2 sawaal, round 2 me OOPs aur ek chhota LLD. Company ka naam niyam ke hisaab se chhupa hai.' },
+      { cat: 'Project feedback', state: 'Feedback chahiye', ss: open, title: 'Hisaab app: phone par list toot rahi hai', meta: 'pooja_m · 5 ghante pehle · 1 jawab', body: '390 px par list ke items bahar ja rahe hain. Live link aur code saath me hai.' },
+      { cat: 'DSA doubts', state: 'Jawab nahi mila', ss: open, title: 'Sliding window me window chhoti kab karein?', meta: 'ankit.dev · 40 min pehle · 0 jawab', body: 'Longest substring wale problem me left pointer kab aage badhana hai, samajh nahi aaya.' },
+      { cat: 'College chapter', state: 'Event', ss: 'background: #f1ebff; color: #6b3fd4', title: 'Shanivaar: college ka DSA contest + pizza', meta: 'club lead · 1 din pehle · 26 jawab', body: 'Lab 3 me 4 PM se. Parikshaa par college contest, top 3 ko certificate.' }
+    ];
+    const threads = data.map((t, i) => ({
+      ...t, stateStyle: t.ss, on: this.state.sel === i,
+      style: this.state.sel === i ? 'background: #ffffff; border: 2px solid #3346c4' : 'background: #ffffff; border: 1px solid #e2e6ef',
+      pick: () => this.setState({ sel: i })
+    }));
+    return { threads, cur: data[this.state.sel] };
+  }
+}
+</script>
+</body>
+</html>
