@@ -15,9 +15,9 @@ daalna (chat me kabhi nahi). Pehla phase (design ko code me laana) **bina kisi k
 | GitHub Actions | ❌ ab bhi band. Aakhri run (19 Oct, PR #66): "The job was not started because an Actions budget is preventing further use" | Owner: GitHub → Settings → Billing and plans → payment method ya Actions budget |
 | PR #66 (`main` ka toota lockfile) | Khula, merge nahi | Billing ke baad CI hara, phir merge |
 | Supabase org | Free plan | Asli users se pehle Pro (backup + PITR) |
-| Supabase `parikshaa-mumbai` (ap-south-1) | **ACTIVE_HEALTHY** (25 Oct 2026: owner ki haan par connector se restore; pehle INACTIVE tha). Free plan par kuch din bina use ke phir ruk sakta hai | Baaki migrations (0054/0055, 0059+) aur DB URL GitHub secret me (Kadam 2 se pehle) |
+| Supabase `parikshaa-mumbai` (ap-south-1) | **ACTIVE_HEALTHY** (25 Oct 2026: owner ki haan par connector se restore; pehle INACTIVE tha). 29 Oct: **saari migrations 0001–0074 lag gayi** (0054, 0055, 0059–0074 `migrate.yml` se, pehle dry run, phir [asli run](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/actions/runs/40866066876): "18 migration(s) applied"); Supabase security advisor: koi chetavani nahi. Purana Singapore project `Parikshaa` owner ki haan par pause (29 Oct). Free plan par kuch din bina use ke phir ruk sakta hai | Baaki migrations (0054/0055, 0059+) aur DB URL GitHub secret me (Kadam 2 se pehle) |
 | Supabase `Parikshaa` (Singapore) | Chalu; purane problems, legacy import ke liye | Kuch nahi |
-| Vercel | Team hai, Parikshaa ka project abhi nahi; plan connector se nahi dikha | Owner ki haan par Claude project banayega; commercial launch ke liye Pro |
+| Vercel | 29 Oct: project **`parikshaa-staging`** bana (team `team_hHiIq4Q4bLICj8Oniijioz7j`, project `prj_i0KLOZmGov0IcwGOArdSSL3n84vM`, functions `bom1`; dono ID secret nahi). GitHub env `staging`: secret `VERCEL_TOKEN` ✅ (owner, 29 Oct; pehla token ek variable me khul gaya tha, owner ko badalne ko kaha). Baaki: `staging` ke Variables `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` (owner), `API_ORIGIN` (VM ke baad). `.vercel.app` address par Vercel Authentication chalu; custom domain ke baad khula | Commercial launch ke liye Pro |
 | `ANTHROPIC_API_KEY` | Is cloud environment me nahi | AI ke kadam (P3) se pehle |
 
 ## 1. Faisle (sirf aap le sakte hain)
