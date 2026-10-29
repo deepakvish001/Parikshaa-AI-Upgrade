@@ -369,7 +369,14 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
     12.1/13, `.css` 2.0/3, `data-*.js` 14 → 16 (kit ke `Panes`/`FocusBar` ka code is saajha chunk me). **Kadam 3/4 ki list me jode:** sabse chhota
     fail test (LV-B1), "X% se tez", focus bar ka task timer, likes, "galti batao", editorial ka dry-run player + 4 bhasha (LV-E5), workspace me Save
     (list) aur Share code (purani site par hain; agle UI tukde me), discussion (K2-12), `?contest=` se khulna (K2-9), SQL tables (K2-7).
-    **Kahan ruka / agla:** K2-6 Sahayak panel (workspace ka teesra pane aur shell ka pane, dono).
+    **CI (#83, pehla run):** (1) visual `learn-workspace-wa-1440-dark` laal: judge ka samay/memory har run alag, aur mask ka dabba
+    text ki chaudai jitna, isliye image badalti; ab screenshot se pehle `.lw-time` me ek hi text, phir mask. (2) `check` me
+    `api/src/placement.test.ts` ("applying from a drive's link") laal, hamare badlav se nahi: drive ka apply code `randomBytes(9)` base64url
+    kabhi `c_` se shuru ho (4,096 me ek) to `#byCode` use college ka code samajhta aur link "not_found" deta (production me bhi). Ab
+    `driveApplyCode()` aisa code `d_` se shuru karta, test ke saath. Route/schema wahi, `openapi` nahi badla.
+    **Kahan ruka:** K2-5 poora; CI ke dono laal (visual mask, placement flaky) theek karke push. Agla session pehle #83 ke head ke
+    checks dekhe (`gh api repos/<owner>/<repo>/commits/<sha>/check-runs`; laal ho to `…/check-runs/<id>/annotations` sabse sasta).
+    **Agla:** K2-6 Sahayak panel (workspace ka teesra pane aur shell ka pane, dono).
   - [ ] K2-6 Sahayak panel
   - [ ] K2-7 SQL
   - [ ] K2-8 aptitude (maujooda MCQ par; mocks Kadam 3/4)

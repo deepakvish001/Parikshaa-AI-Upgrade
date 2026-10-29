@@ -10,7 +10,7 @@ import { istDay, seedLearnDay } from "../tests/learn-day.js";
  * problem of the day, whose calendar is moved onto one fixed day; since K2-2 also Learn's sign-in (signed out), onboarding's first
  * question and Mera plan; since K2-3 revision (a card's front), Meri lists and
  * Notes, on a second learner seeded with them; since K2-5 a code problem's workspace (the second
- * learner's site), at rest and, last of all, after a wrong submission (its time masked);
+ * learner's site), at rest and, last of all, after a wrong submission (its time and memory set to one text, then masked);
  * at 1440 and 390, dark (Learn's default) and light,
  * and the narrow side bar at 1100. Signed in as the seeded learner, except on
  * the sign-in page (the side bar shows their name). What the date changes is in `.ln-dated`: set to one date,
@@ -270,6 +270,10 @@ for (const theme of ["dark", "light"] as const) {
       await page.getByRole("button", { name: "Submit", exact: true }).click();
       await expect(page.getByRole("region", { name: "Pehla fail test: test 1" })).toBeVisible({ timeout: 30_000 });
       await page.waitForLoadState("networkidle");
+      // The judge's time and memory change run to run: one fixed text (so the mask is one size), then masked.
+      await page.evaluate(() => {
+        for (const el of document.querySelectorAll(".lw-time")) el.textContent = " · 10 ms · 9.9 MB";
+      });
       await page.mouse.move(0, 0);
       await expect(page).toHaveScreenshot(`learn-workspace-wa-1440-${theme}.png`, { mask: [...masks(page), page.locator(".lw-time")] });
     });
