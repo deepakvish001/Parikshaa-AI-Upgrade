@@ -1,0 +1,316 @@
+/*
+ * Revision (LearnRevise.tsx, K2-3), from the mock's revision styles
+ * (docs/learn/mock-v3/app/src/styles/practice.css: `.flash`, `.grades`,
+ * `.rev-done`). Only that chunk loads this file.
+ */
+
+.lr-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-4);
+}
+.lr-sub {
+  max-width: 68ch;
+  margin: 6px 0 0;
+  color: var(--ink-2);
+}
+.lr-prog {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+.lr-segs {
+  display: flex;
+  gap: 3px;
+  width: 180px;
+}
+.lr-segs i {
+  flex: 1;
+  height: 6px;
+  background: var(--sunk);
+  border-radius: var(--radius-hair);
+}
+.lr-segs i.lr-ok {
+  background: var(--tick);
+}
+.lr-segs i.lr-on {
+  background: var(--pen);
+}
+.lr-num {
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+.lr-said {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--tick-text);
+}
+
+/* --- the card ------------------------------------------------------------------ */
+
+.lr-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-3) 0 var(--space-2);
+}
+.lr-card {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: min(680px, 100%);
+  min-height: 300px;
+  padding: 28px 32px 28px 70px;
+  color: var(--ink);
+  background-color: var(--panel);
+  background-image: repeating-linear-gradient(to bottom, transparent 0 35px, var(--ruled) 35px 36px);
+  border: 1px solid var(--card-line);
+  border-radius: var(--r-xs) var(--r-xl) var(--r-xl) var(--r-xs);
+  box-shadow: var(--paper-shadow);
+  animation: lr-in 0.35s var(--ease);
+}
+.lr-card::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 48px;
+  width: 1.5px;
+  background: var(--margin);
+  content: "";
+}
+@keyframes lr-in {
+  from {
+    opacity: 0;
+    transform: translateX(40px) rotate(2deg);
+  }
+}
+.lr-card-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: var(--text-sm);
+}
+.lr-level {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 9px;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  border: 1px solid;
+  border-radius: var(--r-xs);
+}
+.lr-lv-easy {
+  color: var(--tick-text);
+  background: var(--tick-soft);
+  border-color: var(--tick-line);
+}
+.lr-lv-medium {
+  color: var(--coin);
+  background: var(--coin-soft);
+  border-color: var(--coin-line);
+}
+.lr-lv-hard {
+  color: var(--red-text);
+  background: var(--red-soft);
+  border-color: var(--red-line);
+}
+.lr-q {
+  margin: 0;
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-bold);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+.lr-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.lr-tags li {
+  padding: 3px 9px;
+  font-size: var(--text-xs);
+  color: var(--ink-2);
+  background: var(--sunk);
+  border-radius: var(--r-xs);
+}
+.lr-think {
+  margin: auto 0 0;
+  font-family: var(--f-hand);
+  font-size: var(--text-lg);
+  line-height: 1.4;
+  color: var(--red-text);
+  transform: rotate(-1.5deg);
+  transform-origin: left center;
+}
+.lr-a {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: 14px;
+  border-top: 1.5px dashed var(--line-2);
+  outline: none;
+  animation: lr-rise 0.3s var(--ease);
+}
+.lr-a:focus-visible {
+  outline: 2px solid var(--pen);
+  outline-offset: 4px;
+}
+@keyframes lr-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+.lr-none {
+  margin: 0;
+  color: var(--ink-2);
+}
+.lr-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  min-height: 32px;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--pen-text);
+}
+.lr-open svg {
+  width: 16px;
+  height: 16px;
+}
+.lr-flip {
+  min-width: 220px;
+}
+.lr-kbd {
+  margin-left: 6px;
+  padding: 1px 6px;
+  font-family: var(--f-mono);
+  font-size: var(--text-xs);
+  color: inherit;
+  background: transparent;
+  border: 1px solid currentcolor;
+  border-radius: var(--r-xs);
+}
+.lr-grades {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-2);
+  width: min(680px, 100%);
+}
+.lr-grade {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-height: 56px;
+  padding: 10px;
+  font: inherit;
+  font-size: var(--text-xs);
+  line-height: 1.35;
+  white-space: normal;
+  color: var(--lr-c);
+  background: var(--panel);
+  border: 1.5px solid var(--lr-l);
+  border-radius: var(--r-lg);
+  box-shadow: none;
+  cursor: pointer;
+  transition:
+    transform 0.14s var(--ease),
+    background 0.14s var(--ease);
+}
+.lr-grade b {
+  font-size: var(--text-base);
+}
+.lr-grade:is(:hover, :active, :focus-visible):not(:disabled) {
+  color: var(--lr-c);
+  background: var(--hover);
+  border-color: var(--lr-l);
+  transform: translateY(-2px);
+}
+.lr-grade:disabled {
+  cursor: not-allowed;
+}
+.lr-g-again {
+  --lr-c: var(--red-text);
+  --lr-l: var(--red-line);
+}
+.lr-g-hard {
+  --lr-c: var(--coin);
+  --lr-l: var(--coin-line);
+}
+.lr-g-good {
+  --lr-c: var(--pen-text);
+  --lr-l: var(--pen-line);
+}
+.lr-g-easy {
+  --lr-c: var(--tick-text);
+  --lr-l: var(--tick-line);
+}
+.lr-how {
+  width: min(680px, 100%);
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+/* --- done ------------------------------------------------------------------------ */
+
+.lr-done {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 56px 20px;
+  text-align: center;
+  background-color: var(--panel);
+  background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-position: -1px -1px;
+  background-size: 24px 24px;
+  border: 1px solid var(--card-line);
+  border-radius: var(--r-xl);
+}
+.lr-done p {
+  margin: 0;
+}
+.lr-done-tick {
+  color: var(--tick);
+}
+.lr-done-h {
+  margin: 0;
+  font-size: var(--text-2xl);
+}
+
+@media (max-width: 860px) {
+  .lr-prog {
+    align-items: flex-start;
+  }
+  .lr-card {
+    min-height: 260px;
+    padding: 22px 18px 22px 40px;
+  }
+  .lr-card::before {
+    left: 26px;
+  }
+  .lr-q {
+    font-size: var(--text-xl);
+  }
+  .lr-grades {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .lr-flip {
+    width: 100%;
+    min-width: 0;
+  }
+}

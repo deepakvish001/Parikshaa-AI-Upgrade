@@ -9,7 +9,7 @@ import { AajBody, AajRail } from "./Aaj.tsx";
 import { LearnProvider, ScreenLink, useLearn, type LearnState, type Notice } from "./context.tsx";
 import { LearnDataProvider, Loading, useLearnData, useMe, useSignInOptions } from "./data.tsx";
 import { Search, Sparkles, Target } from "./icons.tsx";
-import { LEARN_GROUPS, LEARN_SCREENS, screenById, tabOf, type LearnScreen } from "./screens.ts";
+import { LEARN_GROUPS, LEARN_SCREENS, screenById, screenOfRoute, SUB_ROUTE, tabOf, type LearnScreen } from "./screens.ts";
 import { A, D, fill, LEARN_LANGS, T, useLearnLang } from "./text.ts";
 import "./learn.css";
 
@@ -17,6 +17,24 @@ import "./learn.css";
 const AccountPage = lazy(() => import("./LearnAccount.tsx").then((m) => ({ default: m.AccountPage })));
 const Onboarding = lazy(() => import("./LearnPlan.tsx").then((m) => ({ default: m.Onboarding })));
 const MeraPlan = lazy(() => import("./LearnPlan.tsx").then((m) => ({ default: m.MeraPlan })));
+// Revision, lists and notes (K2-3): revision on its own, lists and notes together.
+const Revision = lazy(() => import("./LearnRevise.tsx").then((m) => ({ default: m.Revision })));
+const Lists = lazy(() => import("./LearnMine.tsx").then((m) => ({ default: m.Lists })));
+const Notes = lazy(() => import("./LearnMine.tsx").then((m) => ({ default: m.Notes })));
+// The sheet, a lesson, the problems and the problem of the day (K2-4): a chunk each.
+const Sheet = lazy(() => import("./LearnSheet.tsx").then((m) => ({ default: m.Sheet })));
+const LessonReader = lazy(() => import("./LearnLesson.tsx").then((m) => ({ default: m.LessonReader })));
+const Problems = lazy(() => import("./LearnProblems.tsx").then((m) => ({ default: m.Problems })));
+const Potd = lazy(() => import("./LearnPotd.tsx").then((m) => ({ default: m.Potd })));
+const LAZY: Readonly<Record<string, () => ReactNode>> = {
+  plan: () => <MeraPlan />,
+  revision: () => <Revision />,
+  lists: () => <Lists />,
+  notes: () => <Notes />,
+  sheet: () => <Sheet track={null} />,
+  practice: () => <Problems />,
+  potd: () => <Potd />,
+};
 
 /**
  * Learn v2's shell (tracker row 139, K1-3; DESIGN-SYSTEM §7 "Learner shell"),
@@ -33,8 +51,12 @@ const MeraPlan = lazy(() => import("./LearnPlan.tsx").then((m) => ({ default: m.
  *
  * Every screen has its address (/practice/<site>/<id>). Aaj shows the mock's
  * Aaj A on the learner's own day (K2-1, through data.tsx: the practice site's
- * client and session); Mera plan the learner's plan (K2-2); the others a
- * placeholder until their Kadam 2 slice. Signing in and up and onboarding
+ * client and session); Mera plan the learner's plan (K2-2); Revision, Meri
+ * lists and Notes the learner's own (K2-3); the DSA sheet (`sheet`,
+ * `sheet/<track>`), a lesson (`lessons/<slug>`), Abhyas (the problems
+ * bank) and the problem of the day with its calendar, on the site's content
+ * with the learner's standing (K2-4); the others a placeholder until their
+ * Kadam 2 slice. Signing in and up and onboarding
  * (K2-2) are pages of their own, without the side bar ("bare", as in the
  * mock). The side bar names the signed-in learner, or offers the way to sign in.
  */
@@ -78,6 +100,7 @@ export function routeOf(site: string, pathname: string): string | null {
   if (pathname !== base && !pathname.startsWith(`${base}/`)) return null;
   const rest = pathname.slice(base.length).replace(/^\/+|\/+$/g, "");
   if (rest === "") return "aaj";
+  if (SUB_ROUTE.test(rest)) return rest;
   return screenById(rest) === undefined && !isBare(rest) ? null : rest;
 }
 
@@ -152,7 +175,9 @@ function Shell({ site }: { readonly site: string }) {
     main.current?.focus({ preventScroll: true });
   }, [path]);
 
-  const screen = route === null ? undefined : screenById(route);
+  const screen = screenOfRoute(route);
+  // The side bar and the tabs mark the screen a sub-page belongs to (`sheet/<track>` is the sheet's).
+  const place = screen?.id ?? route;
   useEffect(() => {
     document.title = `${screen === undefined ? t(T.notHereTitle) : t(screen.title)} · Parikshaa Learn`;
   }, [screen, t]);
@@ -231,7 +256,7 @@ function Shell({ site }: { readonly site: string }) {
         >
           {t(T.skip)}
         </a>
-        {phone ? null : <SideNav route={route} mini={mini} narrow={narrow} setMini={setChosenMini} ai={ai} toggleAi={() => setAi((open) => !open)} openSearch={() => setSearch(true)} />}
+        {phone ? null : <SideNav route={place} mini={mini} narrow={narrow} setMini={setChosenMini} ai={ai} toggleAi={() => setAi((open) => !open)} openSearch={() => setSearch(true)} />}
         <div className="ln-col">
           <TopBar screen={screen} phone={phone} ai={ai} toggleAi={() => setAi((open) => !open)} openMore={() => setMore(true)} openSearch={() => setSearch(true)} />
           <main id="ln-main" ref={main} tabIndex={-1} className={`ln-main${rail === null ? "" : " ln-has-rail"}`}>
@@ -248,8 +273,8 @@ function Shell({ site }: { readonly site: string }) {
           </main>
         </div>
         {ai ? <SahayakPane phone={phone} onClose={() => setAi(false)} /> : null}
-        {phone ? <BottomTabs route={route} ai={ai} toggleAi={() => setAi((open) => !open)} more={more} openMore={() => setMore(true)} /> : null}
-        {more ? <MoreSheet route={route} onClose={() => setMore(false)} /> : null}
+        {phone ? <BottomTabs route={place} ai={ai} toggleAi={() => setAi((open) => !open)} more={more} openMore={() => setMore(true)} /> : null}
+        {more ? <MoreSheet route={place} onClose={() => setMore(false)} /> : null}
         {search ? <SearchDialog onClose={() => setSearch(false)} /> : null}
       </div>
     </LearnProvider>
@@ -626,13 +651,12 @@ function VerifyBanner() {
 function Page({ route, path }: { readonly route: string | null; readonly path: string }) {
   const { t } = useLearn();
   if (route === "aaj") return <AajBody />;
-  if (route === "plan") {
-    return (
-      <Suspense fallback={<Loading />}>
-        <MeraPlan />
-      </Suspense>
-    );
+  const sub = route === null ? null : SUB_ROUTE.exec(route);
+  if (sub !== null) {
+    return <Suspense fallback={<Loading />}>{sub[1] === "lessons" ? <LessonReader key={sub[2]} slug={sub[2]!} /> : <Sheet key={sub[2]} track={sub[2]!} />}</Suspense>;
   }
+  const page = route !== null && Object.hasOwn(LAZY, route) ? LAZY[route] : undefined;
+  if (page !== undefined) return <Suspense fallback={<Loading />}>{page()}</Suspense>;
   const screen = route === null ? undefined : screenById(route);
   if (screen === undefined) {
     return (

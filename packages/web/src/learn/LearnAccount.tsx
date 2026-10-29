@@ -1,10 +1,10 @@
 import { useEffect, useId, useState, type FormEvent } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { ArrowRight, CalendarRange, Check, ShieldCheck } from "lucide-react";
+import { CalendarRange, Check, ShieldCheck } from "lucide-react";
 import { ApiError } from "../api.ts";
 import { ScreenLink, useLearn } from "./context.tsx";
 import { keepNext, safeNext, useLearnData, useSignInOptions } from "./data.tsx";
-import { Sparkles } from "./icons.tsx";
+import { ArrowRight, Sparkles } from "./icons.tsx";
 import type { Tri } from "./screens.ts";
 import { fill } from "./text.ts";
 import "./learn-account.css";

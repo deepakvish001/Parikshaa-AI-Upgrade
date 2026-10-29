@@ -267,7 +267,17 @@ Profile dashboard nahi, ek **document** hai jo HR ek nazar me maan le: har line 
    nahi wo chhupe (sample nahi dikhate). K2-2: sign-in/sign-up aur onboarding "bare" pages (side bar nahi, upar logo + ⋯;
    `LearnAccount.tsx`, mock ka `.auth`) aur Mera plan (`LearnPlan.tsx`, mock ka `PlanBody`), dono apne chunk aur CSS
    (`learn-account.css`, `learn-plan.css`); form fields `.ln-field`/`.ln-input` aur notice line `.ln-notice` `learn.css` me.
-   Sign-in ke art me namoona card par "Namoona" likha (§9). Baaki screens apne K2 tukde me (tracker row 140).
+   Sign-in ke art me namoona card par "Namoona" likha (§9). K2-3: Revision (`LearnRevise.tsx`, mock ka `.flash`/`.grades`:
+   kaagaz ka card, margin ki laal line, laal-pen ki line Kalam me, 4 grade apne rang me) aur Meri lists + Notes (`LearnMine.tsx`,
+   mock ka `.lists-grid`, `.list-card`, `.note-paper`), apne chunk aur CSS (`learn-revise.css`, `learn-mine.css`); learner ka
+   Markdown brand ke `Markdown` se (elements, HTML kabhi nahi), styles `.ln-md` (`learn.css`). Card jaise button (list, note,
+   grade) base `button` ke hover/shadow ko apni specificity se rokte hain. K2-4: DSA sheet (`LearnSheet.tsx`, mock ka `.sheet-head`,
+   `.lvl-strip`, `.acc`: modules ki tah ek poori-chaudai button `aria-expanded` ke saath, item ki haalat icon + chhupa shabd) aur lesson
+   reader (`LearnLesson.tsx`, mock ka `.lesson`, `.try`, `.toc`: 76ch tak padhai, 1180 px se upar daayein module ki list, neeche quiz,
+   apna note, pichhla/agla); apne chunk aur CSS (`learn-sheet.css`, `learn-lesson.css`). Sub-address `sheet/<track>`, `lessons/<slug>`
+   side bar me apne screen ko chunte hain. Abhyas = problems bank (`LearnProblems.tsx`, mock ke `.tracks`/`.track` card + table; phone par
+   har problem ek card) aur POTD (`LearnPotd.tsx`, mock ka `.potd-hero` + `.cal`: calendar ek `<table>` Som se, har din ka haal rang ke saath
+   chhupe shabd me bhi, aaj `aria-current="date"`). Baaki screens apne K2 tukde me (tracker row 140).
 4. Admin pages `packages/console` me, roles matrix `ADMIN-PANEL.md` §1 + `runtime`, `recruiters`.
 5. 🟡 (shell ki baselines CI me: K1-4, 26 Oct 2026, `packages/e2e/visual/learn.visual.ts`, 1440/390 × dark/light; K2-1 se Aaj seeded din par (`packages/e2e/tests/learn-day.ts`), tareekh wala text `.ln-dated` me aur mask; har naye screen ki apni baseline uske K2 tukde me) Har screen ki **visual baseline** mock ke screenshots se milao (1440/390, dono theme); axe serious/critical 0; phone par
    touch 40 px; har mukhya screen ki 5 haalatein; bundle budget.

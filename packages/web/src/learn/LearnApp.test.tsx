@@ -219,7 +219,7 @@ describe("Learn v2's shell", () => {
     for (const s of LEARN_SCREENS) expect(within(sheet).getByRole("link", { name: hg(s.title) })).toBeInTheDocument();
     await userEvent.click(within(sheet).getByRole("link", { name: "Revision" }));
     expect(screen.queryByRole("dialog", { name: "Aur" })).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 1, name: "Revision" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: "Bhoolne se pehle 2 cards." })).toBeInTheDocument();
     expect(within(tabs).getByRole("link", { name: "Aaj" })).not.toHaveAttribute("aria-current");
 
     // Seekho stands for its whole group.
@@ -269,7 +269,8 @@ describe("Learn v2's shell", () => {
     await userEvent.keyboard("{Enter}");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(window.location.pathname).toBe(`/practice/${SITE}/revision`);
-    expect(screen.getByRole("heading", { level: 1, name: "Revision" })).toBeInTheDocument();
+    // Revision is a screen of its own now (K2-3), in a chunk of its own.
+    expect(await screen.findByRole("heading", { level: 1, name: "Bhoolne se pehle 2 cards." })).toBeInTheDocument();
 
     // The side bar's button opens it too; Escape closes it and gives the focus back.
     const opener = within(sideNav()).getByRole("button", { name: hg(T.search) });

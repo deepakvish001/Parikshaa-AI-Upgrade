@@ -504,8 +504,9 @@ export class PracticeClient {
     return this.#request(`/notes/${kind}/${encodeURIComponent(ref)}`, { method: "PUT", body: JSON.stringify({ body, ...(title === undefined ? {} : { title }) }) });
   }
 
-  potd(): Promise<{ readonly today: PotdDay | null; readonly calendar: readonly PotdDay[] }> {
-    return this.#request("/potd");
+  /** Today's problem and a calendar: the last 30 days, or one month's (YYYY-MM) up to today. */
+  potd(month?: string): Promise<PotdView> {
+    return this.#request(month === undefined ? "/potd" : `/potd?month=${encodeURIComponent(month)}`);
   }
 
   coins(): Promise<Coins> {
@@ -923,6 +924,16 @@ export interface PotdDay {
   readonly solvedThatDay: boolean;
 }
 
+export interface PotdView {
+  readonly today: PotdDay | null;
+  /** Newest first. */
+  readonly calendar: readonly PotdDay[];
+  /** Today in India: the day the calendar counts to. */
+  readonly date: string;
+  /** The learner's days off (streak freezes) in the calendar's range, oldest first. */
+  readonly daysOff: readonly string[];
+}
+
 export interface Home {
   readonly name: string;
   readonly today: string;
@@ -979,6 +990,8 @@ export interface Revision {
     readonly lastReviewedAt: string | null;
     readonly reps: number;
     readonly note: string | null;
+    /** Days until the card comes back for each grade: what grading it now would set. */
+    readonly next: Readonly<Record<Grade, number>>;
   }[];
   readonly later: number;
   readonly upcoming: number;

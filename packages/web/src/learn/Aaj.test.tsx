@@ -138,7 +138,7 @@ describe("Aaj, signed in", () => {
     expect(within(side).getByText("1 chhutti baaki")).toBeInTheDocument();
     const ahead = within(side).getByRole("region", { name: "Aage" });
     expect(within(ahead).getByText("Koko eating bananas · Medium")).toBeInTheDocument();
-    expect(within(ahead).getByRole("link", { name: "Solve karo: Aaj ka problem" })).toHaveAttribute("href", "/practice/demo/problems/koko");
+    expect(within(ahead).getByRole("link", { name: "Solve karo: Aaj ka problem" })).toHaveAttribute("href", "/practice/demo/potd");
     expect(within(ahead).getByRole("link", { name: "Revise karo: 6 revision cards baaki" })).toHaveAttribute("href", "/practice/demo/revision");
     expect(within(ahead).getByText("Sprint 2 test")).toBeInTheDocument();
     expect(within(ahead).getByText(/12 me se 3 kaam ho gaye/)).toBeInTheDocument();

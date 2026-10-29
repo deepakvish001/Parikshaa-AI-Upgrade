@@ -16,7 +16,8 @@ account ka Claude **isi file se** shuru karta hai aur isi ko update karta hai. O
    **merge** kiya, `claude/festive-maxwell-pb4k5v` me (PR #66 ki branch), `main` me nahi; `main` tak #66 se jayega.
    [#68](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/68) (docs) bhi 27 Oct 15:42 ko usi branch me merge hua (`88ec9a4`); `claude/learn-v2` me wo merge, bina force-push ke,
    ek normal merge commit (`7775272`) se aaya. [#69](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/69) (K2-0 + K2-1) bhi 27 Oct ko usi branch me merge (`fd0043a`;
-   `claude/learn-v2` fast-forward se wahan aayi). **Kadam 2 ab draft [#70](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/70) me** (K2-2 se, 27 Oct khola; [HANDOFF.md](HANDOFF.md) ki row dekho;
+   `claude/learn-v2` fast-forward se wahan aayi). [#70](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/70) (K2-2) bhi owner ne 28 Oct ko usi branch me merge kiya (`1b568d6`;
+   `claude/learn-v2` fast-forward). **Kadam 2 ab draft [#71](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/71) me** (K2-3 se, 28 Oct khola; [HANDOFF.md](HANDOFF.md) ki row dekho;
    wo bhi merge ho chuka ho to naya draft PR kholo), base `claude/festive-maxwell-pb4k5v` jab tak #66 khula hai, phir `main`.
    Merge hua PR dobara mat kholo, us par commit mat jodo.
 2. **Doosra session to nahi chal raha?** §6 ki aakhri row. "Chal raha" ho aur 30 minute ke andar commit ho, to owner
@@ -323,9 +324,34 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
     `/var/lib/postgresql/k1-e2e` (`su postgres -c "/usr/lib/postgresql/16/bin/pg_ctl -D /var/lib/postgresql/k1-e2e -l /var/lib/postgresql/k1-e2e.log start"`).
     **Kadam 3/4 ki list me jode (backend nahi):** phone OTP, college (campus) sign-in, padhai ka saal, semester exam ke hafte, chalte plan
     me role/track badalna, mock ke "chhoota din dobara plan" ke 4 raaste. Focus timer, reminders, sprint quiz/notes abhi purani site par.
-    **Kahan ruka / agla:** K2-3 (revision + lists + notes).
-  - [ ] K2-3 revision + lists + notes
-  - [ ] K2-4 DSA sheet + lesson reader + problems bank + POTD calendar
+  - [x] K2-3 (28 Oct, PR [#71](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/71)) revision + lists + notes. Revision `learn/LearnRevise.tsx` (aaj ke cards ek-ek: problem →
+    apna note (Markdown, brand ka renderer, HTML nahi) → Phir se/Mushkil/Theek/Aasaan apne din ke saath; Space/1–4; kram purana due phir naam;
+    Aaj ka "Revise karo" yahin). Lists + Notes `learn/LearnMine.tsx` (lists ke cards, problems, hatana, save kiye problems se nayi list; notes
+    ki khoj, padhna, badalna, mitana, topic note, track ke notes print/PDF). Dono apne chunk (`LearnRevise-*`, `LearnMine-*`) + CSS
+    (`learn-revise.css`, `learn-mine.css`); Markdown ki styles `.ln-md` `learn.css` me. **API:** `GET /revise` ke card me `next` (har grade
+    ke din; `prep.ts` ka `review()`; test + `npm run openapi`). **Kadam 3/4 ki list me jode (backend nahi):** concept cards, galtiyon ki copy
+    (LV-B3), topic-war yaad ki taakat, public list + share, list me apni line, khaali list/naam badalna/mitana, "Sahayak ne likha" nishaan.
+    Sahayak ka note draft K2-6 me; problem/lesson par note unke page par (K2-4/K2-5). Tests: `LearnRevise.test.tsx` 6, `LearnMine.test.tsx` 10,
+    `LearnApp.test.tsx` 2 jagah revision ab asli screen; e2e `tests/learn-mine.spec.ts` 2 (seed `learn-day.ts` me `mine`); visual 12 naye
+    (doosra seeded learner `visual-learn-mine`), 113/113. Visual wahi tareeka (FONTCONFIG_FILE + FONTCONFIG_PATH copy bina
+    `12-unhinted-grayscale.conf`/`56-prefer-inter.conf`, `chromium_headless_shell-1248` wrapper); Postgres `/var/lib/postgresql/k1-e2e`.
+    Do lucide icon (ArrowLeft, Trash2) `LearnMine.tsx` me `icon()` se khud bane: purani site ke chunk unhe import karte, warna bundler
+    `arrow-left-*.js`, `trash-*.js` alag files banata.
+  - [x] K2-4 (29 Oct, owner: "K2-4 shuru karo"; usi draft PR [#71](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/71) me, K2-3 ke upar). **Pehla hissa ✅:**
+    DSA sheet `learn/LearnSheet.tsx` (`sheet` = plan ka track, `sheet/<track>`; modules ki tah, haalat icon + shabd, level ginti, agla kaam,
+    khoj + Sab/Baaki/Ho gaye) aur lesson reader `learn/LearnLesson.tsx` (`lessons/<slug>`: Markdown brand renderer se, video sirf http(s),
+    done + coins, quiz, apna note, `?track=` / plan / akela track se module ki list + pichhla/agla, Plus ka taala, Sahayak pane). Dono open
+    (signed out padhna chalta). Apne chunk + CSS (`learn-sheet.css`, `learn-lesson.css`); routing `screens.ts` (`SUB_ROUTE`, `LESSON_SCREEN`,
+    `screenOfRoute`) + `LearnApp.tsx` (side bar `sheet/<x>` par bhi "DSA sheet" chuna). Hooks `useTrack/useLesson/useProblems/usePotd`
+    (`data.tsx`; `useTracks` ab open). **API:** `GET /potd?month=YYYY-MM` + `date` + `daysOff` (POTD calendar ke liye; test + openapi).
+    `ArrowRight` ab `learn/icons.tsx` me (Learn ki saari files wahi lein; lucide se lene par bundler `arrow-right-*.js` alag banata).
+    Seed `tests/learn-day.ts` me lesson ka lamba Markdown + `track`, `lessons`. Tests: unit 10, e2e `tests/learn-study.spec.ts` 2, visual 8.
+    **Doosra hissa ✅ (29 Oct):** problems bank = Abhyas screen `practice` (`learn/LearnProblems.tsx`: tracks ke card, `GET /problems`
+    sab ek saath, 50-50 pages, khoj, topic chips, level, haalat, pattern, company, "koi bhi problem") aur POTD calendar `potd`
+    (`learn/LearnPotd.tsx`: aaj ka problem, streak, mahina Som se `?month=`, har din shabd me, mahina peeche/aage). Aaj ke rail ka POTD
+    link `potd` par. Seed me kal (graph, "baad me") aur parson (stable, "chhoota") ke POTD. Visual me POTD ki tareekhein route intercept se
+    29 Oct 2026 par khiskti hain (`learn.visual.ts` `onFixedDay`). Tests: unit 7, e2e `tests/learn-practice.spec.ts` 2, visual 8.
+    **K2-4 poora.** **Kahan ruka / agla:** K2-5 (problem workspace + editorial); tab tak problem kholne par "abhi Learn me nahi" page.
   - [ ] K2-5 problem workspace + editorial
   - [ ] K2-6 Sahayak panel
   - [ ] K2-7 SQL
@@ -336,7 +362,9 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
   - [ ] K2-12 community
     **Kadam 3 ki list (Kadam 2 me backend nahi mila):** Aaj par AI drill ("Galat AI pakdo"), semester exams ki line, AE7
     readiness ke do hisse, "fail kyun" ki AI line + galat code line; (K2-2 se) phone OTP sign-in, campus sign-in, padhai ka saal,
-    semester exam ke hafte, chalte plan me role/track badalna, "chhoota din dobara plan" ke 4 raaste.
+    semester exam ke hafte, chalte plan me role/track badalna, "chhoota din dobara plan" ke 4 raaste; (K2-3 se) revision ke concept
+    cards, galtiyon ki copy (LV-B3), topic-war yaad ki taakat, public list + share link, list me problem par apni line, khaali list
+    banana/naam badalna/mitana, note par "Sahayak ne likha" ka nishaan.
 - **Pichhla (24 Oct 2026, account 2, `session_018vRviyFgDfdAVh2GzLcBn3`):** mock **v4.4** chal raha (tracker row
   136, aur AI ke daur ka plan row 137). Ho chuka: **44-1** roop final (Aaj A, Profile B); **44-4 ka pehla hissa**: owner
   ke chune **AE2 ticket lab** (`#ticket-lab`), **AE3 Galat AI pakdo** (`#ai-drill`), **AE5 interview ke do roop**
@@ -437,11 +465,14 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
 |---|---|---|---|---|
 | 1 | 19 Oct 2026 | account 2, `session_018vRviyFgDfdAVh2GzLcBn3` | Owner ka faisla "Learn pehle"; LEARN-V2.md, LEARN-LAUNCH-PLAN.md, ye handoff; branch `claude/learn-v2`. Phir owner ki editorial file se style guide (`learn/EDITORIAL-STYLE.md`) aur roadmap.sh jaise features (LEARN-V2 §4b, LV-M1–M8). 20 Oct: design study, DESIGN-PLAN-V2, mock v2 (41 screens, `learn/mock-v2/`); mock v2 nakaara gaya, phir DESIGN-V3 aur mock v3 (68 screens incl. 25 admin, `learn/mock-v3/`); v3 par raay ke baad mock v4 (font, kaala default, VS Code Studio, admin gehra); 20–21 Oct: mock v4.1 (2↔3 pane, Studio, motion) aur v4.2 | 21 Oct: mock v4.2 poora (72 screens, logo A final, SQL = DSA workspace, profile v2 + HR share, notebook + Colab, AI interview, admin runtimes + recruiters) aur docs DESIGN-SYSTEM / CODE-READINESS / FEATURE-IDEAS; sab push, wahi link. Owner ke faisle F1–F7 ka intezaar (§5 "Abhi yahan ho") |
 | 3 | 23–24 Oct 2026 | account 2, `session_018vRviyFgDfdAVh2GzLcBn3` (row 1 wala session, aage) | 23 Oct: 21st.dev skills (`.claude/skills/21st-*`), mock v4.3 (U0–U6). 24 Oct: Muse session ke 3 commit (v4.4 plan) par fast-forward, phir v4.4 kadam 44-1: Aaj A + Profile B final, baaki roop aur switch hataye, docs, screenshots | 24 Oct: 44-1 (Version 11); AI ke daur ki research + plan (row 137) aur owner ki haan; AE2/AE3/AE5 (Version 12), AE1/AE4/AE7/AE8 (Version 13) mock me. Agla: 44-0 test script (chune roop + naye screens par), phir AE6, AE9 |
-| 4 | 24–27 Oct 2026 | doosra account (account 2 ki limit ke baad), `session_01CxKYSJpaMfGb259ZWTqTDB`, ultracode | Autosave me adhoora kuch nahi tha. Kadam 0 poora: AE6 `#code-read`, AE9 company page ka format tab, 44-0 test script (background agent), critic agent ke 12 sudhaar; tablet par sidebar ke naam; 77 screens, qa + axe 0; naya preview https://claude.ai/artifact/PsBMjWL2TwJSDLT5QVmvJG; draft PR #67. Owner ke faisle: F1 haan, F2 sab jagah, F5 owner merge, billing theek (CI chal raha), Supabase haan (connector is account me nahi). Kadam 1 ka plan (tracker row 139) + K1-1 ka mapping (§5) | 26 Oct: Kadam 1 poora (K1-0 se K1-4, #67). 27 Oct: #68 merge; Kadam 2 shuru, draft #69: K2-0 (data layer) + K2-1 (Aaj asli data par). #69 merge; K2-2 (sign-in, onboarding, Mera plan) draft #70 me. Agla K2-3, §5 dekho |
+| 4 | 24–27 Oct 2026 | doosra account (account 2 ki limit ke baad), `session_01CxKYSJpaMfGb259ZWTqTDB`, ultracode | Autosave me adhoora kuch nahi tha. Kadam 0 poora: AE6 `#code-read`, AE9 company page ka format tab, 44-0 test script (background agent), critic agent ke 12 sudhaar; tablet par sidebar ke naam; 77 screens, qa + axe 0; naya preview https://claude.ai/artifact/PsBMjWL2TwJSDLT5QVmvJG; draft PR #67. Owner ke faisle: F1 haan, F2 sab jagah, F5 owner merge, billing theek (CI chal raha), Supabase haan (connector is account me nahi). Kadam 1 ka plan (tracker row 139) + K1-1 ka mapping (§5) | 26 Oct: Kadam 1 poora (K1-0 se K1-4, #67). 27 Oct: #68 merge; Kadam 2 shuru, draft #69: K2-0 (data layer) + K2-1 (Aaj asli data par). #69 merge; K2-2 (sign-in, onboarding, Mera plan) draft #70 me. 28 Oct: #70 merge; K2-3 (revision, lists, notes) draft #71 me. 29 Oct: K2-4 (sheet, lesson, problems, POTD) #71 me. Agla K2-5, §5 dekho |
 | 2 | 23 Oct 2026 | Muse (Meta Muse, GitHub deepakvish001) | Naya session: canonical branch claude/learn-v2 verify kiya, HANDOFF aur LEARN-HANDOFF §5/§1 padha, saari branches list karke autosave jaanch poori ki: sirf ek Learn snapshot autosave/claude/learn-v2--4a0a2180 (780992b1, 23 Oct 07:44 UTC, parent = canonical tip 4273c4538a) mila, uske .claude/live/state.md me Uncommitted changes (none) aur U0-U6 completed hai, isliye koi adhoora kaam restore nahi kiya (v4.3 ka kaam saaf push hai), CLAUDE.md, DESIGN-SYSTEM v4.3, CODE-READINESS F1-F7 aur FEATURE-IDEAS padhe | Owner ki raay ka intezaar: Aaj/Profile ka roop chunna, F1-F7 faisle; mock v4.3 is session me dobara build (tsc OK, vite build OK, artifact.html 1891 KB) karke Muse link par publish kiya (neeche §5); baaki owner ki raay baaki |
 
 ## 7. Log (naya upar)
 
+- 29 Oct 2026 (session 4 aage, K2-4 doosra hissa): problems bank (Abhyas, `learn/LearnProblems.tsx`) aur POTD calendar (`learn/LearnPotd.tsx`) asli API par; Aaj ka POTD link `potd` par. 7 unit + 2 e2e + 8 visual. **K2-4 poora** (#71 me, K2-3 ke saath). Agla: K2-5.
+- 29 Oct 2026 (session 4 aage, K2-4 pehla hissa): owner "K2-4 shuru karo"; #71 (K2-3) abhi khula draft, isliye usi branch par. Autosave me adhoora kuch nahi (sirf state file). Learn ki DSA sheet (`learn/LearnSheet.tsx`) aur lesson reader (`learn/LearnLesson.tsx`) asli API par; `/potd` me `month`, `date`, `daysOff` (chhoti API kami). 10 unit + 2 e2e (asli API) + 8 visual. Agla: K2-4 doosra hissa (problems bank + POTD calendar).
+- 28 Oct 2026 (session 4 aage, K2-3): owner ne #70 `claude/festive-maxwell-pb4k5v` me merge kiya (`1b568d6`); `claude/learn-v2` fast-forward, autosave me adhoora kuch nahi tha. Owner "K2-3 shuru karo". Learn ki Revision (`learn/LearnRevise.tsx`), Meri lists aur Notes (`learn/LearnMine.tsx`) asli API par; `/revise` ke card me `next` (chhoti API kami). 16 naye unit + 2 e2e (asli API) + 12 visual. Naya draft PR #71. #71 par CI ka har check hara (`ebb07bf`: check, e2e, docker, security, deploy, CodeQL/analyze, GitGuardian); `security` me dependency-review ab chalta hai (owner ne Dependency graph chalu kiya), isliye tracker "Ruka hua kaam" ki #70 wali row hata di. Agla: K2-4.
 - 27 Oct 2026 (session 4 aage, K2-2 ke baad): #70 par CI `security` do baar laal. (1) `4d1e1b8`: gitleaks ne `LearnAccount.test.tsx` ka nakli token (`l1.abcdefghijk`) generic-api-key maana; `3de8906` me test ka value saada kiya aur `.gitleaksignore` me sirf us ek fingerprint (`b004ac1`, line 140) ko chhoda, kyunki purana commit bina force-push ke nahi badalta; workflow nahi badla. (2) `3de8906`: ab sirf `dependency-review-action` laal, "Dependency graph is not enabled": repo ki setting band hai (#69 tak chalu thi). Owner ka kaam: Settings → Code security → Dependency graph chalu, phir `security` job dobara. Tracker "Ruka hua kaam" me row.
 - 27 Oct 2026 (session 4 aage, K2-2): owner ne #69 `claude/festive-maxwell-pb4k5v` me merge kiya; `claude/learn-v2` fast-forward (`fd0043a`), autosave me adhoora kuch nahi tha. Owner "K2-2 shuru karo". Learn ka apna sign-in/sign-up (`learn/LearnAccount.tsx`), onboarding aur Mera plan (`learn/LearnPlan.tsx`), practice site ke hi raaste aur session par; Google `#session=` aur `?next=` (`safeNext`) surakshit; sign out. API wahi. 24 naye unit + 2 e2e (asli API) + 12 visual (+ menu ke 4). Naya draft PR #70. Agla: K2-3.
 

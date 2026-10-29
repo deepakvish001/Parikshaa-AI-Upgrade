@@ -12,7 +12,8 @@ import type { ComponentType, ReactNode } from "react";
 export type IconProps = { readonly className?: string; readonly "aria-hidden"?: boolean | "true" | "false" };
 export type LearnIcon = ComponentType<IconProps>;
 
-function icon(name: string, paths: ReactNode): LearnIcon {
+/** One of Lucide's icons drawn here; a Learn chunk draws its own the same way when an older chunk imports it too. */
+export function icon(name: string, paths: ReactNode): LearnIcon {
   const Icon = ({ className, "aria-hidden": hidden = true }: IconProps) => (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -137,5 +138,21 @@ export const ListChecks = icon(
     <path d="M13 19h8" />
     <path d="m3 17 2 2 4-4" />
     <path d="m3 7 2 2 4-4" />
+  </>,
+);
+
+export const BookOpen = icon(
+  "book-open",
+  <>
+    <path d="M12 5v16" />
+    <path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z" />
+  </>,
+);
+
+export const ArrowRight = icon(
+  "arrow-right",
+  <>
+    <path d="M5 12h14" />
+    <path d="m12 5 7 7-7 7" />
   </>,
 );

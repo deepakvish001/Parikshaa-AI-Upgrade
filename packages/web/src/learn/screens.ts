@@ -17,7 +17,7 @@ import {
   UserRound,
   Zap,
 } from "lucide-react";
-import { Bookmark, BriefcaseBusiness, Building2, ListChecks, MessagesSquare, Target, Users, type LearnIcon } from "./icons.tsx";
+import { Bookmark, BookOpen, BriefcaseBusiness, Building2, ListChecks, MessagesSquare, Target, Users, type LearnIcon } from "./icons.tsx";
 
 /**
  * Learn v2's screens in the learner's side bar: the mock's registry
@@ -88,6 +88,26 @@ export const LEARN_SCREENS: readonly LearnScreen[] = [
 ];
 
 export const screenById = (id: string): LearnScreen | undefined => LEARN_SCREENS.find((screen) => screen.id === id);
+
+/** A lesson (K2-4): not in the side bar, it opens from the sheet, Aaj or a note; it belongs to Seekho. */
+export const LESSON_SCREEN: LearnScreen = {
+  id: "lessons",
+  group: "learn",
+  icon: BookOpen,
+  title: ["Lesson", "Lesson", "पाठ"],
+  desc: ["Read, check yourself, note", "Padho, khud jaancho, note likho", "पढ़ो, जाँचो, नोट"],
+};
+
+/** Addresses below a screen (K2-4): `sheet/<track>` and `lessons/<lesson>`. */
+export const SUB_ROUTE = /^(sheet|lessons)\/([a-z0-9][a-z0-9-]{0,120})$/;
+
+/** The screen a route belongs to: its own, the sheet's for `sheet/<track>`, a lesson's for `lessons/<slug>`. */
+export function screenOfRoute(route: string | null): LearnScreen | undefined {
+  if (route === null) return undefined;
+  const sub = SUB_ROUTE.exec(route);
+  if (sub === null) return screenById(route);
+  return sub[1] === "lessons" ? LESSON_SCREEN : screenById(sub[1]!);
+}
 
 /** The screen a phone's bottom tab stands for: Aaj, Seekho (its group) and Abhyas (its group). */
 export const tabOf = (id: string): "aaj" | "learn" | "practice" | null => {
