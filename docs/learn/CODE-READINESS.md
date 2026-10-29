@@ -15,7 +15,7 @@ daalna (chat me kabhi nahi). Pehla phase (design ko code me laana) **bina kisi k
 | GitHub Actions | ❌ ab bhi band. Aakhri run (19 Oct, PR #66): "The job was not started because an Actions budget is preventing further use" | Owner: GitHub → Settings → Billing and plans → payment method ya Actions budget |
 | PR #66 (`main` ka toota lockfile) | Khula, merge nahi | Billing ke baad CI hara, phir merge |
 | Supabase org | Free plan | Asli users se pehle Pro (backup + PITR) |
-| Supabase `parikshaa-mumbai` (ap-south-1) | **ACTIVE_HEALTHY** (25 Oct 2026: owner ki haan par connector se restore; pehle INACTIVE tha). Free plan par kuch din bina use ke phir ruk sakta hai | Baaki migrations (0054/0055, 0059+) aur DB URL GitHub secret me (Kadam 2 se pehle) |
+| Supabase `parikshaa-mumbai` (ap-south-1) | **ACTIVE_HEALTHY** (25 Oct 2026: owner ki haan par connector se restore; pehle INACTIVE tha). 29 Oct: migrations 0001–0053 + 0056–0058 lagi hain; 0054, 0055, 0059–0074 baaki (workflow se lagengi). Purana Singapore project `Parikshaa` owner ki haan par pause (29 Oct). Free plan par kuch din bina use ke phir ruk sakta hai | Baaki migrations (0054/0055, 0059+) aur DB URL GitHub secret me (Kadam 2 se pehle) |
 | Supabase `Parikshaa` (Singapore) | Chalu; purane problems, legacy import ke liye | Kuch nahi |
 | Vercel | Team hai, Parikshaa ka project abhi nahi; plan connector se nahi dikha | Owner ki haan par Claude project banayega; commercial launch ke liye Pro |
 | `ANTHROPIC_API_KEY` | Is cloud environment me nahi | AI ke kadam (P3) se pehle |
