@@ -63,10 +63,10 @@ for (const [name, viewport] of [
     await expect.poll(() => page.evaluate(() => document.documentElement.dataset["theme"])).toBe("light");
     expect(await seriousOrCritical(page)).toEqual([]);
 
-    // The task's own address: its screen comes later in Kadam 2, and until then the current site has it.
+    // The task's own address opens its workspace in Learn (K2-5).
     await now.getByRole("link", { name: "Jaari rakho" }).click();
     await expect(page).toHaveURL(new RegExp(`/practice/${site}/problems/${day.now.slug}$`));
-    await expect(page.getByRole("link", { name: "Abhi wali site par kholo" })).toHaveAttribute("href", `/practice/${site}/problems/${day.now.slug}?learn_v2=0`);
+    await expect(page.getByRole("heading", { level: 1, name: day.now.title })).toBeVisible();
   });
 }
 
