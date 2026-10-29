@@ -1,0 +1,245 @@
+/*
+ * The problem of the day (LearnPotd.tsx, K2-4), from the mock's POTD styles
+ * (docs/learn/mock-v3/app/src/styles/learn.css: `.potd-hero`, `.cal`,
+ * `.cal-d`, kit's `.legend`). Only that chunk loads this file.
+ */
+
+.lpd-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  padding: 28px;
+  background-color: var(--panel);
+  background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+  border-radius: var(--radius-xl);
+}
+.lpd-hero-main {
+  display: flex;
+  flex: 1 1 320px;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.lpd-hero-main p {
+  margin: 0;
+}
+.lpd-title {
+  margin: 0;
+  font-size: var(--text-3xl);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.lpd-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.lpd-lvl {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 10px;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-full);
+}
+.lpd-lv-easy {
+  color: var(--tick-text);
+}
+.lpd-lv-medium {
+  color: var(--coin-text, var(--coin));
+}
+.lpd-lv-hard {
+  color: var(--red-text);
+}
+
+.lpd-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.lpd-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+}
+.lpd-k {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-2);
+}
+.lpd-v {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.lpd-v svg {
+  width: 22px;
+  height: 22px;
+  color: var(--coin);
+}
+
+.lpd-signed-out {
+  flex-wrap: wrap;
+}
+
+.lpd-cal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: 16px;
+}
+.lpd-cal-h {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.lpd-grid {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 6px;
+}
+.lpd-grid th {
+  padding-bottom: 2px;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-3);
+  text-align: center;
+}
+.lpd-grid td {
+  padding: 0;
+  vertical-align: top;
+}
+.lpd-cell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  box-sizing: border-box;
+  min-height: 48px;
+  padding: 8px 10px;
+  font-size: var(--text-sm);
+  color: var(--ink);
+  text-decoration: none;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+a.lpd-cell:hover {
+  text-decoration: none;
+  border-color: var(--line-2);
+}
+.lpd-cell svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+.lpd-n {
+  font-variant-numeric: tabular-nums;
+}
+.lpd-ok .lpd-cell,
+.lpd-key.lpd-ok {
+  background: var(--tick-soft);
+  border-color: var(--tick-line);
+}
+.lpd-ok .lpd-cell svg {
+  color: var(--tick-text);
+}
+.lpd-late .lpd-cell,
+.lpd-key.lpd-late {
+  background: var(--panel-2);
+  border-color: var(--tick-line);
+  border-style: dashed;
+}
+.lpd-late .lpd-cell svg {
+  color: var(--tick-text);
+}
+.lpd-off .lpd-cell,
+.lpd-key.lpd-off {
+  background: var(--teal-soft);
+}
+.lpd-off .lpd-cell svg {
+  color: var(--teal);
+}
+.lpd-today .lpd-cell,
+.lpd-key.lpd-today {
+  font-weight: var(--weight-semibold);
+  background: var(--pen-soft);
+  border: 2px solid var(--pen);
+}
+.lpd-miss .lpd-cell,
+.lpd-key.lpd-miss {
+  background: repeating-linear-gradient(-45deg, var(--red-soft) 0 5px, transparent 5px 10px);
+  border-color: var(--red-line);
+}
+.lpd-miss .lpd-cell svg {
+  color: var(--red-text);
+}
+.lpd-future .lpd-cell,
+.lpd-none .lpd-cell {
+  color: var(--ink-3);
+  background: var(--panel-2);
+}
+.lpd-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 0;
+  padding: 0;
+  font-size: var(--text-xs);
+  color: var(--ink-2);
+  list-style: none;
+}
+.lpd-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.lpd-key {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xs);
+}
+
+@media (max-width: 860px) {
+  .lpd-hero {
+    padding: 20px;
+  }
+  .lpd-title {
+    font-size: var(--text-2xl);
+  }
+  .lpd-hero .ln-btn {
+    width: 100%;
+  }
+  .lpd-stats {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .lpd-grid {
+    border-spacing: 3px;
+  }
+  .lpd-grid th {
+    font-size: var(--text-2xs);
+  }
+  .lpd-cell {
+    flex-direction: column;
+    justify-content: center;
+    min-height: 44px;
+    padding: 4px 2px;
+    font-size: var(--text-xs);
+  }
+}

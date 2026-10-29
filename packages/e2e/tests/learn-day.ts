@@ -98,6 +98,9 @@ export async function seedLearnDay(
   );
   const today = istDay();
   await ok(request.put(`/api/practice-admin/potd/${today}`, { headers: staff, data: { problemId: search.id } }));
+  // Yesterday's (solved today, so "later") and the day before's (answered wrong, so missed), for the calendar (K2-4).
+  await ok(request.put(`/api/practice-admin/potd/${istDay(-1)}`, { headers: staff, data: { problemId: graph.id } }));
+  await ok(request.put(`/api/practice-admin/potd/${istDay(-2)}`, { headers: staff, data: { problemId: stable.id } }));
   const company = await ok(request.post("/api/practice-admin/companies", { headers: staff, data: { name: "Infosys", about: "Online test, then two technical rounds and HR." } }), 201);
   await ok(request.post(`/api/practice-admin/companies/${company["id"] as string}/reports`, { headers: staff, data: { problemIds: [stable.id, search.id, graph.id], reportedOn: today } }), 201);
   // Three days on at 8 pm in India, for ninety minutes.

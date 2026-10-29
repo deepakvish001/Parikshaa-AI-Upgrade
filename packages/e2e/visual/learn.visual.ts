@@ -5,8 +5,9 @@ import { istDay, seedLearnDay } from "../tests/learn-day.js";
  * Learn v2 with the flag `learn_v2` on, held to its committed images (K1-4;
  * Aaj on real data since K2-1, tracker row 140): Aaj on a seeded learner's
  * day, one placeholder screen, the ⋯ menu open, and on a phone the "Aur"
- * sheet; since K2-4 the DSA sheet (the first learner's plan track) and a
- * lesson with its quiz (the second learner's); since K2-2 also Learn's sign-in (signed out), onboarding's first
+ * sheet; since K2-4 the DSA sheet (the first learner's plan track), a
+ * lesson with its quiz (the second learner's), Abhyas (the problems) and the
+ * problem of the day, whose calendar is moved onto one fixed day; since K2-2 also Learn's sign-in (signed out), onboarding's first
  * question and Mera plan; since K2-3 revision (a card's front), Meri lists and
  * Notes, on a second learner seeded with them; at 1440 and 390, dark (Learn's default) and light,
  * and the narrow side bar at 1100. Signed in as the seeded learner, except on
@@ -34,10 +35,32 @@ test.beforeAll(async ({ request }) => {
 });
 
 const DATED = ".ln-dated";
+// The problem of the day's calendar is drawn on one fixed day, so its month does not change the image (K2-4).
+const POTD_DAY = "2026-10-29";
+const shiftDay = (day: string, by: number) => new Date(Date.parse(`${day}T00:00:00Z`) + by * 86_400_000).toISOString().slice(0, 10);
+
+/** The API's real calendar (the last 30 days, seeded relative to today), every date moved by the same days onto POTD_DAY. */
+async function onFixedDay(page: Page, site: string) {
+  await page.route(`**/api/practice/${site}/potd**`, async (route) => {
+    const real = new URL(route.request().url());
+    real.searchParams.delete("month");
+    const response = await route.fetch({ url: real.toString() });
+    const body = (await response.json()) as { today: { day: string } | null; calendar: { day: string }[]; date: string; daysOff: string[] };
+    const by = Math.round((Date.parse(`${POTD_DAY}T00:00:00Z`) - Date.parse(`${body.date}T00:00:00Z`)) / 86_400_000);
+    const moved = {
+      today: body.today === null ? null : { ...body.today, day: shiftDay(body.today.day, by) },
+      calendar: body.calendar.map((d) => ({ ...d, day: shiftDay(d.day, by) })),
+      date: POTD_DAY,
+      daysOff: body.daysOff.map((d) => shiftDay(d, by)),
+    };
+    await route.fulfill({ response, json: moved });
+  });
+}
 const masks = (page: Page) => [page.locator(DATED)];
 
 async function open(page: Page, path: string, theme: "light" | "dark", signedIn = true, site = SITE) {
-  await page.clock.setFixedTime(new Date(`${istDay()}T13:30:00Z`));
+  await page.clock.setFixedTime(new Date(`${path === "/potd" ? POTD_DAY : istDay()}T13:30:00Z`));
+  if (path === "/potd") await onFixedDay(page, site);
   await page.addInitScript(([key, value, t]) => {
     if (value !== "") localStorage.setItem(key!, value!);
     localStorage.setItem("parikshaa.learn.theme", t!);
@@ -52,6 +75,11 @@ async function open(page: Page, path: string, theme: "light" | "dark", signedIn 
     await expect(page.getByText("Galat jawab")).toBeVisible();
     await expect(page.getByRole("progressbar", { name: "Infosys ki taiyari" })).toBeVisible();
     await expect(page.getByRole("region", { name: "Aage" })).toContainText("Weekly Round 13");
+  }
+  if (path === "/practice") await expect(page.getByRole("status")).toHaveText("3 me se 3 problems");
+  if (path === "/potd") {
+    await expect(page.getByRole("table").locator('[aria-current="date"]')).toBeVisible();
+    await expect(page.getByText("Abhi ki streak")).toBeVisible();
   }
   if (path === "/sheet") await expect(page.getByRole("region", { name: "Agla kaam" })).toBeVisible();
   if (path.startsWith("/lessons/")) {
@@ -122,6 +150,16 @@ for (const theme of ["dark", "light"] as const) {
       await open(page, `/lessons/${lesson}`, theme, true, MINE);
       await expect(page).toHaveScreenshot(`learn-lesson-1440-${theme}.png`, { fullPage: true, mask: masks(page) });
     });
+
+    for (const [name, path] of [
+      ["problems", "/practice"],
+      ["potd", "/potd"],
+    ] as const) {
+      test(`${name} (K2-4)`, async ({ page }) => {
+        await open(page, path, theme);
+        await expect(page).toHaveScreenshot(`learn-${name}-1440-${theme}.png`, { fullPage: true, mask: masks(page) });
+      });
+    }
   });
 
   test.describe(`learn · 390 · ${theme}`, () => {
@@ -178,6 +216,16 @@ for (const theme of ["dark", "light"] as const) {
       await open(page, `/lessons/${lesson}`, theme, true, MINE);
       await expect(page).toHaveScreenshot(`learn-lesson-390-${theme}.png`, { fullPage: true, mask: masks(page) });
     });
+
+    for (const [name, path] of [
+      ["problems", "/practice"],
+      ["potd", "/potd"],
+    ] as const) {
+      test(`${name} (K2-4)`, async ({ page }) => {
+        await open(page, path, theme);
+        await expect(page).toHaveScreenshot(`learn-${name}-390-${theme}.png`, { fullPage: true, mask: masks(page) });
+      });
+    }
   });
 }
 

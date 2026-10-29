@@ -21,15 +21,19 @@ const MeraPlan = lazy(() => import("./LearnPlan.tsx").then((m) => ({ default: m.
 const Revision = lazy(() => import("./LearnRevise.tsx").then((m) => ({ default: m.Revision })));
 const Lists = lazy(() => import("./LearnMine.tsx").then((m) => ({ default: m.Lists })));
 const Notes = lazy(() => import("./LearnMine.tsx").then((m) => ({ default: m.Notes })));
-// The sheet and a lesson (K2-4): a chunk each.
+// The sheet, a lesson, the problems and the problem of the day (K2-4): a chunk each.
 const Sheet = lazy(() => import("./LearnSheet.tsx").then((m) => ({ default: m.Sheet })));
 const LessonReader = lazy(() => import("./LearnLesson.tsx").then((m) => ({ default: m.LessonReader })));
+const Problems = lazy(() => import("./LearnProblems.tsx").then((m) => ({ default: m.Problems })));
+const Potd = lazy(() => import("./LearnPotd.tsx").then((m) => ({ default: m.Potd })));
 const LAZY: Readonly<Record<string, () => ReactNode>> = {
   plan: () => <MeraPlan />,
   revision: () => <Revision />,
   lists: () => <Lists />,
   notes: () => <Notes />,
   sheet: () => <Sheet track={null} />,
+  practice: () => <Problems />,
+  potd: () => <Potd />,
 };
 
 /**
@@ -49,8 +53,9 @@ const LAZY: Readonly<Record<string, () => ReactNode>> = {
  * Aaj A on the learner's own day (K2-1, through data.tsx: the practice site's
  * client and session); Mera plan the learner's plan (K2-2); Revision, Meri
  * lists and Notes the learner's own (K2-3); the DSA sheet (`sheet`,
- * `sheet/<track>`) and a lesson (`lessons/<slug>`) the site's tracks with
- * the learner's standing (K2-4); the others a placeholder until their
+ * `sheet/<track>`), a lesson (`lessons/<slug>`), Abhyas (the problems
+ * bank) and the problem of the day with its calendar, on the site's content
+ * with the learner's standing (K2-4); the others a placeholder until their
  * Kadam 2 slice. Signing in and up and onboarding
  * (K2-2) are pages of their own, without the side bar ("bare", as in the
  * mock). The side bar names the signed-in learner, or offers the way to sign in.

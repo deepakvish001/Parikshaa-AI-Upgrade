@@ -404,7 +404,7 @@ export function AajRail() {
               icon={<Timer aria-hidden="true" />}
               title={t(A.potd)}
               sub={`${h.potd.title} · ${t(LEVEL_WORD[h.potd.difficulty])}${h.potd.solvedThatDay ? ` · ${t(A.solvedToday)}` : ""}`}
-              {...(h.potd.solvedThatDay ? {} : { to: `problems/${encodeURIComponent(h.potd.slug)}`, action: t(A.solve) })}
+              {...(h.potd.solvedThatDay ? {} : { to: "potd", action: t(A.solve) })}
             />
           )}
           {h.dueCards === 0 ? null : <Agenda icon={<RotateCcw aria-hidden="true" />} title={fill(t(A.cards), { n: h.dueCards })} sub={t(A.cardsBody)} to="revision" action={t(A.revise)} />}
