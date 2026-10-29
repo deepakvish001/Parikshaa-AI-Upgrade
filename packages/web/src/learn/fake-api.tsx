@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render } from "@testing-library/react";
 import { vi } from "vitest";
-import type { ContestSummary, Home, Note, PlanTask, ProblemList, Revision, Submission } from "../practice/client.ts";
+import type { ContestSummary, Home, Note, PlanTask, ProblemList, Revision, Submission, TrackView } from "../practice/client.ts";
 import { LearnApp } from "./LearnApp.tsx";
 
 /**
@@ -110,6 +110,34 @@ export const NOTES: readonly Note[] = [
   { kind: "topic", ref: "overflow-checklist", title: "Overflow checklist", body: "Test with **2^30 + 2^30** before submitting.", updatedAt: "2026-10-20T09:00:00Z" },
   { kind: "lesson", ref: "stack-lifo", title: "Stack: the LIFO idea", body: "Last in, first out.", updatedAt: null },
 ];
+
+/** A track (K2-4): a module done, one under way (a lesson, a problem tried), one locked behind Plus. */
+export const DSA: TrackView = {
+  slug: "dsa",
+  title: "DSA for placements",
+  description: "Sorting, searching and **graphs**.",
+  items: 5,
+  done: 2,
+  modules: [
+    {
+      title: "Sorting",
+      done: 2,
+      items: [
+        { kind: "lesson", slug: "stable-sorting", title: "Stable sorting", difficulty: null, estMinutes: 15, status: "done", locked: false },
+        { kind: "problem", slug: "sort-colours", title: "Sort colours", difficulty: "easy", estMinutes: 20, status: "done", locked: false },
+      ],
+    },
+    {
+      title: "Searching",
+      done: 0,
+      items: [
+        { kind: "lesson", slug: "binary-search", title: "Searching a sorted array", difficulty: null, estMinutes: 20, status: null, locked: false },
+        { kind: "problem", slug: "pair-sum", title: "Pair with target sum", difficulty: "medium", estMinutes: 30, status: "attempted", locked: false },
+      ],
+    },
+    { title: "Graphs", done: 0, items: [{ kind: "problem", slug: "bellman", title: "Shortest paths", difficulty: "hard", estMinutes: 40, status: null, locked: true }] },
+  ],
+};
 
 /** A signed-in learner's day, answered by the fake API; each test changes what it needs. */
 export function fakeApi(): FakeApi {

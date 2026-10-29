@@ -1,13 +1,13 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
-import { ArrowRight, NotebookPen, Pencil, Plus, Printer, X } from "lucide-react";
+import { NotebookPen, Pencil, Plus, Printer, X } from "lucide-react";
 import { Empty } from "@parikshaa/brand/kit";
 import { Markdown } from "@parikshaa/brand/markdown";
 import { Dialog } from "@parikshaa/brand/ui";
 import type { Difficulty, Note, NoteKind, ProblemList } from "../practice/client.ts";
 import { ScreenLink, useLearn } from "./context.tsx";
 import { Failed, Loading, Offline, SignedOut, useLearnData, useLists, useNoteBook, useNotes, useOnline, useTracks, waitingForNetwork } from "./data.tsx";
-import { Bookmark, icon, Search } from "./icons.tsx";
+import { ArrowRight, Bookmark, icon, Search } from "./icons.tsx";
 import { screenById, type Tri } from "./screens.ts";
 import { A, fill, type LearnLang } from "./text.ts";
 import "./learn-mine.css";

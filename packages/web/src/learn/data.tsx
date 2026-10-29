@@ -14,12 +14,16 @@ import {
   type Learner,
   type Note,
   type NoteBook,
+  type Lesson,
   type Plan,
+  type PotdView,
   type ProblemList,
+  type ProblemSummary,
   type Revision,
   type SignInOptions,
   type Submission,
   type TrackSummary,
+  type TrackView,
 } from "../practice/client.ts";
 import { ScreenLink, useLearn } from "./context.tsx";
 import { screenById } from "./screens.ts";
@@ -78,8 +82,8 @@ const nextKey = (site: string) => `parikshaa.learn.next.${site}`;
 
 /**
  * Where a "go back to" may send the learner: only a screen of this site, as
- * `<screen>` or `problems/<slug>` / `lessons/<slug>` (the old site's
- * addresses, which Learn opens too). Anything else (another site, a scheme,
+ * `<screen>`, `sheet/<track>`, or `problems/<slug>` / `lessons/<slug>` (the
+ * old site's addresses, which Learn opens too). Anything else (another site, a scheme,
  * `//`, `..`, a query) is dropped, so no link can send a learner off the site.
  */
 export function safeNext(raw: string | null | undefined): string | null {
@@ -87,7 +91,7 @@ export function safeNext(raw: string | null | undefined): string | null {
   const match = /^([a-z][a-z0-9-]{0,30})(?:\/([a-z0-9][a-z0-9-]{0,120}))?$/.exec(raw);
   if (match === null) return null;
   const [, screen, slug] = match;
-  if (slug !== undefined) return screen === "problems" || screen === "lessons" ? raw : null;
+  if (slug !== undefined) return screen === "problems" || screen === "lessons" || screen === "sheet" ? raw : null;
   return screen === "onboarding" || screenById(screen!) !== undefined ? raw : null;
 }
 
@@ -217,8 +221,20 @@ export const useSignInOptions = (enabled = true): UseQueryResult<SignInOptions> 
 /** The learner's running plan; null when there is none. */
 export const usePlan = (): UseQueryResult<Plan | null> => useLearnQuery(["plan"], (client) => client.plan());
 
-/** The site's tracks, with the learner's progress in each. */
-export const useTracks = (): UseQueryResult<readonly TrackSummary[]> => useLearnQuery(["tracks"], (client) => client.tracks());
+/** The site's tracks, with the learner's progress in each. Open to anyone (no progress signed out). */
+export const useTracks = (): UseQueryResult<readonly TrackSummary[]> => useLearnQuery(["tracks"], (client) => client.tracks(), { session: false });
+
+/** One track, module by module, with the learner's standing on each item (K2-4); nothing is read without a track. Open to anyone. */
+export const useTrack = (slug: string | null): UseQueryResult<TrackView> => useLearnQuery(["track", slug], (client) => client.track(slug ?? ""), { session: false, enabled: slug !== null });
+
+/** A lesson: its Markdown, video link, quiz (without answers) and whether the learner has done it (K2-4). Open to anyone. */
+export const useLesson = (slug: string): UseQueryResult<Lesson> => useLearnQuery(["lesson", slug], (client) => client.lesson(slug), { session: false });
+
+/** The site's problems, each with the learner's standing (K2-4). The API gives them all at once. Open to anyone. */
+export const useProblems = (): UseQueryResult<readonly ProblemSummary[]> => useLearnQuery(["problems"], (client) => client.problems(), { session: false });
+
+/** The problem of the day and a month's calendar (`YYYY-MM`) up to today, with the learner's days off (K2-4). Open to anyone. */
+export const usePotd = (month: string | null): UseQueryResult<PotdView> => useLearnQuery(["potd", month], (client) => client.potd(month ?? undefined), { session: false });
 
 /** The site's companies, to aim for. */
 export const useCompanies = (): UseQueryResult<readonly CompanyCard[]> => useLearnQuery(["companies"], (client) => client.companies());

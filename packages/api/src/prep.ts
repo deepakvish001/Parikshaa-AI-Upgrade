@@ -1037,13 +1037,29 @@ export class PrepService {
 
   // --- the problem of the day ---------------------------------------------------------------------------
 
-  async potd(site: PracticeSite, learner: Learner | null) {
+  /**
+   * Today's problem and a calendar: the last 30 days, or one month's days up
+   * to today (`month`, YYYY-MM), newest first; with today's date and the
+   * learner's days off in that range, so a month can be drawn whole.
+   */
+  async potd(site: PracticeSite, learner: Learner | null, month?: string) {
     const today = this.#today();
+    let from = addDays(today, -29);
+    let to = today;
+    if (month !== undefined) {
+      if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) throw new PracticeError("invalid", "A month is written YYYY-MM");
+      const [y, m] = month.split("-").map(Number) as [number, number];
+      from = `${month}-01`;
+      const last = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+      to = last < today ? last : today;
+    }
     const scope = practiceLearner(site.orgId, learner?.id ?? null);
-    const [days, problems, progress] = await Promise.all([
-      this.#store.potd(scope, addDays(today, -29), today),
+    const [days, todays, problems, progress, frozen] = await Promise.all([
+      from <= to ? this.#store.potd(scope, from, to) : Promise.resolve([]),
+      to < today ? this.#store.potd(scope, today, today) : Promise.resolve([]),
       this.#practice.problems(scope),
       this.#practice.progress(scope),
+      learner === null ? Promise.resolve([] as readonly string[]) : this.#store.freezes(scope),
     ]);
     const problemOf = new Map(problems.map((p) => [p.id, p]));
     const solvedOn = new Map(progress.solved.map((s) => [s.problemId, istDay(Date.parse(s.at))]));
@@ -1054,7 +1070,9 @@ export class PrepService {
       return { day: d.day, slug: p.slug, title: p.title, difficulty: p.difficulty, solved: solved !== undefined, solvedThatDay: solved === d.day };
     };
     const calendar = days.map(view).filter((d): d is NonNullable<typeof d> => d !== null);
-    return { today: calendar.find((d) => d.day === today) ?? null, calendar: calendar.reverse() };
+    const now = [...calendar, ...todays.map(view)].find((d) => d?.day === today) ?? null;
+    const daysOff = [...new Set(frozen)].filter((d) => d >= from && d <= to).sort();
+    return { today: now, calendar: calendar.reverse(), date: today, daysOff };
   }
 
   // --- coins -----------------------------------------------------------------------------------------------

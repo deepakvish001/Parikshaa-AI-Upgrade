@@ -338,6 +338,28 @@ describe("lists, notes and the problem of the day", () => {
     // Tomorrow's is not shown before its day.
     expect(potd.today).toMatchObject({ day: "2026-10-05", slug: problems.arrays!.slug, solved: false });
     expect(potd.calendar.map((d: { day: string }) => d.day)).toEqual(["2026-10-05", "2026-10-04"]);
+    expect(potd).toMatchObject({ date: "2026-10-05", daysOff: [] });
+  });
+
+  it("gives one month's calendar up to today, with the learner's days off in it (Learn's POTD calendar, K2-4)", async () => {
+    await ok("PUT", owner, `/practice-admin/potd/2026-09-30`, { problemId: problems.search!.id }, 200);
+    await ok("PUT", owner, `/practice-admin/potd/2026-10-01`, { problemId: problems.graphs!.id }, 200);
+    await ok("PUT", owner, `/practice-admin/potd/2026-10-05`, { problemId: problems.arrays!.id }, 200);
+    await ok("PUT", owner, `/practice-admin/potd/2026-10-06`, { problemId: problems.search!.id }, 200);
+    const asha = await signUp();
+    await ok("POST", asha, `${S}/streak/freeze`, {}, 200);
+    // This month: from the 1st to today, tomorrow's not yet.
+    const october = await ok("GET", asha, `${S}/potd?month=2026-10`);
+    expect(october.calendar.map((d: { day: string }) => d.day)).toEqual(["2026-10-05", "2026-10-01"]);
+    expect(october).toMatchObject({ date: "2026-10-05", daysOff: ["2026-10-05"], today: { day: "2026-10-05", slug: problems.arrays!.slug } });
+    // A month gone: its own days; today's problem is still today's.
+    const september = await ok("GET", asha, `${S}/potd?month=2026-09`);
+    expect(september.calendar.map((d: { day: string }) => d.day)).toEqual(["2026-09-30"]);
+    expect(september).toMatchObject({ daysOff: [], today: { day: "2026-10-05" } });
+    // A month to come has nothing yet; signed out, no days off.
+    expect((await ok("GET", asha, `${S}/potd?month=2026-11`)).calendar).toEqual([]);
+    expect((await ok("GET", null, `${S}/potd?month=2026-10`)).daysOff).toEqual([]);
+    expect((await call("GET", asha, `${S}/potd?month=2026-13`)).statusCode).toBe(400);
   });
 });
 

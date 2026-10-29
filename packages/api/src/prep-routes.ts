@@ -896,15 +896,31 @@ export function registerPrepRoutes(routes: Routes, deps: PrepRouteDeps): void {
     {
       schema: {
         tags: PREP,
-        summary: "The problem of the day, and the last 30 days'",
+        summary: "The problem of the day, and the last 30 days' (or one month's)",
         security: OPEN,
         params: siteParams,
-        response: { 200: z.object({ today: potdDay.nullable(), calendar: z.array(potdDay).readonly() }), ...refusals },
+        querystring: z.object({
+          month: z
+            .string()
+            .regex(/^\d{4}-(0[1-9]|1[0-2])$/)
+            .optional()
+            .describe("A month, YYYY-MM: its days up to today instead of the last 30. A month still to come has none."),
+        }),
+        response: {
+          200: z.object({
+            today: potdDay.nullable(),
+            calendar: z.array(potdDay).readonly().describe("Newest first."),
+            date: day.describe("Today in India Standard Time: the day the calendar counts to."),
+            daysOff: z.array(day).readonly().describe("The signed-in learner's days off (streak freezes) in the calendar's range, oldest first; none signed out."),
+          }),
+          ...refusals,
+        },
       },
     },
     async (request, reply) => {
       const site = await siteOf(request);
-      return reply.send(await prep.potd(site, await maybeLearner(site, request)));
+      const { month } = request.query as { month?: string };
+      return reply.send(await prep.potd(site, await maybeLearner(site, request), month));
     },
   );
 

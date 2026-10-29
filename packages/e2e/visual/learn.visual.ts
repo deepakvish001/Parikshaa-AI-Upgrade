@@ -5,7 +5,8 @@ import { istDay, seedLearnDay } from "../tests/learn-day.js";
  * Learn v2 with the flag `learn_v2` on, held to its committed images (K1-4;
  * Aaj on real data since K2-1, tracker row 140): Aaj on a seeded learner's
  * day, one placeholder screen, the ⋯ menu open, and on a phone the "Aur"
- * sheet; since K2-2 also Learn's sign-in (signed out), onboarding's first
+ * sheet; since K2-4 the DSA sheet (the first learner's plan track) and a
+ * lesson with its quiz (the second learner's); since K2-2 also Learn's sign-in (signed out), onboarding's first
  * question and Mera plan; since K2-3 revision (a card's front), Meri lists and
  * Notes, on a second learner seeded with them; at 1440 and 390, dark (Learn's default) and light,
  * and the narrow side bar at 1100. Signed in as the seeded learner, except on
@@ -20,12 +21,16 @@ const SITE = "visual-learn";
 const MINE = "visual-learn-mine";
 let token = "";
 let mineToken = "";
+// The searching lesson: the second of the plan's track, with a quiz on the learner seeded with `mine`.
+let lesson = "";
 
 test.describe.configure({ mode: "serial" });
 
 test.beforeAll(async ({ request }) => {
   ({ token } = await seedLearnDay(request, { org: "e2e-learn-visual", site: SITE, learner: { name: "Asha Verma", email: "asha@students.learn-visual.test" } }));
-  ({ token: mineToken } = await seedLearnDay(request, { org: "e2e-learn-visual-mine", site: MINE, learner: { name: "Asha Verma", email: "asha@students.learn-mine-visual.test" }, mine: true }));
+  const mine = await seedLearnDay(request, { org: "e2e-learn-visual-mine", site: MINE, learner: { name: "Asha Verma", email: "asha@students.learn-mine-visual.test" }, mine: true });
+  mineToken = mine.token;
+  lesson = mine.lessons[1]!.slug;
 });
 
 const DATED = ".ln-dated";
@@ -47,6 +52,11 @@ async function open(page: Page, path: string, theme: "light" | "dark", signedIn 
     await expect(page.getByText("Galat jawab")).toBeVisible();
     await expect(page.getByRole("progressbar", { name: "Infosys ki taiyari" })).toBeVisible();
     await expect(page.getByRole("region", { name: "Aage" })).toContainText("Weekly Round 13");
+  }
+  if (path === "/sheet") await expect(page.getByRole("region", { name: "Agla kaam" })).toBeVisible();
+  if (path.startsWith("/lessons/")) {
+    await expect(page.getByText("Module 2 · 2 me se 1").first()).toBeVisible();
+    await expect(page.getByRole("region", { name: "Mera note" }).getByText("Is lesson par abhi note nahi", { exact: false })).toBeVisible();
   }
   if (path === "/plan") await expect(page.getByRole("region", { name: "Target companies" })).toContainText("Infosys");
   if (path === "/onboarding") await expect(page.getByRole("button", { name: /^DSA for placements/ })).toBeVisible();
@@ -102,6 +112,16 @@ for (const theme of ["dark", "light"] as const) {
         await expect(page).toHaveScreenshot(`learn-${name}-1440-${theme}.png`, { fullPage: true, mask: masks(page) });
       });
     }
+
+    test("DSA sheet (K2-4)", async ({ page }) => {
+      await open(page, "/sheet", theme);
+      await expect(page).toHaveScreenshot(`learn-dsa-sheet-1440-${theme}.png`, { fullPage: true, mask: masks(page) });
+    });
+
+    test("lesson (K2-4)", async ({ page }) => {
+      await open(page, `/lessons/${lesson}`, theme, true, MINE);
+      await expect(page).toHaveScreenshot(`learn-lesson-1440-${theme}.png`, { fullPage: true, mask: masks(page) });
+    });
   });
 
   test.describe(`learn · 390 · ${theme}`, () => {
@@ -148,6 +168,16 @@ for (const theme of ["dark", "light"] as const) {
         await expect(page).toHaveScreenshot(`learn-${name}-390-${theme}.png`, { fullPage: true, mask: masks(page) });
       });
     }
+
+    test("DSA sheet (K2-4)", async ({ page }) => {
+      await open(page, "/sheet", theme);
+      await expect(page).toHaveScreenshot(`learn-dsa-sheet-390-${theme}.png`, { fullPage: true, mask: masks(page) });
+    });
+
+    test("lesson (K2-4)", async ({ page }) => {
+      await open(page, `/lessons/${lesson}`, theme, true, MINE);
+      await expect(page).toHaveScreenshot(`learn-lesson-390-${theme}.png`, { fullPage: true, mask: masks(page) });
+    });
   });
 }
 

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, Eye, RotateCcw } from "lucide-react";
+import { Eye, RotateCcw } from "lucide-react";
 import { Empty } from "@parikshaa/brand/kit";
 import { Markdown } from "@parikshaa/brand/markdown";
 import type { Difficulty, Grade, Revision as RevisionData } from "../practice/client.ts";
+import { ArrowRight } from "./icons.tsx";
 import { ScreenLink, useLearn } from "./context.tsx";
 import { Failed, Loading, Offline, SignedOut, useLearnData, useOnline, useRevision, waitingForNetwork } from "./data.tsx";
 import { screenById, type Tri } from "./screens.ts";

@@ -1,6 +1,6 @@
 import { useId, useState, type FormEvent, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, BedDouble, BookOpen, CalendarRange, Check, ChevronLeft, ChevronRight, Clock, Feather, Gauge, GraduationCap, NotebookPen, RotateCcw, Settings2, Snowflake } from "lucide-react";
+import { ArrowLeft, BedDouble, BookOpen, CalendarRange, Check, ChevronLeft, ChevronRight, Clock, Feather, Gauge, GraduationCap, NotebookPen, RotateCcw, Settings2, Snowflake } from "lucide-react";
 import { Empty, Seg } from "@parikshaa/brand/kit";
 import { Dialog } from "@parikshaa/brand/ui";
 import { ApiError } from "../api.ts";
@@ -8,7 +8,7 @@ import { PREP_ROLES, type Level, type Plan, type PlanInput, type PlanTask, type 
 import { daysBetween, istDay, longDay, taskScreen } from "./Aaj.tsx";
 import { ScreenLink, useLearn } from "./context.tsx";
 import { Failed, Loading, Offline, SignedOut, useCompanies, useHome, useLearnData, useLearnQuery, useMe, useOnline, usePlan, useTargets, useTracks, waitingForNetwork } from "./data.tsx";
-import { Building2, CodeXml, Target } from "./icons.tsx";
+import { ArrowRight, Building2, CodeXml, Target } from "./icons.tsx";
 import { screenById, type Tri } from "./screens.ts";
 import { fill, LEARN_LANGS, type LearnLang } from "./text.ts";
 import "./learn-plan.css";

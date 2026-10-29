@@ -1,10 +1,10 @@
-import { ArrowRight, BookOpen, CalendarRange, Check, CircleX, Feather, NotebookPen, Play, RotateCcw, Snowflake, Trophy } from "lucide-react";
+import { BookOpen, CalendarRange, Check, CircleX, Feather, NotebookPen, Play, RotateCcw, Snowflake, Trophy } from "lucide-react";
 import type { ReactNode } from "react";
 import { Meter, Ring } from "@parikshaa/brand/kit";
 import type { ContestSummary, Difficulty, Home, PlanTask, Submission } from "../practice/client.ts";
 import { ScreenLink, useLearn } from "./context.tsx";
 import { Failed, Loading, Offline, SignedOut, useContests, useHome, useLearnData, useOnline, useSubmissions, useTargets, waitingForNetwork } from "./data.tsx";
-import { CodeXml, Flame, Sparkles, Timer } from "./icons.tsx";
+import { ArrowRight, CodeXml, Flame, Sparkles, Timer } from "./icons.tsx";
 import { screenById, type Tri } from "./screens.ts";
 import { A, fill, type LearnLang } from "./text.ts";
 

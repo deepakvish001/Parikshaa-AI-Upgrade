@@ -27,6 +27,10 @@ export interface LearnMine {
 export interface LearnDay {
   /** The learner's session, for `parikshaa.practice.<site>.session`. */
   readonly token: string;
+  /** The plan's track (K2-4): Sorting (a lesson done, a problem tried), Searching (a lesson, a problem), Graphs (a problem solved). */
+  readonly track: { readonly slug: string; readonly title: string };
+  /** Its two lessons: the first done, the second not yet (with a quiz when seeded with `mine`). */
+  readonly lessons: readonly { readonly slug: string; readonly title: string }[];
   /** The problem the plan has the learner on now, answered wrong once. */
   readonly now: { readonly slug: string; readonly title: string };
   readonly potd: { readonly slug: string; readonly title: string };
@@ -65,7 +69,17 @@ export async function seedLearnDay(
   const lesson = async (title: string, body: string, estMinutes: number) =>
     (await ok(request.post("/api/practice-admin/lessons", { headers: staff, data: { title, body, estMinutes, published: true } }), 201)) as { id: string; slug: string };
   const sorting = await lesson("Stable sorting", "A sort is **stable** when equal keys keep their order.", 15);
-  const searching = await lesson("Searching a sorted array", "Halve the range at every step.", 20);
+  const searching = await lesson(
+    "Searching a sorted array",
+    [
+      "In a sorted array, one look at the middle tells you which half cannot hold the key. Throw that half away and look again.",
+      "## The loop",
+      "1. Keep `lo` and `hi` around the part still in play.\n2. Look at `mid`; if it is too small, the key is to its right.\n3. Stop when the range is empty.",
+      "```cpp\nint mid = lo + (hi - lo) / 2; // not (lo + hi) / 2, which can overflow\n```",
+      "Each step halves the range, so 1,024 items take at most **11** looks.",
+    ].join("\n\n"),
+    20,
+  );
   const track = await ok(
     request.post("/api/practice-admin/tracks", {
       headers: staff,
@@ -111,7 +125,14 @@ export async function seedLearnDay(
   );
   await ok(request.post(`/api/practice/${site}/lessons/${sorting.slug}/done`, { headers: auth }));
   await ok(request.post(`/api/practice/${site}/problems/${stable.slug}/submit`, { headers: auth, data: { answer: "0" } }));
-  const day = { token, now: { slug: stable.slug, title: stable.title }, potd: { slug: search.slug, title: search.title }, company: "Infosys", contest: "Weekly Round 13" };
+  const day = {
+    token,
+    track: { slug: track["slug"] as string, title: "DSA for placements" },
+    lessons: [
+      { slug: sorting.slug, title: "Stable sorting" },
+      { slug: searching.slug, title: "Searching a sorted array" },
+    ],
+    now: { slug: stable.slug, title: stable.title }, potd: { slug: search.slug, title: search.title }, company: "Infosys", contest: "Weekly Round 13" };
   if (!mine) return { ...day, mine: null };
 
   // Revision, lists and notes (K2-3). A lesson's quiz answered wrong makes both its problems due today.
