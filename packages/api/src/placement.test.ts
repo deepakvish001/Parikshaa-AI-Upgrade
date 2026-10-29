@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { pgliteExecutor } from "@parikshaa/store";
 import { fakeModel } from "./fake-model.js";
 import { InviteCodes } from "./invite-codes.js";
+import { driveApplyCode } from "./placement.js";
 import { importStudents } from "./student-import.js";
 import { addOrganisation, addStaff, bearer, freshDatabase, signIn, TOKEN_SECRET, wire } from "./testing/harness.js";
 
@@ -231,6 +232,17 @@ describe("readiness", () => {
     expect(readiness.atRisk.map((r: { ref: string }) => r.ref).sort()).toEqual(["CS002", "EC001"]);
     expect(readiness.atRisk[0]).toMatchObject({ percent: 33.3, weakest: "Operating systems" });
     expect((await call("GET", "/placement/readiness?batch=2028", owner)).json().branches).toEqual([]);
+  });
+});
+
+describe("a drive's apply code", () => {
+  it("never begins like a partner college's code, which the link would look up instead", () => {
+    const collegeLike = Buffer.from([0x73, 0xf0, 1, 2, 3, 4, 5, 6, 7]);
+    expect(collegeLike.toString("base64url")).toMatch(/^c_/);
+    expect(driveApplyCode(collegeLike)).toMatch(/^d_/);
+    expect(driveApplyCode(collegeLike).slice(1)).toBe(collegeLike.toString("base64url").slice(1));
+    const plain = Buffer.from([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    expect(driveApplyCode(plain)).toBe(plain.toString("base64url"));
   });
 });
 

@@ -17,6 +17,7 @@ import {
   type Lesson,
   type Plan,
   type PotdView,
+  type Problem,
   type ProblemList,
   type ProblemSummary,
   type Revision,
@@ -24,6 +25,7 @@ import {
   type Submission,
   type TrackSummary,
   type TrackView,
+  type TutorHistory,
 } from "../practice/client.ts";
 import { ScreenLink, useLearn } from "./context.tsx";
 import { screenById } from "./screens.ts";
@@ -232,6 +234,12 @@ export const useLesson = (slug: string): UseQueryResult<Lesson> => useLearnQuery
 
 /** The site's problems, each with the learner's standing (K2-4). The API gives them all at once. Open to anyone. */
 export const useProblems = (): UseQueryResult<readonly ProblemSummary[]> => useLearnQuery(["problems"], (client) => client.problems(), { session: false });
+
+/** One problem (K2-5): its statement, samples and starters, the editorial once it opens, and the learner's standing. Open to anyone. */
+export const useProblem = (slug: string): UseQueryResult<Problem> => useLearnQuery(["problem", slug], (client) => client.problem(slug), { session: false });
+
+/** What Sahayak has said to the learner about a problem, and the next hint with its cost (K2-5's hints); signed in only. */
+export const useTutor = (slug: string, enabled = true): UseQueryResult<TutorHistory> => useLearnQuery(["prep", "tutor", slug], (client) => client.tutor(slug), { enabled });
 
 /** The problem of the day and a month's calendar (`YYYY-MM`) up to today, with the learner's days off (K2-4). Open to anyone. */
 export const usePotd = (month: string | null): UseQueryResult<PotdView> => useLearnQuery(["potd", month], (client) => client.potd(month ?? undefined), { session: false });

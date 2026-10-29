@@ -19,6 +19,8 @@ account ka Claude **isi file se** shuru karta hai aur isi ko update karta hai. O
    `claude/learn-v2` fast-forward se wahan aayi). [#70](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/70) (K2-2) bhi owner ne 28 Oct ko usi branch me merge kiya (`1b568d6`;
    `claude/learn-v2` fast-forward). **Kadam 2 ab draft [#71](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/71) me** (K2-3 se, 28 Oct khola; [HANDOFF.md](HANDOFF.md) ki row dekho;
    wo bhi merge ho chuka ho to naya draft PR kholo), base `claude/festive-maxwell-pb4k5v` jab tak #66 khula hai, phir `main`.
+   **29 Oct 2026:** #71 aur #82 (docs) `main` me merge; `claude/learn-v2` ab `main` se (fast-forward `7b636b8`). **K2-5 draft PR
+   [#83](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/83), base `main`.** Merge ho jaye to `origin/main` laao (ff-only, warna normal merge commit) aur naya draft PR.
    Merge hua PR dobara mat kholo, us par commit mat jodo.
 2. **Doosra session to nahi chal raha?** §6 ki aakhri row. "Chal raha" ho aur 30 minute ke andar commit ho, to owner
    se poochho.
@@ -351,8 +353,30 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
     (`learn/LearnPotd.tsx`: aaj ka problem, streak, mahina Som se `?month=`, har din shabd me, mahina peeche/aage). Aaj ke rail ka POTD
     link `potd` par. Seed me kal (graph, "baad me") aur parson (stable, "chhoota") ke POTD. Visual me POTD ki tareekhein route intercept se
     29 Oct 2026 par khiskti hain (`learn.visual.ts` `onFixedDay`). Tests: unit 7, e2e `tests/learn-practice.spec.ts` 2, visual 8.
-    **K2-4 poora.** **Kahan ruka / agla:** K2-5 (problem workspace + editorial); tab tak problem kholne par "abhi Learn me nahi" page.
-  - [ ] K2-5 problem workspace + editorial
+    **K2-4 poora.**
+  - [x] K2-5 (29 Oct, owner: "K2-5 shuru karo"; #82 (docs) `main` me merge ho chuka tha, `claude/learn-v2` fast-forward `origin/main` (`7b636b8`) par; naya draft PR [#83](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/83), base `main`)
+    problem workspace + editorial: `learn/LearnWorkspace.tsx` + `learn-workspace.css` (apna chunk), route `problems/<slug>` (`screens.ts` `SUB_ROUTE` + `PROBLEM_SCREEN`).
+    **Focus screen** (`LearnApp.tsx` ka `FOCUS`: side bar/top bar nahi, kit `FocusBar` + `Panes`; wapas = pichhli Learn screen, warna Abhyas; shell
+    ka ⋯ menu; Ctrl+J aur "Fail kyun? Poochho" teesra Sahayak pane kholte, uska panel K2-6 me). Problem pane: statement (Markdown, HTML nahi), examples,
+    hints (`/tutor`, `/tutor/hint`; pehla author ka free), Editorial (API ka niyam: solve ya 3 galat; contest me band; approach tabs), Submissions
+    (code dekho, editor me daalo), Mera note (`/notes/problem/<slug>`). Code pane: purani site ka CodeMirror (`components/CodeEditor.tsx`, wahi
+    `CodeEditor-*.js` chunk, lazy), bhasha, reset, draft purani key par, Run (examples/apna input), Submit (judge; har verdict, test ki patti, pehla
+    fail test, chhupa test sirf verdict). Choice problem usi panes me. Hooks `useProblem`, `useTutor` (`data.tsx`). `approachesOf` ab
+    `practice/client.ts` me (saajha chunk; `editorial.ts` re-export), warna nayi `editorial-*.js` file banti. Dark editor ke line number Learn
+    ki ink me (CodeMirror ka grey axe me fail). **API me badlav nahi.** Tests: unit 24 (`LearnWorkspace.test.tsx`), e2e `learn-workspace.spec.ts` 2
+    (e2e ka local runner Python chalata), `learn-aaj.spec.ts` ab workspace tak; seed `learn-day.ts` me `code: true` (code problem + editorial + hint);
+    visual 6 naye (MINE site par; galat submit wali images sabse aakhir me, samay `.lw-time` mask), 135/135. Budget: `LearnWorkspace-*.js`
+    12.1/13, `.css` 2.0/3, `data-*.js` 14 → 16 (kit ke `Panes`/`FocusBar` ka code is saajha chunk me). **Kadam 3/4 ki list me jode:** sabse chhota
+    fail test (LV-B1), "X% se tez", focus bar ka task timer, likes, "galti batao", editorial ka dry-run player + 4 bhasha (LV-E5), workspace me Save
+    (list) aur Share code (purani site par hain; agle UI tukde me), discussion (K2-12), `?contest=` se khulna (K2-9), SQL tables (K2-7).
+    **CI (#83, pehla run):** (1) visual `learn-workspace-wa-1440-dark` laal: judge ka samay/memory har run alag, aur mask ka dabba
+    text ki chaudai jitna, isliye image badalti; ab screenshot se pehle `.lw-time` me ek hi text, phir mask. (2) `check` me
+    `api/src/placement.test.ts` ("applying from a drive's link") laal, hamare badlav se nahi: drive ka apply code `randomBytes(9)` base64url
+    kabhi `c_` se shuru ho (4,096 me ek) to `#byCode` use college ka code samajhta aur link "not_found" deta (production me bhi). Ab
+    `driveApplyCode()` aisa code `d_` se shuru karta, test ke saath. Route/schema wahi, `openapi` nahi badla.
+    **Kahan ruka:** K2-5 poora; CI ke dono laal (visual mask, placement flaky) theek karke push. Agla session pehle #83 ke head ke
+    checks dekhe (`gh api repos/<owner>/<repo>/commits/<sha>/check-runs`; laal ho to `…/check-runs/<id>/annotations` sabse sasta).
+    **Agla:** K2-6 Sahayak panel (workspace ka teesra pane aur shell ka pane, dono).
   - [ ] K2-6 Sahayak panel
   - [ ] K2-7 SQL
   - [ ] K2-8 aptitude (maujooda MCQ par; mocks Kadam 3/4)
@@ -470,6 +494,7 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
 
 ## 7. Log (naya upar)
 
+- 29 Oct 2026 (session 4 aage, K2-5): owner "K2-5 shuru karo". Autosave me adhoora kuch nahi (sirf state file); `claude/learn-v2` `origin/main` (`7b636b8`) par fast-forward. Learn ka problem workspace + editorial (`learn/LearnWorkspace.tsx`): focus screen, kit ke panes, purani site ka editor (lazy), Run/Submit asli judge par, verdict + pehla fail test, submissions, draft, hints, editorial, note; Aaj/sheet/Abhyas/POTD/lists ke problem link ab yahin. API wahi. 24 unit + 2 e2e + 6 visual. Naya draft PR #83 (base `main`). Agla: K2-6.
 - 29 Oct 2026 (session 4 aage, K2-4 doosra hissa): problems bank (Abhyas, `learn/LearnProblems.tsx`) aur POTD calendar (`learn/LearnPotd.tsx`) asli API par; Aaj ka POTD link `potd` par. 7 unit + 2 e2e + 8 visual. **K2-4 poora** (#71 me, K2-3 ke saath). Agla: K2-5.
 - 29 Oct 2026 (session 4 aage, K2-4 pehla hissa): owner "K2-4 shuru karo"; #71 (K2-3) abhi khula draft, isliye usi branch par. Autosave me adhoora kuch nahi (sirf state file). Learn ki DSA sheet (`learn/LearnSheet.tsx`) aur lesson reader (`learn/LearnLesson.tsx`) asli API par; `/potd` me `month`, `date`, `daysOff` (chhoti API kami). 10 unit + 2 e2e (asli API) + 8 visual. Agla: K2-4 doosra hissa (problems bank + POTD calendar).
 - 28 Oct 2026 (session 4 aage, K2-3): owner ne #70 `claude/festive-maxwell-pb4k5v` me merge kiya (`1b568d6`); `claude/learn-v2` fast-forward, autosave me adhoora kuch nahi tha. Owner "K2-3 shuru karo". Learn ki Revision (`learn/LearnRevise.tsx`), Meri lists aur Notes (`learn/LearnMine.tsx`) asli API par; `/revise` ke card me `next` (chhoti API kami). 16 naye unit + 2 e2e (asli API) + 12 visual. Naya draft PR #71. #71 par CI ka har check hara (`ebb07bf`: check, e2e, docker, security, deploy, CodeQL/analyze, GitGuardian); `security` me dependency-review ab chalta hai (owner ne Dependency graph chalu kiya), isliye tracker "Ruka hua kaam" ki #70 wali row hata di. Agla: K2-4.

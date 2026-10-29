@@ -9,7 +9,9 @@ import { istDay, seedLearnDay } from "../tests/learn-day.js";
  * lesson with its quiz (the second learner's), Abhyas (the problems) and the
  * problem of the day, whose calendar is moved onto one fixed day; since K2-2 also Learn's sign-in (signed out), onboarding's first
  * question and Mera plan; since K2-3 revision (a card's front), Meri lists and
- * Notes, on a second learner seeded with them; at 1440 and 390, dark (Learn's default) and light,
+ * Notes, on a second learner seeded with them; since K2-5 a code problem's workspace (the second
+ * learner's site), at rest and, last of all, after a wrong submission (its time and memory set to one text, then masked);
+ * at 1440 and 390, dark (Learn's default) and light,
  * and the narrow side bar at 1100. Signed in as the seeded learner, except on
  * the sign-in page (the side bar shows their name). What the date changes is in `.ln-dated`: set to one date,
  * then masked. The page's clock is held at 7 pm in India today, so the
@@ -24,14 +26,17 @@ let token = "";
 let mineToken = "";
 // The searching lesson: the second of the plan's track, with a quiz on the learner seeded with `mine`.
 let lesson = "";
+// The code problem on the second learner's site (K2-5).
+let code = "";
 
 test.describe.configure({ mode: "serial" });
 
 test.beforeAll(async ({ request }) => {
   ({ token } = await seedLearnDay(request, { org: "e2e-learn-visual", site: SITE, learner: { name: "Asha Verma", email: "asha@students.learn-visual.test" } }));
-  const mine = await seedLearnDay(request, { org: "e2e-learn-visual-mine", site: MINE, learner: { name: "Asha Verma", email: "asha@students.learn-mine-visual.test" }, mine: true });
+  const mine = await seedLearnDay(request, { org: "e2e-learn-visual-mine", site: MINE, learner: { name: "Asha Verma", email: "asha@students.learn-mine-visual.test" }, mine: true, code: true });
   mineToken = mine.token;
   lesson = mine.lessons[1]!.slug;
+  code = mine.code!.slug;
 });
 
 const DATED = ".ln-dated";
@@ -88,6 +93,11 @@ async function open(page: Page, path: string, theme: "light" | "dark", signedIn 
   }
   if (path === "/plan") await expect(page.getByRole("region", { name: "Target companies" })).toContainText("Infosys");
   if (path === "/onboarding") await expect(page.getByRole("button", { name: /^DSA for placements/ })).toBeVisible();
+  if (path.startsWith("/problems/")) {
+    // The editor's own chunk, and the hint (in the problem pane, a hidden tab on a phone).
+    await expect(page.locator(".cm-content")).toContainText("n = int(input())");
+    await expect(page.locator(".lw-hint-next")).toHaveCount(1);
+  }
   await page.waitForLoadState("networkidle");
   await expect.poll(() => page.evaluate(() => document.documentElement.dataset["theme"])).toBe(theme);
   await page.evaluate((selector) => {
@@ -160,6 +170,11 @@ for (const theme of ["dark", "light"] as const) {
         await expect(page).toHaveScreenshot(`learn-${name}-1440-${theme}.png`, { fullPage: true, mask: masks(page) });
       });
     }
+
+    test("problem workspace (K2-5)", async ({ page }) => {
+      await open(page, `/problems/${code}`, theme, true, MINE);
+      await expect(page).toHaveScreenshot(`learn-workspace-1440-${theme}.png`, { mask: masks(page) });
+    });
   });
 
   test.describe(`learn · 390 · ${theme}`, () => {
@@ -226,6 +241,11 @@ for (const theme of ["dark", "light"] as const) {
         await expect(page).toHaveScreenshot(`learn-${name}-390-${theme}.png`, { fullPage: true, mask: masks(page) });
       });
     }
+
+    test("problem workspace (K2-5)", async ({ page }) => {
+      await open(page, `/problems/${code}`, theme, true, MINE);
+      await expect(page).toHaveScreenshot(`learn-workspace-390-${theme}.png`, { mask: masks(page) });
+    });
   });
 }
 
@@ -238,3 +258,24 @@ test.describe("learn · 1100 · dark", () => {
     await expect(page).toHaveScreenshot("learn-courses-1100-dark.png");
   });
 });
+
+// Last, as it records a submission: the judge's verdict on a wrong answer, its time masked (K2-5).
+for (const theme of ["dark", "light"] as const) {
+  test.describe(`learn · workspace verdict · ${theme}`, () => {
+    test.use({ viewport: { width: 1440, height: 900 }, colorScheme: theme });
+
+    test("a wrong answer (K2-5)", async ({ page }) => {
+      await open(page, `/problems/${code}`, theme, true, MINE);
+      await page.getByRole("textbox", { name: "Aapka code" }).fill("print(-1)");
+      await page.getByRole("button", { name: "Submit", exact: true }).click();
+      await expect(page.getByRole("region", { name: "Pehla fail test: test 1" })).toBeVisible({ timeout: 30_000 });
+      await page.waitForLoadState("networkidle");
+      // The judge's time and memory change run to run: one fixed text (so the mask is one size), then masked.
+      await page.evaluate(() => {
+        for (const el of document.querySelectorAll(".lw-time")) el.textContent = " · 10 ms · 9.9 MB";
+      });
+      await page.mouse.move(0, 0);
+      await expect(page).toHaveScreenshot(`learn-workspace-wa-1440-${theme}.png`, { mask: [...masks(page), page.locator(".lw-time")] });
+    });
+  });
+}

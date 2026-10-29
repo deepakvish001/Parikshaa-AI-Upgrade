@@ -17,7 +17,7 @@ import {
   UserRound,
   Zap,
 } from "lucide-react";
-import { Bookmark, BookOpen, BriefcaseBusiness, Building2, ListChecks, MessagesSquare, Target, Users, type LearnIcon } from "./icons.tsx";
+import { Bookmark, BookOpen, BriefcaseBusiness, Building2, CodeXml, ListChecks, MessagesSquare, Target, Users, type LearnIcon } from "./icons.tsx";
 
 /**
  * Learn v2's screens in the learner's side bar: the mock's registry
@@ -98,15 +98,24 @@ export const LESSON_SCREEN: LearnScreen = {
   desc: ["Read, check yourself, note", "Padho, khud jaancho, note likho", "पढ़ो, जाँचो, नोट"],
 };
 
-/** Addresses below a screen (K2-4): `sheet/<track>` and `lessons/<lesson>`. */
-export const SUB_ROUTE = /^(sheet|lessons)\/([a-z0-9][a-z0-9-]{0,120})$/;
+/** A problem's workspace (K2-5): it opens from Aaj, the sheet, Abhyas, the problem of the day or a list; it belongs to Abhyas. */
+export const PROBLEM_SCREEN: LearnScreen = {
+  id: "problems",
+  group: "practice",
+  icon: CodeXml,
+  title: ["Problem workspace", "Problem workspace", "प्रश्न कार्यक्षेत्र"],
+  desc: ["Problem and code; Sahayak opens a third pane", "Problem aur code; Sahayak se teesra pane", "प्रश्न और कोड; सहायक तीसरा पैन"],
+};
 
-/** The screen a route belongs to: its own, the sheet's for `sheet/<track>`, a lesson's for `lessons/<slug>`. */
+/** Addresses below a screen: `sheet/<track>` and `lessons/<lesson>` (K2-4), `problems/<problem>` (K2-5). */
+export const SUB_ROUTE = /^(sheet|lessons|problems)\/([a-z0-9][a-z0-9-]{0,120})$/;
+
+/** The screen a route belongs to: its own, the sheet's for `sheet/<track>`, a lesson's for `lessons/<slug>`, the workspace for `problems/<slug>`. */
 export function screenOfRoute(route: string | null): LearnScreen | undefined {
   if (route === null) return undefined;
   const sub = SUB_ROUTE.exec(route);
   if (sub === null) return screenById(route);
-  return sub[1] === "lessons" ? LESSON_SCREEN : screenById(sub[1]!);
+  return sub[1] === "lessons" ? LESSON_SCREEN : sub[1] === "problems" ? PROBLEM_SCREEN : screenById(sub[1]!);
 }
 
 /** The screen a phone's bottom tab stands for: Aaj, Seekho (its group) and Abhyas (its group). */
