@@ -1141,6 +1141,24 @@
   min-width: 0;
   outline: none;
 }
+/* A focus screen (a problem's workspace, K2-5): its own bar and panes fill the window, no side bar. */
+.ln-app.ln-focus {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+}
+.ln-focus-main {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  outline: none;
+}
+.ln-focus-main > .ln-notice {
+  margin: var(--space-2) var(--space-2) 0;
+}
 .ln-bare-main > .ln-notice {
   margin: var(--space-4) auto 0;
   width: min(720px, calc(100% - 32px));

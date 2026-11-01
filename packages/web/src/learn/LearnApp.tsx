@@ -26,6 +26,8 @@ const Sheet = lazy(() => import("./LearnSheet.tsx").then((m) => ({ default: m.Sh
 const LessonReader = lazy(() => import("./LearnLesson.tsx").then((m) => ({ default: m.LessonReader })));
 const Problems = lazy(() => import("./LearnProblems.tsx").then((m) => ({ default: m.Problems })));
 const Potd = lazy(() => import("./LearnPotd.tsx").then((m) => ({ default: m.Potd })));
+// A problem's workspace (K2-5): a focus screen of its own; the code editor is a further chunk it loads.
+const Workspace = lazy(() => import("./LearnWorkspace.tsx").then((m) => ({ default: m.Workspace })));
 const LAZY: Readonly<Record<string, () => ReactNode>> = {
   plan: () => <MeraPlan />,
   revision: () => <Revision />,
@@ -55,8 +57,9 @@ const LAZY: Readonly<Record<string, () => ReactNode>> = {
  * lists and Notes the learner's own (K2-3); the DSA sheet (`sheet`,
  * `sheet/<track>`), a lesson (`lessons/<slug>`), Abhyas (the problems
  * bank) and the problem of the day with its calendar, on the site's content
- * with the learner's standing (K2-4); the others a placeholder until their
- * Kadam 2 slice. Signing in and up and onboarding
+ * with the learner's standing (K2-4); a problem (`problems/<slug>`) opens its
+ * workspace, a focus screen without the side bar (K2-5); the others a
+ * placeholder until their Kadam 2 slice. Signing in and up and onboarding
  * (K2-2) are pages of their own, without the side bar ("bare", as in the
  * mock). The side bar names the signed-in learner, or offers the way to sign in.
  */
@@ -93,6 +96,8 @@ function useLearnTheme(): ["dark" | "light", (theme: "dark" | "light") => void] 
 export const BARE = ["signin", "signup", "onboarding"] as const;
 export type BareRoute = (typeof BARE)[number];
 const isBare = (route: string | null): route is BareRoute => BARE.some((id) => id === route);
+/** A problem's workspace is a focus screen (DESIGN-SYSTEM §7): its own bar and panes, no side bar (K2-5). */
+const FOCUS = /^problems\/([a-z0-9][a-z0-9-]{0,120})$/;
 
 /** The screen an address shows: "aaj" for the site's root, null for one Learn does not have. */
 export function routeOf(site: string, pathname: string): string | null {
@@ -150,10 +155,14 @@ function Shell({ site }: { readonly site: string }) {
   const [more, setMore] = useState(false);
   const main = useRef<HTMLElement>(null);
   const moved = useRef(false);
+  // The screen the learner came from, for a focus screen's "back" (K2-5).
+  const [from, setFrom] = useState<string | null>(null);
 
   const go = useCallback(
     (id: string, replace = false) => {
       const url = `/practice/${site}/${id}`;
+      const was = routeOf(site, window.location.pathname);
+      if (was !== null && !FOCUS.test(was) && !isBare(was)) setFrom(was);
       if (`${window.location.pathname}${window.location.search}` !== url) window.history[replace ? "replaceState" : "pushState"](null, "", url);
       moved.current = true;
       setMore(false);
@@ -209,6 +218,32 @@ function Shell({ site }: { readonly site: string }) {
   // Aaj's rail is the learner's own week; signed out there is none.
   const rail = route === "aaj" && signedIn ? <AajRail /> : null;
   const noticeLine = <NoticeLine notice={notice} onDismiss={() => setNotice(null)} />;
+
+  const focus = route === null ? null : FOCUS.exec(route);
+  if (focus !== null) {
+    return (
+      <LearnProvider value={state}>
+        <div className="ln-app ln-focus" lang={LEARN_LANGS.find((l) => l.id === lang)?.lang}>
+          <a
+            className="ln-skip"
+            href="#ln-main"
+            onClick={(event) => {
+              event.preventDefault();
+              main.current?.focus();
+            }}
+          >
+            {t(T.skip)}
+          </a>
+          <main id="ln-main" ref={main} tabIndex={-1} className="ln-focus-main">
+            {noticeLine}
+            <Suspense fallback={<Loading shape="workspace" />}>
+              <Workspace key={focus[1]} slug={focus[1]!} more={<MoreMenu />} back={from ?? "practice"} ai={ai} setAi={setAi} />
+            </Suspense>
+          </main>
+        </div>
+      </LearnProvider>
+    );
+  }
 
   if (isBare(route)) {
     return (
