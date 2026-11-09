@@ -393,7 +393,10 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
     **Staging VM (9 Nov, isi PR me):** owner ne Hostinger VPS par bootstrap chalaya; sab bana, par runner shuru nahi hua: compose me
     `cpus: 4`, machine me 2 CPU. Ab `cpus: ${RUNNER_CPUS:-4}`, setup-server.sh `nproc` se (4 tak) likhta; Caddy ka apt install
     `--force-confold` (bina terminal ke dpkg ka sawaal fail karta, chhote package se jaancha); `setup-server.test.sh` me 4 check.
-    **Kahan ruka:** K2-6 + VM fix #86 par (CI dekhna, owner merge). Staging: owner ka step 2 + DNS + secrets, phir "ho gaya" par Claude
+    **Kahan ruka:** K2-6 + VM fix #86 par (CI dekhna, owner merge). Staging (9 Nov raat): step 2 chala, VM par API + runner chal rahe ("The API answers"), dono DNS sahi (Vercel: configured). Owner ne
+    terminal ka output chat me bheja, usme deploy key aur edge secret khul gaye: owner ko `rotate.sh` diya (naya edge secret, Caddy reload, naya
+    deploy key; nakli settings par jaancha). Ab owner: rotate, Vercel `PARIKSHAA_EDGE_SECRET`, GitHub `staging` me `VM_SSH_KEY`,
+    `MIGRATE_DATABASE_URL`, `VM_KNOWN_HOSTS`, `VM_HOST`, `VM_USER`, `APP_URL`, `API_ORIGIN` (deploy-web ko sirf `API_ORIGIN` chahiye), phir "ho gaya" par Claude
     `deploy-api.yml` aur `deploy-web.yml` (staging) chalaye. **Agla:** K2-7 SQL.
   - [ ] K2-7 SQL (9 Nov raat, owner "K2-7 shuru karo"; usi draft PR #86 me jayega). **5 ghante ki limit (0.82) par ruka: code commit NAHI,
     autosave `autosave/claude/learn-v2--eb426b80` me** (restore: us branch se files lo; §1). **Bana aur unit se jaancha:** API `GET /problems` ke har
