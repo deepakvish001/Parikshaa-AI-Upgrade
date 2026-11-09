@@ -60,6 +60,7 @@ const learn: LearnState = {
   href: (id) => `/practice/${SITE}/${id}`,
   go: () => undefined,
   openSahayak: () => undefined,
+  setHere: () => undefined,
   notify: () => undefined,
 };
 

@@ -641,6 +641,26 @@ describe("the tutor", () => {
     expect(lesson.id).toBeTruthy();
   });
 
+  it("keeps what the tutor said about a lesson for the learner who asked, with what each ask costs", async () => {
+    await ok("POST", owner, "/practice-admin/lessons", { title: "Heaps", body: "A heap keeps its smallest at the root.", estMinutes: 10, published: true });
+    const asha = await signUp();
+    const ravi = await signUp("ravi@learners.test");
+    expect(await ok("GET", asha, `${S}/lessons/heaps/tutor`)).toEqual({ entries: [], costs: TUTOR_CREDITS });
+    model.reply = () => ({ text: "The root is the **smallest**." });
+    await ok("POST", asha, `${S}/tutor/doubt`, { lesson: "heaps", question: "Where is the smallest?" }, 200);
+    await ok("POST", asha, `${S}/tutor/notes`, { lesson: "heaps" }, 200);
+    const history = await ok("GET", asha, `${S}/lessons/heaps/tutor`);
+    expect(history.entries.map((e: { mode: string; question: string; answer: string; credits: number }) => [e.mode, e.question, e.answer, e.credits])).toEqual([
+      ["doubt", "Where is the smallest?", "The root is the **smallest**.", TUTOR_CREDITS.doubt],
+      ["notes", "", "The root is the **smallest**.", TUTOR_CREDITS.notes],
+    ]);
+    // Another learner's questions are never theirs to read; a problem's history now says what a note costs too.
+    expect((await ok("GET", ravi, `${S}/lessons/heaps/tutor`)).entries).toEqual([]);
+    expect((await ok("GET", asha, `${S}/problems/${problems.code!.slug}/tutor`)).costs.notes).toBe(TUTOR_CREDITS.notes);
+    expect((await call("GET", asha, `${S}/lessons/nothing-here/tutor`)).statusCode).toBe(404);
+    expect((await call("GET", null, `${S}/lessons/heaps/tutor`)).statusCode).toBe(401);
+  });
+
   it("drafts a revision note on a problem only once it is solved, from the learner's own code, and saves nothing itself", async () => {
     const asha = await signUp();
     model.reply = () => ({ text: "## Key idea\nAdd the two numbers." });
@@ -683,6 +703,7 @@ describe("the tutor", () => {
     const locked = await call("POST", asha, `${S}/tutor/notes`, { lesson: "heaps" });
     expect(locked.statusCode).toBe(402);
     expect((await call("POST", asha, `${S}/tutor/doubt`, { lesson: "heaps", question: "Summarise this lesson for me." })).statusCode).toBe(402);
+    expect((await call("GET", asha, `${S}/lessons/heaps/tutor`)).json().error).toBe("plus_required");
     expect(model.requests).toHaveLength(0);
     const free = await ok("POST", asha, `${S}/tutor/notes`, { lesson: "arrays" }, 200);
     expect(free.mode).toBe("notes");

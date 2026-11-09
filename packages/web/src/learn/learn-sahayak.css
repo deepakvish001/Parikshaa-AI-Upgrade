@@ -1,0 +1,332 @@
+/*
+ * Sahayak's panel (K2-6; the mock's .sahayak, docs/learn/mock-v3/app/src/styles/shell.css):
+ * a bar (what it is about, credits), the conversation that scrolls, what to ask for, and the box
+ * to ask in, kept at the bottom. In the shell's pane, on a phone's sheet and in the workspace's pane.
+ */
+.ls {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--panel);
+}
+.ls-state {
+  flex: 1 1 auto;
+  padding: var(--space-4);
+}
+.ls-small {
+  font-size: var(--text-xs);
+}
+.ls-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 8px 12px 8px 16px;
+  font-size: var(--text-xs);
+  color: var(--ink-2);
+  border-bottom: 1px solid var(--line);
+}
+.ls-ctx {
+  display: inline-flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  height: 28px;
+  padding: 0 9px;
+  font-family: var(--f-mono);
+  font-size: var(--text-xs);
+  background: var(--sunk);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.ls-ctx svg {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  color: var(--ai-text);
+}
+.ls-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ls-credits {
+  margin-left: auto;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.ls-buy {
+  white-space: nowrap;
+  color: var(--ai-text);
+}
+.ls-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  padding: var(--space-4);
+  overflow-y: auto;
+  outline: none;
+}
+.ls-body:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--focus-color);
+}
+.ls-note {
+  margin: 0;
+  padding: 8px 10px;
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+  background: var(--panel-2);
+  border: 1px dashed var(--line-2);
+  border-radius: var(--radius-lg);
+}
+.ls-why {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 12px;
+  font-size: var(--text-sm);
+  background: var(--ai-soft);
+  border: 1px solid var(--ai-line);
+  border-radius: var(--radius-lg);
+}
+.ls-why p {
+  margin: 0;
+}
+.ls-why-h {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: var(--text-sm);
+}
+.ls-why-h svg {
+  width: 16px;
+  height: 16px;
+  color: var(--ai-text);
+}
+.ls-why-last {
+  font-weight: var(--weight-semibold);
+}
+.ls-talk {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ls-talk > li {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ls-me {
+  align-self: flex-end;
+  max-width: 85%;
+  margin: 0;
+  padding: 8px 12px;
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--page);
+  background: var(--ink);
+  border-radius: var(--radius-xl) var(--radius-xl) var(--radius-xs) var(--radius-xl);
+}
+.ls-msg {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}
+.ls-msg > .ln-md {
+  align-self: stretch;
+  min-width: 0;
+}
+.ls-msg-h {
+  display: flex;
+  align-self: stretch;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: var(--text-xs);
+}
+.ls-msg-h svg,
+.ls-thinking svg {
+  width: 15px;
+  height: 15px;
+  color: var(--ai-text);
+}
+.ls-thinking {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+.ls-qs {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-self: stretch;
+  margin: 0;
+  padding-left: 20px;
+}
+.ls-q {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.ls-q textarea {
+  width: 100%;
+}
+.ls-trouble {
+  margin: 0;
+}
+.ls-broke {
+  margin: 0 12px 8px;
+}
+.ls-acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px 8px;
+  border-top: 1px solid var(--line);
+}
+.ls-acts svg {
+  width: 14px;
+  height: 14px;
+  vertical-align: -2px;
+}
+.ls-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: var(--text-xs);
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-full);
+  box-shadow: none;
+  cursor: pointer;
+}
+.ls-chip:hover:not(:disabled) {
+  color: var(--ink);
+  background: var(--ai-soft);
+  border-color: var(--ai-line);
+  box-shadow: none;
+}
+.ls-chip:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.ls-chip svg {
+  color: var(--ai-text);
+}
+.ls-compose {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 12px 8px;
+  padding: 10px 10px 8px 12px;
+  background: var(--panel);
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-1);
+  transition:
+    border-color 0.14s,
+    box-shadow 0.14s;
+}
+.ls-compose:focus-within {
+  border-color: var(--ai);
+  box-shadow: 0 0 0 3px var(--ai-soft);
+}
+.ls-compose textarea {
+  width: 100%;
+  padding: 0;
+  font: inherit;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  outline: none;
+  resize: none;
+}
+.ls-compose textarea::placeholder {
+  color: var(--ink-3);
+}
+.ls-compose-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.ls-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 0 16px 12px;
+}
+.ls-link {
+  min-height: 24px;
+  padding: 0;
+  font: inherit;
+  font-size: var(--text-xs);
+  color: var(--ink-2);
+  text-decoration: underline;
+  background: none;
+  border: 0;
+  box-shadow: none;
+  cursor: pointer;
+}
+.ls-link:hover:not(:disabled) {
+  color: var(--ink);
+  background: none;
+  box-shadow: none;
+}
+.ls-danger {
+  color: var(--red-text);
+}
+.ls-locked {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+}
+.ls-locked p {
+  margin: 0;
+}
+.ls-mark {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  color: var(--ink-3);
+  background: var(--sunk);
+  border-radius: var(--radius-xl);
+}
+.ls-mark svg {
+  width: 24px;
+  height: 24px;
+}
+@media (max-width: 860px) {
+  .ls-chip,
+  .ls-link {
+    min-height: 40px;
+  }
+}

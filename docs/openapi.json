@@ -51538,6 +51538,9 @@
                         "doubt": {
                           "type": "number"
                         },
+                        "notes": {
+                          "type": "number"
+                        },
                         "followup": {
                           "type": "number"
                         },
@@ -51550,16 +51553,386 @@
                         "hint",
                         "review",
                         "doubt",
+                        "notes",
                         "followup",
                         "followupReply"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": false,
+                      "description": "What each ask costs, in credits. hint1 is the first rung when the author wrote no hint (then it is free)."
                     }
                   },
                   "required": [
                     "entries",
                     "nextHint",
                     "failures",
+                    "costs"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/practice/{site}/lessons/{lesson}/tutor": {
+      "get": {
+        "summary": "What the tutor has said to me about a lesson",
+        "tags": [
+          "Prep"
+        ],
+        "description": "My doubts and note drafts on the lesson, oldest first, and what each ask costs. A lesson that needs Plus is refused without it.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40
+            },
+            "in": "path",
+            "name": "site",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "in": "path",
+            "name": "lesson",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "learnerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "entries": {
+                      "readOnly": true,
+                      "description": "Doubts and note drafts on the lesson, oldest first.",
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "mode": {
+                            "type": "string",
+                            "enum": [
+                              "hint",
+                              "review",
+                              "doubt",
+                              "notes",
+                              "followup",
+                              "followup_reply"
+                            ]
+                          },
+                          "hintLevel": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "answer": {
+                            "type": "string",
+                            "description": "Markdown."
+                          },
+                          "credits": {
+                            "type": "number"
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "data": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "propertyNames": {
+                                  "type": "string"
+                                },
+                                "additionalProperties": {}
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The answer in a fixed shape. A review: { verdict: correct|partly|wrong, summary, logic: { right[], wrong[] }, complexity: { time, space, better }, quality[], edgeCases[] }. Follow-ups: { questions: [two] }. A reply to one: { verdict: strong|partial|missing, feedback, stronger }. Null for hints, doubts and notes."
+                          },
+                          "question": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "mode",
+                          "hintLevel",
+                          "answer",
+                          "credits",
+                          "createdAt",
+                          "data",
+                          "question"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "costs": {
+                      "type": "object",
+                      "properties": {
+                        "hint1": {
+                          "type": "number"
+                        },
+                        "hint": {
+                          "type": "number"
+                        },
+                        "review": {
+                          "type": "number"
+                        },
+                        "doubt": {
+                          "type": "number"
+                        },
+                        "notes": {
+                          "type": "number"
+                        },
+                        "followup": {
+                          "type": "number"
+                        },
+                        "followupReply": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "hint1",
+                        "hint",
+                        "review",
+                        "doubt",
+                        "notes",
+                        "followup",
+                        "followupReply"
+                      ],
+                      "additionalProperties": false,
+                      "description": "What each ask costs, in credits. hint1 is the first rung when the author wrote no hint (then it is free)."
+                    }
+                  },
+                  "required": [
+                    "entries",
                     "costs"
                   ],
                   "additionalProperties": false

@@ -75,11 +75,18 @@ const tutorAnswer = z.object({
       "The answer in a fixed shape. A review: { verdict: correct|partly|wrong, summary, logic: { right[], wrong[] }, complexity: { time, space, better }, quality[], edgeCases[] }. Follow-ups: { questions: [two] }. A reply to one: { verdict: strong|partial|missing, feedback, stronger }. Null for hints, doubts and notes.",
     ),
 });
+const tutorCosts = z
+  .object({ hint1: z.number(), hint: z.number(), review: z.number(), doubt: z.number(), notes: z.number(), followup: z.number(), followupReply: z.number() })
+  .describe("What each ask costs, in credits. hint1 is the first rung when the author wrote no hint (then it is free).");
 const tutorHistory = z.object({
   entries: z.array(tutorAnswer.omit({}).extend({ question: z.string() })).readonly(),
   nextHint: z.object({ level: z.number(), credits: z.number(), available: z.boolean().describe("The last rung opens after three wrong submissions.") }).nullable(),
   failures: z.number(),
-  costs: z.object({ hint1: z.number(), hint: z.number(), review: z.number(), doubt: z.number(), followup: z.number(), followupReply: z.number() }),
+  costs: tutorCosts,
+});
+const lessonTutorHistory = z.object({
+  entries: z.array(tutorAnswer.extend({ question: z.string() })).readonly().describe("Doubts and note drafts on the lesson, oldest first."),
+  costs: tutorCosts,
 });
 const order = z.object({
   id: z.string(),
@@ -347,6 +354,25 @@ export function registerPrepPlusRoutes(routes: Routes, deps: PrepPlusRouteDeps):
       const who = await signedIn(request, reply);
       if (who === null) return;
       return reply.send(await tutor.history(who.site, who.learner, request.params.problem));
+    },
+  );
+
+  routes.get(
+    "/practice/:site/lessons/:lesson/tutor",
+    {
+      schema: {
+        tags: PREP,
+        summary: "What the tutor has said to me about a lesson",
+        description: "My doubts and note drafts on the lesson, oldest first, and what each ask costs. A lesson that needs Plus is refused without it.",
+        security: LEARNER,
+        params: siteParams.extend({ lesson: z.string().min(1).max(80) }),
+        response: { 200: lessonTutorHistory, ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const who = await signedIn(request, reply);
+      if (who === null) return;
+      return reply.send(await tutor.lessonHistory(who.site, who.learner, request.params.lesson));
     },
   );
 

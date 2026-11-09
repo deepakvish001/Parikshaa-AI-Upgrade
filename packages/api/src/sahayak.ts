@@ -254,6 +254,20 @@ export class Sahayak {
     };
   }
 
+  /**
+   * What the tutor has said to the learner about a lesson, oldest first: their
+   * doubts and note drafts on it. A lesson that needs Plus is refused without
+   * it, as asking about one is.
+   */
+  async lessonHistory(site: PracticeSite, learner: Learner, slug: string) {
+    const lesson = await this.#lesson(site, learner, slug);
+    const entries = await this.#plus.store.tutorHistory(practiceLearner(site.orgId, learner.id), { lessonId: lesson.id });
+    return {
+      entries: entries.map(({ id, mode, hintLevel, question, answer, credits, createdAt, data }) => ({ id, mode, hintLevel, question, answer, credits, createdAt, data: data ?? null })),
+      costs: TUTOR_CREDITS,
+    };
+  }
+
   async #ask(
     site: PracticeSite,
     learner: Learner,

@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render } from "@testing-library/react";
 import { vi } from "vitest";
-import type { ContestSummary, Home, Note, PlanTask, ProblemList, Revision, Submission, TrackView } from "../practice/client.ts";
+import type { ContestSummary, Home, Note, PlanTask, PlusOverview, ProblemList, Revision, Submission, TrackView } from "../practice/client.ts";
 import { LearnApp } from "./LearnApp.tsx";
 
 /**
@@ -139,6 +139,9 @@ export const DSA: TrackView = {
   ],
 };
 
+/** What the site has on (K2-6): the tutor, no Plus for sale, 100 free credits a month. */
+export const PLUS: PlusOverview = { enabled: false, active: false, until: null, dsaUntil: null, trialDays: 0, freeModules: 1, monthlyCredits: 100, tutor: true, checkout: false, invoices: false, products: [] };
+
 /** A signed-in learner's day, answered by the fake API; each test changes what it needs. */
 export function fakeApi(): FakeApi {
   const api: FakeApi = {
@@ -152,6 +155,9 @@ export function fakeApi(): FakeApi {
       "GET /practice/demo/revise": () => ({ body: REVISION }),
       "GET /practice/demo/lists": () => ({ body: { lists: LISTS } }),
       "GET /practice/demo/notes": () => ({ body: { notes: NOTES } }),
+      // Sahayak (K2-6): the tutor on, and the learner's credits.
+      "GET /practice/demo/plus": () => ({ body: PLUS }),
+      "GET /practice/demo/credits": () => ({ body: { balance: 85, history: [] } }),
     },
   };
   vi.stubGlobal(

@@ -372,7 +372,9 @@ describe("Learn v2's shell", () => {
     const pane = screen.getByRole("complementary", { name: "Sahayak" });
     expect(button).toHaveAttribute("aria-pressed", "true");
     expect(within(sideNav()).getByRole("button", { name: hg(T.askSahayak) })).toHaveAttribute("aria-pressed", "true");
-    expect(within(pane).getByText("Sahayak, aapka AI tutor, yahan khulega.")).toBeInTheDocument();
+    // Opened on Aaj itself it is about nothing in particular: the panel (its own chunk) says what it answers on.
+    expect(await within(pane).findByRole("heading", { name: "Sahayak kisi problem ya lesson par jawab deta hai" })).toBeInTheDocument();
+    expect(within(pane).getByText("85 credits baaki")).toBeInTheDocument();
     expect(within(pane).getByRole("button", { name: hg(T.close) })).toHaveFocus();
     await userEvent.click(within(pane).getByRole("button", { name: hg(T.close) }));
     expect(screen.queryByRole("complementary", { name: "Sahayak" })).not.toBeInTheDocument();

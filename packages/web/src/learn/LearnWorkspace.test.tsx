@@ -223,7 +223,8 @@ describe("the problem workspace", () => {
     await waitFor(() => expect(api.calls.filter((c) => c.path === "/practice/demo/problems/pair-sum").length).toBeGreaterThan(1));
     await userEvent.click(within(result()).getByRole("button", { name: hg(LW.askWhy) }));
     expect(await screen.findByRole("heading", { name: hg(T.sahayak) })).toBeInTheDocument();
-    expect(screen.getByText(hg(T.sahayakSoon))).toBeInTheDocument();
+    // Sahayak opens on the last verdict (its panel: LearnSahayak.test.tsx).
+    expect(await screen.findByRole("heading", { name: "Fail kyun hua?" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Sahayak/, pressed: true })).toBeInTheDocument();
   });
 

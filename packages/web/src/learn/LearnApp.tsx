@@ -6,7 +6,7 @@ import { Empty, PHONE_QUERY, useMedia } from "@parikshaa/brand/kit";
 import { Dialog } from "@parikshaa/brand/ui";
 import { PreferencesProvider } from "../i18n.tsx";
 import { AajBody, AajRail } from "./Aaj.tsx";
-import { LearnProvider, ScreenLink, useLearn, type LearnState, type Notice } from "./context.tsx";
+import { LearnProvider, ScreenLink, useLearn, type LearnState, type Notice, type SahayakAbout } from "./context.tsx";
 import { LearnDataProvider, Loading, useLearnData, useMe, useSignInOptions } from "./data.tsx";
 import { Search, Sparkles, Target } from "./icons.tsx";
 import { LEARN_GROUPS, LEARN_SCREENS, screenById, screenOfRoute, SUB_ROUTE, tabOf, type LearnScreen } from "./screens.ts";
@@ -28,6 +28,8 @@ const Problems = lazy(() => import("./LearnProblems.tsx").then((m) => ({ default
 const Potd = lazy(() => import("./LearnPotd.tsx").then((m) => ({ default: m.Potd })));
 // A problem's workspace (K2-5): a focus screen of its own; the code editor is a further chunk it loads.
 const Workspace = lazy(() => import("./LearnWorkspace.tsx").then((m) => ({ default: m.Workspace })));
+// Sahayak's panel (K2-6): its own chunk, loaded when the pane first opens.
+const SahayakPanel = lazy(() => import("./LearnSahayak.tsx").then((m) => ({ default: m.SahayakPanel })));
 const LAZY: Readonly<Record<string, () => ReactNode>> = {
   plan: () => <MeraPlan />,
   revision: () => <Revision />,
@@ -151,6 +153,9 @@ function Shell({ site }: { readonly site: string }) {
   const [chosenMini, setChosenMini] = useState(false);
   const mini = !phone && (narrow || chosenMini);
   const [ai, setAi] = useState(false);
+  // What Sahayak is about: what opened it ("Fail kyun?" on Aaj), else the screen's own subject (a lesson).
+  const [about, setAbout] = useState<SahayakAbout | null>(null);
+  const [here, setHere] = useState<SahayakAbout | null>(null);
   const [search, setSearch] = useState(false);
   const [more, setMore] = useState(false);
   const main = useRef<HTMLElement>(null);
@@ -165,6 +170,7 @@ function Shell({ site }: { readonly site: string }) {
       if (was !== null && !FOCUS.test(was) && !isBare(was)) setFrom(was);
       if (`${window.location.pathname}${window.location.search}` !== url) window.history[replace ? "replaceState" : "pushState"](null, "", url);
       moved.current = true;
+      setAbout(null);
       setMore(false);
       setNotice(null);
       setPath(window.location.pathname);
@@ -173,7 +179,10 @@ function Shell({ site }: { readonly site: string }) {
     [site],
   );
   useEffect(() => {
-    const back = () => setPath(window.location.pathname);
+    const back = () => {
+      setAbout(null);
+      setPath(window.location.pathname);
+    };
     window.addEventListener("popstate", back);
     return () => window.removeEventListener("popstate", back);
   }, []);
@@ -212,7 +221,14 @@ function Shell({ site }: { readonly site: string }) {
   }, []);
 
   const state = useMemo<LearnState>(
-    () => ({ site, lang, setLang, t, theme, setTheme, href: (id) => `/practice/${site}/${id}`, go, openSahayak: () => setAi(true), notify: setNotice }),
+    () => ({ site, lang, setLang, t, theme, setTheme, href: (id) => `/practice/${site}/${id}`, go,
+      openSahayak: (next?: SahayakAbout) => {
+        setAbout(next ?? null);
+        setAi(true);
+      },
+      setHere,
+      notify: setNotice,
+    }),
     [site, lang, setLang, t, theme, setTheme, go],
   );
   // Aaj's rail is the learner's own week; signed out there is none.
@@ -307,7 +323,7 @@ function Shell({ site }: { readonly site: string }) {
             )}
           </main>
         </div>
-        {ai ? <SahayakPane phone={phone} onClose={() => setAi(false)} /> : null}
+        {ai ? <SahayakPane phone={phone} about={about ?? here} onClose={() => setAi(false)} /> : null}
         {phone ? <BottomTabs route={place} ai={ai} toggleAi={() => setAi((open) => !open)} more={more} openMore={() => setMore(true)} /> : null}
         {more ? <MoreSheet route={place} onClose={() => setMore(false)} /> : null}
         {search ? <SearchDialog onClose={() => setSearch(false)} /> : null}
@@ -729,7 +745,7 @@ function Page({ route, path }: { readonly route: string | null; readonly path: s
 
 /* ---------------- Sahayak ---------------- */
 
-function SahayakPane({ phone, onClose }: { readonly phone: boolean; readonly onClose: () => void }) {
+function SahayakPane({ phone, about, onClose }: { readonly phone: boolean; readonly about: SahayakAbout | null; readonly onClose: () => void }) {
   const { t } = useLearn();
   const closer = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -744,7 +760,9 @@ function SahayakPane({ phone, onClose }: { readonly phone: boolean; readonly onC
           <X aria-hidden="true" />
         </button>
       </div>
-      <Empty icon={<Sparkles />} title={t(T.sahayakSoon)} body={t(T.step2)} headingLevel={3} />
+      <Suspense fallback={<Loading />}>
+        <SahayakPanel about={about} />
+      </Suspense>
     </div>
   );
   if (phone) {

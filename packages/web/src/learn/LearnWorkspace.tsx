@@ -6,9 +6,9 @@ import type { CandidateCodeQuestion, CandidateQuestion } from "@parikshaa/core/b
 import { ApiError, type RunOutcome } from "../api.ts";
 import { argumentsOf, LANGUAGE_NAMES, memory, readCodeAnswer, splitStem, starterIn } from "../components/code-meta.ts";
 import { approachesOf, type Problem, type Submission, type TutorAnswer, type Verdict } from "../practice/client.ts";
-import { ScreenLink, useLearn } from "./context.tsx";
+import { ScreenLink, useLearn, type SahayakAbout } from "./context.tsx";
 import { Failed, Loading, Offline, useLearnData, useLearnQuery, useOnline, useProblem, useSubmissions, useTutor, waitingForNetwork } from "./data.tsx";
-import { BookOpen, CodeXml, icon, Sparkles } from "./icons.tsx";
+import { BookOpen, CodeXml, icon, Lightbulb, Lock, Sparkles } from "./icons.tsx";
 import { PROBLEM_SCREEN, type Tri } from "./screens.ts";
 import { fill, T } from "./text.ts";
 import "./learn-workspace.css";
@@ -202,13 +202,6 @@ const RotateCcw = icon(
     <path d="M3 3v5h5" />
   </>,
 );
-const Lock = icon(
-  "lock",
-  <>
-    <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
-    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-  </>,
-);
 const CircleCheck = icon(
   "circle-check",
   <>
@@ -222,14 +215,6 @@ const CircleX = icon(
     <circle cx="12" cy="12" r="10" />
     <path d="m15 9-6 6" />
     <path d="m9 9 6 6" />
-  </>,
-);
-const Lightbulb = icon(
-  "lightbulb",
-  <>
-    <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" />
-    <path d="M9 18h6" />
-    <path d="M10 22h4" />
   </>,
 );
 const X = icon(
@@ -255,6 +240,8 @@ const FileText = icon(
  * loaded only when a code problem opens; a plain text box stands in until then.
  */
 const CodeEditor = lazy(() => import("../components/CodeEditor.tsx").then((m) => ({ default: m.CodeEditor })));
+/** Sahayak's panel (K2-6), the shell's own chunk: loaded when its pane first opens. */
+const SahayakPanel = lazy(() => import("./LearnSahayak.tsx").then((m) => ({ default: m.SahayakPanel })));
 
 const draftKey = (site: string, slug: string) => `parikshaa.practice.${site}.draft.${slug}`;
 /** The draft as the old site keeps it: `{language, source}` as JSON for code, the answer itself otherwise. */
@@ -364,11 +351,24 @@ function Loaded({
     setValue(next);
     saveDraft(site, problem.slug, next);
   };
+  // "Fail kyun? Poochho": Sahayak opens on the learner's last verdict, until its pane closes.
+  const [why, setWhy] = useState(false);
   const open = { ...panes.open, ai };
-  const toggle = (id: Pane) => (id === "ai" ? setAi(!ai) : panes.toggle(id));
+  const closeAi = () => {
+    setAi(false);
+    setWhy(false);
+  };
+  const toggle = (id: Pane) => (id === "ai" ? (ai ? closeAi() : setAi(true)) : panes.toggle(id));
   const openAi = () => {
+    setWhy(true);
     setAi(true);
     setPhoneTab("ai");
+  };
+  // A hint reads the code as it stands, when there is some.
+  const draftCode = () => {
+    if (problem.question.kind !== "code") return undefined;
+    const draft = readCodeAnswer(value, problem.question as CandidateCodeQuestion);
+    return draft.source.trim() === "" ? undefined : draft;
   };
   const code = problem.question.kind === "code";
   const labels: Record<Pane, string> = { stmt: t(LW.problem), code: t(code ? LW.code : LW.answer), ai: t(T.sahayak) };
@@ -417,7 +417,7 @@ function Loaded({
               <AnswerPane problem={problem} value={value} onChange={change} onClose={() => panes.toggle("code")} onAskWhy={openAi} onEditorial={() => setSide("editorial")} />
             ),
           },
-          { id: "ai", label: labels.ai, icon: icons.ai, tone: "ai", weight: 0.3, min: 320, rail: false, content: <SahayakPane open={ai} onClose={() => setAi(false)} /> },
+          { id: "ai", label: labels.ai, icon: icons.ai, tone: "ai", weight: 0.3, min: 320, rail: false, content: <SahayakPane open={ai} onClose={closeAi} about={{ kind: "problem", slug: problem.slug, title: problem.title, why }} code={draftCode} /> },
         ]}
       />
     </div>
@@ -1351,9 +1351,19 @@ function AnswerPane({
   );
 }
 
-/* ---------------- Sahayak's pane (its panel comes with K2-6) ---------------- */
+/* ---------------- Sahayak's pane: its panel is LearnSahayak.tsx (K2-6) ---------------- */
 
-function SahayakPane({ open, onClose }: { readonly open: boolean; readonly onClose: () => void }) {
+function SahayakPane({
+  open,
+  onClose,
+  about,
+  code,
+}: {
+  readonly open: boolean;
+  readonly onClose: () => void;
+  readonly about: SahayakAbout;
+  readonly code: () => { readonly language: string; readonly source: string } | undefined;
+}) {
   const { t } = useLearn();
   const closer = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -1368,9 +1378,12 @@ function SahayakPane({ open, onClose }: { readonly open: boolean; readonly onClo
           <X aria-hidden="true" />
         </button>
       </div>
-      <div className="lw-body">
-        <Empty icon={<Sparkles />} title={t(T.sahayakSoon)} body={t(T.step2)} headingLevel={3} />
-      </div>
+      {/* Read only while the pane is open: a closed pane asks the API for nothing. */}
+      {open ? (
+        <Suspense fallback={<Loading />}>
+          <SahayakPanel about={about} code={code} />
+        </Suspense>
+      ) : null}
     </>
   );
 }

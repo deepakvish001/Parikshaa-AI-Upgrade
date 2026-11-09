@@ -82,7 +82,6 @@ export const T = {
   expand: ["Wide side bar (Ctrl \\)", "Side bar bada karo (Ctrl \\)", "साइड बार बड़ा करें (Ctrl \\)"],
   askSahayak: ["Ask Sahayak", "Sahayak kholo", "सहायक खोलें"],
   sahayak: ["Sahayak", "Sahayak", "सहायक"],
-  sahayakSoon: ["Sahayak, your AI tutor, opens here.", "Sahayak, aapka AI tutor, yahan khulega.", "सहायक, आपका AI ट्यूटर, यहाँ खुलेगा।"],
   close: ["Close", "Band karo", "बंद करें"],
   more: ["More", "Aur", "और"],
   options: ["More options", "Aur vikalp", "और विकल्प"],

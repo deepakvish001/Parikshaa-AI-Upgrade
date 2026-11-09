@@ -25,6 +25,18 @@ export interface FakeModelScript {
   assistPrompts: string[];
   /** Each prompt the AI interviewer sent, as sent: tests read it to see what the model was told. */
   interviewPrompts: string[];
+  /**
+   * What the practice tutor (Sahayak) answers: in Markdown for a hint, a doubt
+   * or a note; a review, follow-up questions and a reply to one in their fixed
+   * shapes. Each request it was sent is kept, for tests to read.
+   */
+  tutor: {
+    text: string;
+    review: { verdict: "correct" | "partly" | "wrong"; summary: string; logic: { right: string[]; wrong: string[] }; complexity: { time: string; space: string; better: string }; quality: string[]; edgeCases: string[] };
+    followups: { questions: [string, string] };
+    reply: { verdict: "strong" | "partial" | "missing"; feedback: string; stronger: string };
+  };
+  tutorPrompts: string[];
   /** Milliseconds before a probe finishes streaming, and before a grade or reading returns. */
   latencyMs: number;
 }
@@ -53,6 +65,20 @@ export function fakeModel(overrides: Partial<FakeModelScript> = {}): { client: A
       },
     },
     interviewPrompts: [],
+    tutor: {
+      text: "Look at what the sum can reach. **Which type** holds it?\n\n```python\nprint(a + b)\n```",
+      review: {
+        verdict: "wrong",
+        summary: "The loop prints a fixed value instead of the pair it finds.",
+        logic: { right: ["Reads the input in one pass."], wrong: ["Prints -1 before checking any pair."] },
+        complexity: { time: "O(n)", space: "O(1)", better: "" },
+        quality: ["Name the two pointers."],
+        edgeCases: ["No pair adds up to the target."],
+      },
+      followups: { questions: ["What changes if the array is not sorted?", "How would you return every pair?"] },
+      reply: { verdict: "partial", feedback: "A set finds a pair in one pass; say what it costs in memory.", stronger: "Use a hash set: O(n) time and O(n) space." },
+    },
+    tutorPrompts: [],
     assist: "Use a hash set: one pass, O(n).",
     assistPrompts: [],
     latencyMs: 0,
@@ -77,6 +103,14 @@ export function fakeModel(overrides: Partial<FakeModelScript> = {}): { client: A
       },
     },
     messages: {
+      // The practice tutor: one answer per call, in its fixed shape when one is asked for.
+      async create(params: { messages?: { content: unknown }[]; output_config?: { format?: unknown } }) {
+        await pause(script.latencyMs);
+        const asked = String(params.messages?.[0]?.content ?? "");
+        script.tutorPrompts.push(asked);
+        const shaped = params.output_config?.format === undefined ? null : asked.startsWith("Review") ? script.tutor.review : asked.startsWith("Ask the two") ? script.tutor.followups : script.tutor.reply;
+        return { content: [{ type: "text", text: shaped === null ? script.tutor.text : JSON.stringify(shaped) }], stop_reason: "end_turn", stop_details: null, usage: USAGE };
+      },
       async parse(params: { system?: unknown; messages?: { content: unknown }[] }) {
         await pause(script.latencyMs);
         const system = JSON.stringify(params.system);
