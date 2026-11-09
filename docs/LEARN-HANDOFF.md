@@ -385,8 +385,11 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
     ab `messages.create` (tutor) ka jawab deta; asli provider kabhi nahi. Tests: unit 19, e2e `learn-sahayak.spec.ts` 2, visual 4.
     **Kadam 3/5 list me jode:** streaming, aam baat (bina problem/lesson), Build mode diff, jawab par raay/copy, Hinglish jawab, ek lesson ki
     baatcheet mitana. **Asli jawab ke liye owner ki Anthropic key (Kadam 5)**; tab tak sirf fake model par jaancha.
-    **Local dhyan:** visual me `console-welcome-1440-light` aur `console-home-1440-light` is container me laal (`.home-calendar` mask ki
-    oonchai alag; Learn ke badlav se nahi, flag band wale console pages). CI me dekhna.
+    **CI (#86, pehla run `05a5543`):** (1) `check`: naya API test do tutor jawab ek hi ghadi par likhta; history `created_at, id` se
+    chhantti, id random, isliye kram kabhi ulta; ab beech me ghadi 1 minute aage. (2) `e2e` (visual): `console-welcome-1440-light`,
+    `console-home-1440-light` laal: console ka Sittings calendar aaj ke mahine par khulta, November 2026 me 6 hafte (October me 5), to
+    calendar aur neeche sab khiskta (Learn se nahi, tareekh ka bomb). Ab test screenshot se pehle calendar October 2026 par le jaate
+    (`oneMonth`, `onboarding.visual.ts`, `screens.visual.ts`), images wahi.
     **Kahan ruka:** K2-6 poora, #86 par CI dekhna. **Agla:** K2-7 SQL.
   - [ ] K2-7 SQL
   - [ ] K2-8 aptitude (maujooda MCQ par; mocks Kadam 3/4)

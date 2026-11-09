@@ -648,6 +648,8 @@ describe("the tutor", () => {
     expect(await ok("GET", asha, `${S}/lessons/heaps/tutor`)).toEqual({ entries: [], costs: TUTOR_CREDITS });
     model.reply = () => ({ text: "The root is the **smallest**." });
     await ok("POST", asha, `${S}/tutor/doubt`, { lesson: "heaps", question: "Where is the smallest?" }, 200);
+    // A minute later, so the two are in the order they were asked (at one instant their order is the database's).
+    clock += 60_000;
     await ok("POST", asha, `${S}/tutor/notes`, { lesson: "heaps" }, 200);
     const history = await ok("GET", asha, `${S}/lessons/heaps/tutor`);
     expect(history.entries.map((e: { mode: string; question: string; answer: string; credits: number }) => [e.mode, e.question, e.answer, e.credits])).toEqual([

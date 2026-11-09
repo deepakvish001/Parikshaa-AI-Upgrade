@@ -26,7 +26,25 @@ async function home(page: Page) {
   await page.goto("/console/");
   await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeVisible();
   await expect(page.locator(".welcome, .sample-line").first()).toBeVisible();
+  await oneMonth(page);
   await settle(page);
+}
+
+/**
+ * The Sittings calendar opens on this month, and a month takes five or six rows (November 2026 six, October five), so its
+ * height, and all below it, changed with the date. It is masked; before the picture it is moved back to one month,
+ * October 2026, the month its images were made in.
+ */
+async function oneMonth(page: Page) {
+  const month = page.locator(".home-calendar .month-head strong");
+  await expect(month).toBeVisible();
+  for (let i = 0; i < 120 && (await month.textContent()) !== "October 2026"; i++) await page.locator(".home-calendar").getByRole("button", { name: "Previous month" }).click();
+  await expect(month).toHaveText("October 2026");
+  // As the page was before: nothing focused, at the top (a click scrolls a phone's page to the calendar).
+  await page.evaluate(() => {
+    (document.activeElement as HTMLElement | null)?.blur();
+    window.scrollTo(0, 0);
+  });
 }
 
 async function settle(page: Page) {
