@@ -19,8 +19,8 @@ account ka Claude **isi file se** shuru karta hai aur isi ko update karta hai. O
    `claude/learn-v2` fast-forward se wahan aayi). [#70](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/70) (K2-2) bhi owner ne 28 Oct ko usi branch me merge kiya (`1b568d6`;
    `claude/learn-v2` fast-forward). **Kadam 2 ab draft [#71](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/71) me** (K2-3 se, 28 Oct khola; [HANDOFF.md](HANDOFF.md) ki row dekho;
    wo bhi merge ho chuka ho to naya draft PR kholo), base `claude/festive-maxwell-pb4k5v` jab tak #66 khula hai, phir `main`.
-   **29 Oct 2026:** #71 aur #82 (docs) `main` me merge; `claude/learn-v2` ab `main` se (fast-forward `7b636b8`). **K2-5 draft PR
-   [#83](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/83), base `main`.** Merge ho jaye to `origin/main` laao (ff-only, warna normal merge commit) aur naya draft PR.
+   **29 Oct 2026:** #71 aur #82 (docs) `main` me merge; `claude/learn-v2` ab `main` se (fast-forward `7b636b8`). K2-5 ka PR
+   [#83](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/83) `main` me merge (`402745c`). **K2-6 draft PR [#86](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/86), base `main`** (9 Nov). Merge ho jaye to `origin/main` laao (ff-only, warna normal merge commit) aur naya draft PR.
    Merge hua PR dobara mat kholo, us par commit mat jodo.
 2. **Doosra session to nahi chal raha?** §6 ki aakhri row. "Chal raha" ho aur 30 minute ke andar commit ho, to owner
    se poochho.
@@ -377,8 +377,50 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
     **Kahan ruka:** K2-5 poora; CI ke dono laal (visual mask, placement flaky) theek karke push. Agla session pehle #83 ke head ke
     checks dekhe (`gh api repos/<owner>/<repo>/commits/<sha>/check-runs`; laal ho to `…/check-runs/<id>/annotations` sabse sasta).
     **Agla:** K2-6 Sahayak panel (workspace ka teesra pane aur shell ka pane, dono).
-  - [ ] K2-6 Sahayak panel
-  - [ ] K2-7 SQL
+  - [x] K2-6 (9 Nov, owner: "continue"; #83 `main` me merge tha, `claude/learn-v2` fast-forward `402745c`; autosave me sirf state file; naya draft PR [#86](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/86), base `main`)
+    Sahayak panel `learn/LearnSahayak.tsx` + `learn-sahayak.css` (apna chunk): shell ka pane / phone sheet / workspace ka teesra pane
+    (band pane kuch nahi padhta). Kis par: `openSahayak(about)` (`context.tsx` `SahayakAbout`: problem + `why`, ya lesson); screen apna vishay
+    `setHere` se deti (lesson). API ki baatcheet, hint, review ("Fail kyun?"), doubt, solve ke baad follow-ups + note draft ("Mere note me jodo"),
+    credits + keemat, har refusal. **API:** `GET /lessons/:lesson/tutor`, tutor `costs.notes` (test + openapi). **Fake AI:** e2e ka `fakeModel`
+    ab `messages.create` (tutor) ka jawab deta; asli provider kabhi nahi. Tests: unit 19, e2e `learn-sahayak.spec.ts` 2, visual 4.
+    **Kadam 3/5 list me jode:** streaming, aam baat (bina problem/lesson), Build mode diff, jawab par raay/copy, Hinglish jawab, ek lesson ki
+    baatcheet mitana. **Asli jawab ke liye owner ki Anthropic key (Kadam 5)**; tab tak sirf fake model par jaancha.
+    **CI (#86, pehla run `05a5543`):** (1) `check`: naya API test do tutor jawab ek hi ghadi par likhta; history `created_at, id` se
+    chhantti, id random, isliye kram kabhi ulta; ab beech me ghadi 1 minute aage. (2) `e2e` (visual): `console-welcome-1440-light`,
+    `console-home-1440-light` laal: console ka Sittings calendar aaj ke mahine par khulta, November 2026 me 6 hafte (October me 5), to
+    calendar aur neeche sab khiskta (Learn se nahi, tareekh ka bomb). Ab test screenshot se pehle calendar October 2026 par le jaate
+    (`oneMonth`, `onboarding.visual.ts`, `screens.visual.ts`), images wahi.
+    **Staging VM (9 Nov, isi PR me):** owner ne Hostinger VPS par bootstrap chalaya; sab bana, par runner shuru nahi hua: compose me
+    `cpus: 4`, machine me 2 CPU. Ab `cpus: ${RUNNER_CPUS:-4}`, setup-server.sh `nproc` se (4 tak) likhta; Caddy ka apt install
+    `--force-confold` (bina terminal ke dpkg ka sawaal fail karta, chhote package se jaancha); `setup-server.test.sh` me 4 check.
+    **Kahan ruka:** K2-6 + VM fix #86 par (CI dekhna, owner merge). Staging (9 Nov raat): step 2 chala, VM par API + runner chal rahe ("The API answers"), dono DNS sahi (Vercel: configured). Owner ne
+    terminal ka output chat me bheja, usme deploy key aur edge secret khul gaye: owner ko `rotate.sh` diya (naya edge secret, Caddy reload, naya
+    deploy key; nakli settings par jaancha). Ab owner: rotate, Vercel `PARIKSHAA_EDGE_SECRET`, GitHub `staging` me `VM_SSH_KEY`,
+    `MIGRATE_DATABASE_URL`, `VM_KNOWN_HOSTS`, `VM_HOST`, `VM_USER`, `APP_URL`, `API_ORIGIN` (deploy-web ko sirf `API_ORIGIN` chahiye), phir "ho gaya" par Claude
+    **21:30 UTC, owner "ho gaya":** `deploy-web` (staging, `claude/learn-v2`) hara: **https://staging.parikshaa.org live**, "It answers"
+    me `/api/health` Vercel se VM tak pahuncha (naya edge secret dono taraf sahi). `deploy-api` [run](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/actions/runs/42702857447):
+    Migrate hara (0 baaki), "Update the machine" laal: `Load key: error in libcrypto`, yani GitHub secret `VM_SSH_KEY` copy me bigda
+    (browser terminal se). VM par code `41662a3` chal raha (sirf docs peeche). Agla: owner key dobara sahi paste kare; phir bhi na chale to
+    workflow ko ek-line base64 key bhi maanne do (`base64 -w0 /root/deploy_key`; step me `BEGIN` na ho to `base64 -d`, `tr -d '\r'`,
+    `ssh-keygen -y` se saaf error), test + push + dobara run. Phir `api.staging.parikshaa.org/api/health` seedha → 403 jaanchna, docs.
+    `deploy-api.yml` aur `deploy-web.yml` (staging) chalaye. **Agla:** K2-7 SQL.
+  - [ ] K2-7 SQL (9 Nov raat, owner "K2-7 shuru karo"; usi draft PR #86 me jayega). **5 ghante ki limit (0.82) par ruka: code commit NAHI,
+    autosave `autosave/claude/learn-v2--eb426b80` me** (restore: us branch se files lo; §1). **Bana aur unit se jaancha:** API `GET /problems` ke har
+    item me `languages` (`practice.ts`, `practice-routes.ts`, test `learn-v2.test.ts`, `docs/openapi.json` regen); `learn/LearnSql.tsx` +
+    `learn-sql.css` (apna lazy chunk; Learn ka kuch import nahi karta, warna bundler saajhe chunk dobara kaatta aur `i18n-*.js` gayab, index +7 KB:
+    `t` aur icon workspace deta, `sql-view.ts` ka parse copy): tables (column + type), example ki rows, result rows, aapka vs sahi nateeja
+    (missing/extra row shabd + rang, "rows wahi, kram alag"), 12 rows / 10 columns / 120 akshar + "aur N"; `LearnWorkspace.tsx` SQL par: Query pane,
+    "Aapki query", apni tables, `runtime_error` = "Query me error" + database ka text, chhupa test sirf verdict; `LearnProblems.tsx` `sql` screen
+    (sirf `languages` me `sql`; sheets/POTD nahi); `LearnApp.tsx` route `sql`; icons `Table2`, `Database`; `LearnApp.test.tsx` ka popstate test ab
+    `roadmap` par; `LearnSql.test.tsx` 14 (axe). Learn unit 170/170, build:clients, budget (`LearnSql-*.js` 2.7/3, `.css` 0.7/1 naye; baaki wahi),
+    lint:css hare; poora `npm run check` aakhri fix ke baad dobara nahi chala. Problems par Plus ka taala API me nahi (sirf lesson/plan).
+    **Likha, chalaya nahi:** e2e `tests/learn-sql.spec.ts` (2), seed `seedLearnSql` + `BIG_COUNTRIES` (`tests/learn-day.ts`: SQL starter pack + plan),
+    visual `learn.visual.ts` me 10 nayi images `learn-sql-*` (site `visual-learn-sql`; baselines abhi nahi).
+    **Agla, isi kram me:** `npm run check`; Postgres (`/var/lib/postgresql/k1-e2e`) + fonts ki copy (FONTCONFIG_FILE + FONTCONFIG_PATH) ke saath
+    `npx playwright test tests/learn-*.spec.ts --project=chromium` (packages/e2e), `npm run visual:update -w @parikshaa/e2e -- -g "SQL"`, phir poora
+    `npm run visual` (purani images wahi); commit; tracker row 140 (K2-7) + row 94 me Learn path + Build log ki #86 line; DESIGN-SYSTEM §10 me K2-7;
+    yahan tick + §7; push; #86 ka title/body; CI. Kadam 3/4: PK/FK nishaan, result ke column naam (runner sirf rows deta), dialect (sirf SQLite),
+    SQL ka alag sheet page.
   - [ ] K2-8 aptitude (maujooda MCQ par; mocks Kadam 3/4)
   - [ ] K2-9 contests
   - [ ] K2-10 profile B + share
@@ -494,6 +536,8 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
 
 ## 7. Log (naya upar)
 
+- 9 Nov 2026 (session 4 aage, raat): K2-6 agent 5 ghante ki limit par ruka tha; uska CI fix (jaancha hua: visual 137, check hara) `1aaf799` me push. Owner ne Hostinger VPS par bootstrap chalaya: pehli baar pooler ne URI ka user/db_name galat format bataya, doosri baar sahi URI se sab bana par runner `cpus: 4` > 2 CPU par ruka. Fix: `RUNNER_CPUS` + Caddy install bina sawaal; tests. Owner ko step 2 script di.
+- 9 Nov 2026 (session 4 aage, K2-6): owner "continue". #83 `main` me merge; `claude/learn-v2` ff `402745c`. Learn ka Sahayak panel (`learn/LearnSahayak.tsx`) asli tutor API par: shell, phone sheet, workspace; hint, review, doubt, follow-ups, note draft, credits, har refusal. API: lesson ki baatcheet + `costs.notes`; e2e fake model tutor ka jawab deta. 19 unit + 2 e2e + 4 visual. Naya draft PR #86. Agla: K2-7.
 - 29 Oct 2026 (session 4 aage, K2-5): owner "K2-5 shuru karo". Autosave me adhoora kuch nahi (sirf state file); `claude/learn-v2` `origin/main` (`7b636b8`) par fast-forward. Learn ka problem workspace + editorial (`learn/LearnWorkspace.tsx`): focus screen, kit ke panes, purani site ka editor (lazy), Run/Submit asli judge par, verdict + pehla fail test, submissions, draft, hints, editorial, note; Aaj/sheet/Abhyas/POTD/lists ke problem link ab yahin. API wahi. 24 unit + 2 e2e + 6 visual. Naya draft PR #83 (base `main`). Agla: K2-6.
 - 29 Oct 2026 (session 4 aage, K2-4 doosra hissa): problems bank (Abhyas, `learn/LearnProblems.tsx`) aur POTD calendar (`learn/LearnPotd.tsx`) asli API par; Aaj ka POTD link `potd` par. 7 unit + 2 e2e + 8 visual. **K2-4 poora** (#71 me, K2-3 ke saath). Agla: K2-5.
 - 29 Oct 2026 (session 4 aage, K2-4 pehla hissa): owner "K2-4 shuru karo"; #71 (K2-3) abhi khula draft, isliye usi branch par. Autosave me adhoora kuch nahi (sirf state file). Learn ki DSA sheet (`learn/LearnSheet.tsx`) aur lesson reader (`learn/LearnLesson.tsx`) asli API par; `/potd` me `month`, `date`, `daysOff` (chhoti API kami). 10 unit + 2 e2e (asli API) + 8 visual. Agla: K2-4 doosra hissa (problems bank + POTD calendar).

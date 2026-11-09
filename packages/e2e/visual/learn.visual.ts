@@ -11,6 +11,8 @@ import { istDay, seedLearnDay } from "../tests/learn-day.js";
  * question and Mera plan; since K2-3 revision (a card's front), Meri lists and
  * Notes, on a second learner seeded with them; since K2-5 a code problem's workspace (the second
  * learner's site), at rest and, last of all, after a wrong submission (its time and memory set to one text, then masked);
+ * since K2-6 Sahayak's panel: the workspace's pane on that verdict (a doubt seeded through the e2e stack's fake model) and,
+ * on a phone, the sheet Aaj's "Fail kyun? Poochho" opens;
  * at 1440 and 390, dark (Learn's default) and light,
  * and the narrow side bar at 1100. Signed in as the seeded learner, except on
  * the sign-in page (the side bar shows their name). What the date changes is in `.ln-dated`: set to one date,
@@ -37,6 +39,12 @@ test.beforeAll(async ({ request }) => {
   mineToken = mine.token;
   lesson = mine.lessons[1]!.slug;
   code = mine.code!.slug;
+  // One doubt on the code problem, answered by the e2e stack's fake model, so Sahayak's panel has a conversation (K2-6).
+  const asked = await request.post(`/api/practice/${MINE}/tutor/doubt`, {
+    headers: { authorization: `Bearer ${mineToken}` },
+    data: { problem: code, question: "Why does my loop print -1?", replyIn: "en" },
+  });
+  expect(asked.status(), await asked.text()).toBe(200);
 });
 
 const DATED = ".ln-dated";
@@ -190,6 +198,19 @@ for (const theme of ["dark", "light"] as const) {
       await expect(page).toHaveScreenshot(`learn-courses-390-${theme}.png`);
     });
 
+    test("Sahayak's sheet from Aaj's Fail kyun (K2-6)", async ({ page }) => {
+      await open(page, "", theme);
+      await page.getByRole("button", { name: "Fail kyun? Poochho" }).click();
+      const sheet = page.getByRole("dialog", { name: "Sahayak" });
+      await expect(sheet.getByRole("heading", { name: "Fail kyun hua?" })).toBeVisible();
+      await expect(sheet.getByText("100 credits baaki")).toBeVisible();
+      await expect(sheet.getByText(/^Aapka aakhri submit:/)).toBeVisible();
+      await page.waitForLoadState("networkidle");
+      await page.mouse.move(0, 0);
+      // The sheet covers Aaj, so nothing dated shows: no mask (one would paint over the sheet).
+      await expect(page).toHaveScreenshot(`learn-sahayak-390-${theme}.png`);
+    });
+
     test("the Aur sheet", async ({ page }) => {
       await open(page, "", theme);
       await page.getByRole("navigation", { name: "Mukhya tabs" }).getByRole("button", { name: "Aur" }).click();
@@ -276,6 +297,18 @@ for (const theme of ["dark", "light"] as const) {
       });
       await page.mouse.move(0, 0);
       await expect(page).toHaveScreenshot(`learn-workspace-wa-1440-${theme}.png`, { mask: [...masks(page), page.locator(".lw-time")] });
+
+      // "Fail kyun? Poochho": Sahayak's pane on the last verdict, with the doubt seeded above (K2-6).
+      await page.getByRole("tabpanel", { name: "Nateeja" }).getByRole("button", { name: "Fail kyun? Poochho" }).click();
+      await expect(page.getByRole("heading", { name: "Fail kyun hua?" })).toBeVisible();
+      await expect(page.getByRole("log", { name: "Sahayak se baatcheet" })).toContainText("Why does my loop print -1?");
+      await expect(page.getByText("85 credits baaki")).toBeVisible();
+      await page.waitForLoadState("networkidle");
+      await page.evaluate(() => {
+        for (const el of document.querySelectorAll(".lw-time")) el.textContent = " · 10 ms · 9.9 MB";
+      });
+      await page.mouse.move(0, 0);
+      await expect(page).toHaveScreenshot(`learn-sahayak-1440-${theme}.png`, { mask: [...masks(page), page.locator(".lw-time")] });
     });
   });
 }

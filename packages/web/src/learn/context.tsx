@@ -14,10 +14,21 @@ export interface LearnState {
   readonly href: (id: string) => string;
   /** Go to a screen without reloading the page; `replace` leaves no step behind in the history (a redirect). */
   readonly go: (id: string, replace?: boolean) => void;
-  readonly openSahayak: () => void;
+  /** Open Sahayak's pane, about `about` when given, else about the screen's own subject (`setHere`). */
+  readonly openSahayak: (about?: SahayakAbout) => void;
+  /** What the screen on show is about, for Sahayak (a lesson); null when it is about nothing Sahayak can answer on. */
+  readonly setHere: (about: SahayakAbout | null) => void;
   /** Say something above the page until the learner moves on or dismisses it; null clears it. */
   readonly notify: (notice: Notice | null) => void;
 }
+
+/**
+ * What Sahayak is asked about: the API answers on a problem or a lesson
+ * (K2-6). `why` is "Fail kyun? Poochho": the learner's last verdict on it.
+ */
+export type SahayakAbout =
+  | { readonly kind: "problem"; readonly slug: string; readonly title: string; readonly why?: boolean }
+  | { readonly kind: "lesson"; readonly slug: string; readonly title: string };
 
 /** A line above the page: an outcome ("ok"), something that went wrong ("error"), or a nudge ("info"). */
 export interface Notice {

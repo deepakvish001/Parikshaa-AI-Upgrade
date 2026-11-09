@@ -280,7 +280,11 @@ Profile dashboard nahi, ek **document** hai jo HR ek nazar me maan le: har line 
    chhupe shabd me bhi, aaj `aria-current="date"`). K2-5: problem workspace (`LearnWorkspace.tsx`, mock ka `ProblemScreen` + `work.css`)
    pehla **focus screen**: `problems/<slug>` par side bar aur top bar nahi, kit ka `FocusBar` (wapas, title + level, pane toggles, shell ka ⋯) aur
    `Panes` (Problem | Code | Sahayak, keyboard se size, phone par tabs, pehle Code); purani site ka CodeMirror editor (lazy), line numbers Learn ki
-   ink me; verdict mock ke `.verdict` jaisa (icon + shabd, test ki patti, pehla fail test laal kinare me). Baaki screens apne K2 tukde me (tracker row 140).
+   ink me; verdict mock ke `.verdict` jaisa (icon + shabd, test ki patti, pehla fail test laal kinare me). K2-6: Sahayak panel (`LearnSahayak.tsx` + `learn-sahayak.css`, mock ka `SahayakPanel` + `.sahayak` styles):
+   upar patti (kis par: problem/lesson ka mono chip, credits, "Credits lo"), beech me baatcheet (`role="log"`, learner ka sawaal ink ka bulbula,
+   Sahayak ka jawab icon + naam + keemat ke saath Markdown elements me), "Fail kyun?" ka `--ai-soft` card, maangne ke chips (har ek par keemat),
+   neeche hamesha "galat ho sakta hai" ke saath sawaal ka dabba; taala (contest, Plus, band) mock ke `.ai-locked` jaisa. Shell ka pane wahi push
+   pane (phone par sheet), workspace me teesra pane; dono me ek hi panel. Mock ka Build mode, typing caret aur jawab par raay nahi (backend nahi). Baaki screens apne K2 tukde me (tracker row 140).
 4. Admin pages `packages/console` me, roles matrix `ADMIN-PANEL.md` §1 + `runtime`, `recruiters`.
 5. 🟡 (shell ki baselines CI me: K1-4, 26 Oct 2026, `packages/e2e/visual/learn.visual.ts`, 1440/390 × dark/light; K2-1 se Aaj seeded din par (`packages/e2e/tests/learn-day.ts`), tareekh wala text `.ln-dated` me aur mask; har naye screen ki apni baseline uske K2 tukde me) Har screen ki **visual baseline** mock ke screenshots se milao (1440/390, dono theme); axe serious/critical 0; phone par
    touch 40 px; har mukhya screen ki 5 haalatein; bundle budget.

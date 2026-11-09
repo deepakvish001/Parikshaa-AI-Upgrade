@@ -135,6 +135,11 @@ secret PARIKSHAA_APP_PASSWORD 24
 secret ATTEMPT_TOKEN_SECRET 36
 secret PARIKSHAA_DATA_KEY 32
 secret RUNNER_TOKEN 36
+# The code runner may use four CPUs, or all of a smaller machine: Docker
+# refuses a limit above what the machine has, and starts nothing. Worked out
+# on every run, so a resized machine is followed.
+RUNNER_CPUS="$(nproc 2>/dev/null || echo 4)"
+((RUNNER_CPUS < 4)) || RUNNER_CPUS=4
 # What Vercel adds to every request it passes on, so this machine can tell
 # them from anyone calling it directly (docs/STAGING.md). Hex: it goes in a header.
 PARIKSHAA_EDGE_SECRET="$(existing PARIKSHAA_EDGE_SECRET)"
@@ -159,6 +164,9 @@ umask 077
   echo "ATTEMPT_TOKEN_SECRET='$ATTEMPT_TOKEN_SECRET'"
   echo "PARIKSHAA_DATA_KEY='$PARIKSHAA_DATA_KEY'"
   echo "RUNNER_TOKEN='$RUNNER_TOKEN'"
+  echo
+  echo "# The code runner's CPUs: four, or all of a smaller machine (worked out on every run)"
+  echo "RUNNER_CPUS='$RUNNER_CPUS'"
   echo
   echo "# The model"
   echo "ANTHROPIC_API_KEY='$ANTHROPIC_API_KEY'"
@@ -277,7 +285,9 @@ if ! command -v caddy >/dev/null; then
   curl -1sLf https://dl.cloudsmith.io/public/caddy/stable/gpg.key | gpg --dearmor --yes -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
   curl -1sLf https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt >/etc/apt/sources.list.d/caddy-stable.list
   apt-get update -q
-  apt-get install -y -q caddy
+  # The Caddyfile above is already in place: keep it, rather than dpkg asking
+  # which to keep (and failing where there is nobody to ask).
+  apt-get install -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold caddy
 fi
 [[ -z "$APP_DOMAIN" ]] || { chgrp caddy "$CADDYFILE"; chmod 640 "$CADDYFILE"; }
 

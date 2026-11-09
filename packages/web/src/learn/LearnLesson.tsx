@@ -210,8 +210,14 @@ function useTrackOf(): string | null {
 }
 
 function Reader({ lesson }: { readonly lesson: Lesson }) {
-  const { t, site, openSahayak } = useLearn();
+  const { t, site, openSahayak, setHere } = useLearn();
   const { signedIn } = useLearnData();
+  // Ctrl+J and the shell's Sahayak button ask about this lesson too (K2-6); a lesson behind Plus is not read to Sahayak.
+  useEffect(() => {
+    if (lesson.locked) return undefined;
+    setHere({ kind: "lesson", slug: lesson.slug, title: lesson.title });
+    return () => setHere(null);
+  }, [lesson.slug, lesson.title, lesson.locked, setHere]);
   const online = useOnline();
   const trackSlug = useTrackOf();
   const track = useTrack(trackSlug);
@@ -280,7 +286,7 @@ function Reader({ lesson }: { readonly lesson: Lesson }) {
         )}
         <div className="ll-foot">
           {lesson.locked ? null : (
-            <button type="button" className="ln-btn ln-btn-ai" onClick={openSahayak}>
+            <button type="button" className="ln-btn ln-btn-ai" onClick={() => openSahayak({ kind: "lesson", slug: lesson.slug, title: lesson.title })}>
               <Sparkles aria-hidden="true" />
               {t(LL.askSahayak)}
             </button>

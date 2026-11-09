@@ -52,6 +52,8 @@ Do naam chahiye, jaise `staging.example.in` (pages, Vercel) aur `api.staging.exa
 ### 1.3 VM (AWS Mumbai)
 
 1. Ubuntu 24.04, `t3.large` ya bada, disk 40 GB. Security group: 80 aur 443 sabke liye, 22 sirf GitHub Actions/owner ke liye (ya SSM).
+   4 se kam CPU wali machine bhi chalti hai: code runner ko 4 CPU milte, ya chhoti machine ke saare (`RUNNER_CPUS`, setup-server.sh har baar khud tay karta; Docker machine se zyada ki limit par kuch shuru hi nahi karta).
+   **Staging abhi (9 Nov 2026):** Hostinger KVM 2 VPS (2 vCPU, Ubuntu 24.04), `api.staging.parikshaa.org`; pages `staging.parikshaa.org` (Vercel).
 2. DNS: `api.staging.<domain>` → VM ka IP.
 3. Machine par, repo clone karke (private repo ho to ek read-only deploy key):
    ```bash

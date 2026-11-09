@@ -617,6 +617,11 @@ export class PracticeClient {
     return this.#request(`/problems/${encodeURIComponent(slug)}/tutor`);
   }
 
+  /** What the tutor has said to me about a lesson: my doubts and note drafts on it, oldest first. */
+  lessonTutor(slug: string): Promise<LessonTutorHistory> {
+    return this.#request(`/lessons/${encodeURIComponent(slug)}/tutor`);
+  }
+
   hint(slug: string, replyIn: "en" | "hi", code?: { readonly language: string; readonly source: string }): Promise<TutorAnswer> {
     return this.#post(`/problems/${encodeURIComponent(slug)}/tutor/hint`, { replyIn, ...(code === undefined ? {} : { code: code.source, language: code.language }) });
   }
@@ -1133,7 +1138,23 @@ export interface TutorHistory {
   readonly entries: readonly (TutorAnswer & { readonly question: string })[];
   readonly nextHint: { readonly level: number; readonly credits: number; readonly available: boolean } | null;
   readonly failures: number;
-  readonly costs: { readonly hint1: number; readonly hint: number; readonly review: number; readonly doubt: number; readonly followup?: number; readonly followupReply?: number };
+  readonly costs: TutorCosts;
+}
+
+/** What each ask of the tutor costs, in credits. */
+export interface TutorCosts {
+  readonly hint1: number;
+  readonly hint: number;
+  readonly review: number;
+  readonly doubt: number;
+  readonly notes?: number;
+  readonly followup?: number;
+  readonly followupReply?: number;
+}
+
+export interface LessonTutorHistory {
+  readonly entries: readonly (TutorAnswer & { readonly question: string })[];
+  readonly costs: TutorCosts;
 }
 
 // --- companies, experiences, the store, ratings ------------------------------------------------

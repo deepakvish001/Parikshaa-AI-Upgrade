@@ -10,12 +10,15 @@ import {
   type CompanyCard,
   type CompanyTarget,
   type ContestSummary,
+  type Credits,
   type Home,
   type Learner,
+  type LessonTutorHistory,
   type Note,
   type NoteBook,
   type Lesson,
   type Plan,
+  type PlusOverview,
   type PotdView,
   type Problem,
   type ProblemList,
@@ -242,6 +245,11 @@ export const useProblem = (slug: string): UseQueryResult<Problem> => useLearnQue
 export const useTutor = (slug: string, enabled = true): UseQueryResult<TutorHistory> => useLearnQuery(["prep", "tutor", slug], (client) => client.tutor(slug), { enabled });
 
 /** The problem of the day and a month's calendar (`YYYY-MM`) up to today, with the learner's days off (K2-4). Open to anyone. */
+/** Sahayak (K2-6): the learner's credits, what the site has on (the tutor, Plus), and what Sahayak said about a lesson. */
+export const useCredits = (enabled = true): UseQueryResult<Credits> => useLearnQuery(["prep", "credits"], (client) => client.credits(), { enabled });
+export const usePlus = (): UseQueryResult<PlusOverview> => useLearnQuery(["plus"], (client) => client.plus(), { session: false });
+export const useLessonTutor = (slug: string, enabled = true): UseQueryResult<LessonTutorHistory> => useLearnQuery(["prep", "lesson-tutor", slug], (client) => client.lessonTutor(slug), { enabled });
+
 export const usePotd = (month: string | null): UseQueryResult<PotdView> => useLearnQuery(["potd", month], (client) => client.potd(month ?? undefined), { session: false });
 
 /** The site's companies, to aim for. */

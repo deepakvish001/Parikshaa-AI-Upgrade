@@ -239,7 +239,7 @@ function Now({ task, at, tasks }: { readonly task: PlanTask; readonly at: number
             {t(tried ? A.resume : A.start)}
           </ScreenLink>
           {failed === null ? null : (
-            <button type="button" className="ln-btn ln-btn-ai" onClick={openSahayak}>
+            <button type="button" className="ln-btn ln-btn-ai" onClick={() => openSahayak(task.link?.kind === "problem" ? { kind: "problem", slug: task.link.slug, title: task.title, why: true } : undefined)}>
               <Sparkles aria-hidden="true" />
               {t(A.askWhy)}
             </button>
