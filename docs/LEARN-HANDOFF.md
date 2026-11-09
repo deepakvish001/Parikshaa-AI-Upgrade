@@ -397,6 +397,12 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
     terminal ka output chat me bheja, usme deploy key aur edge secret khul gaye: owner ko `rotate.sh` diya (naya edge secret, Caddy reload, naya
     deploy key; nakli settings par jaancha). Ab owner: rotate, Vercel `PARIKSHAA_EDGE_SECRET`, GitHub `staging` me `VM_SSH_KEY`,
     `MIGRATE_DATABASE_URL`, `VM_KNOWN_HOSTS`, `VM_HOST`, `VM_USER`, `APP_URL`, `API_ORIGIN` (deploy-web ko sirf `API_ORIGIN` chahiye), phir "ho gaya" par Claude
+    **21:30 UTC, owner "ho gaya":** `deploy-web` (staging, `claude/learn-v2`) hara: **https://staging.parikshaa.org live**, "It answers"
+    me `/api/health` Vercel se VM tak pahuncha (naya edge secret dono taraf sahi). `deploy-api` [run](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/actions/runs/42702857447):
+    Migrate hara (0 baaki), "Update the machine" laal: `Load key: error in libcrypto`, yani GitHub secret `VM_SSH_KEY` copy me bigda
+    (browser terminal se). VM par code `41662a3` chal raha (sirf docs peeche). Agla: owner key dobara sahi paste kare; phir bhi na chale to
+    workflow ko ek-line base64 key bhi maanne do (`base64 -w0 /root/deploy_key`; step me `BEGIN` na ho to `base64 -d`, `tr -d '\r'`,
+    `ssh-keygen -y` se saaf error), test + push + dobara run. Phir `api.staging.parikshaa.org/api/health` seedha → 403 jaanchna, docs.
     `deploy-api.yml` aur `deploy-web.yml` (staging) chalaye. **Agla:** K2-7 SQL.
   - [ ] K2-7 SQL (9 Nov raat, owner "K2-7 shuru karo"; usi draft PR #86 me jayega). **5 ghante ki limit (0.82) par ruka: code commit NAHI,
     autosave `autosave/claude/learn-v2--eb426b80` me** (restore: us branch se files lo; §1). **Bana aur unit se jaancha:** API `GET /problems` ke har
