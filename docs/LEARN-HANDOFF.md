@@ -19,8 +19,8 @@ account ka Claude **isi file se** shuru karta hai aur isi ko update karta hai. O
    `claude/learn-v2` fast-forward se wahan aayi). [#70](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/70) (K2-2) bhi owner ne 28 Oct ko usi branch me merge kiya (`1b568d6`;
    `claude/learn-v2` fast-forward). **Kadam 2 ab draft [#71](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/71) me** (K2-3 se, 28 Oct khola; [HANDOFF.md](HANDOFF.md) ki row dekho;
    wo bhi merge ho chuka ho to naya draft PR kholo), base `claude/festive-maxwell-pb4k5v` jab tak #66 khula hai, phir `main`.
-   **29 Oct 2026:** #71 aur #82 (docs) `main` me merge; `claude/learn-v2` ab `main` se (fast-forward `7b636b8`). **K2-5 draft PR
-   [#83](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/83), base `main`.** Merge ho jaye to `origin/main` laao (ff-only, warna normal merge commit) aur naya draft PR.
+   **29 Oct 2026:** #71 aur #82 (docs) `main` me merge; `claude/learn-v2` ab `main` se (fast-forward `7b636b8`). K2-5 ka PR
+   [#83](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/83) `main` me merge (`402745c`). **K2-6 draft PR [#86](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/86), base `main`** (9 Nov). Merge ho jaye to `origin/main` laao (ff-only, warna normal merge commit) aur naya draft PR.
    Merge hua PR dobara mat kholo, us par commit mat jodo.
 2. **Doosra session to nahi chal raha?** §6 ki aakhri row. "Chal raha" ho aur 30 minute ke andar commit ho, to owner
    se poochho.
@@ -377,7 +377,17 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
     **Kahan ruka:** K2-5 poora; CI ke dono laal (visual mask, placement flaky) theek karke push. Agla session pehle #83 ke head ke
     checks dekhe (`gh api repos/<owner>/<repo>/commits/<sha>/check-runs`; laal ho to `…/check-runs/<id>/annotations` sabse sasta).
     **Agla:** K2-6 Sahayak panel (workspace ka teesra pane aur shell ka pane, dono).
-  - [ ] K2-6 Sahayak panel
+  - [x] K2-6 (9 Nov, owner: "continue"; #83 `main` me merge tha, `claude/learn-v2` fast-forward `402745c`; autosave me sirf state file; naya draft PR [#86](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/86), base `main`)
+    Sahayak panel `learn/LearnSahayak.tsx` + `learn-sahayak.css` (apna chunk): shell ka pane / phone sheet / workspace ka teesra pane
+    (band pane kuch nahi padhta). Kis par: `openSahayak(about)` (`context.tsx` `SahayakAbout`: problem + `why`, ya lesson); screen apna vishay
+    `setHere` se deti (lesson). API ki baatcheet, hint, review ("Fail kyun?"), doubt, solve ke baad follow-ups + note draft ("Mere note me jodo"),
+    credits + keemat, har refusal. **API:** `GET /lessons/:lesson/tutor`, tutor `costs.notes` (test + openapi). **Fake AI:** e2e ka `fakeModel`
+    ab `messages.create` (tutor) ka jawab deta; asli provider kabhi nahi. Tests: unit 19, e2e `learn-sahayak.spec.ts` 2, visual 4.
+    **Kadam 3/5 list me jode:** streaming, aam baat (bina problem/lesson), Build mode diff, jawab par raay/copy, Hinglish jawab, ek lesson ki
+    baatcheet mitana. **Asli jawab ke liye owner ki Anthropic key (Kadam 5)**; tab tak sirf fake model par jaancha.
+    **Local dhyan:** visual me `console-welcome-1440-light` aur `console-home-1440-light` is container me laal (`.home-calendar` mask ki
+    oonchai alag; Learn ke badlav se nahi, flag band wale console pages). CI me dekhna.
+    **Kahan ruka:** K2-6 poora, #86 par CI dekhna. **Agla:** K2-7 SQL.
   - [ ] K2-7 SQL
   - [ ] K2-8 aptitude (maujooda MCQ par; mocks Kadam 3/4)
   - [ ] K2-9 contests
@@ -494,6 +504,7 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
 
 ## 7. Log (naya upar)
 
+- 9 Nov 2026 (session 4 aage, K2-6): owner "continue". #83 `main` me merge; `claude/learn-v2` ff `402745c`. Learn ka Sahayak panel (`learn/LearnSahayak.tsx`) asli tutor API par: shell, phone sheet, workspace; hint, review, doubt, follow-ups, note draft, credits, har refusal. API: lesson ki baatcheet + `costs.notes`; e2e fake model tutor ka jawab deta. 19 unit + 2 e2e + 4 visual. Naya draft PR #86. Agla: K2-7.
 - 29 Oct 2026 (session 4 aage, K2-5): owner "K2-5 shuru karo". Autosave me adhoora kuch nahi (sirf state file); `claude/learn-v2` `origin/main` (`7b636b8`) par fast-forward. Learn ka problem workspace + editorial (`learn/LearnWorkspace.tsx`): focus screen, kit ke panes, purani site ka editor (lazy), Run/Submit asli judge par, verdict + pehla fail test, submissions, draft, hints, editorial, note; Aaj/sheet/Abhyas/POTD/lists ke problem link ab yahin. API wahi. 24 unit + 2 e2e + 6 visual. Naya draft PR #83 (base `main`). Agla: K2-6.
 - 29 Oct 2026 (session 4 aage, K2-4 doosra hissa): problems bank (Abhyas, `learn/LearnProblems.tsx`) aur POTD calendar (`learn/LearnPotd.tsx`) asli API par; Aaj ka POTD link `potd` par. 7 unit + 2 e2e + 8 visual. **K2-4 poora** (#71 me, K2-3 ke saath). Agla: K2-5.
 - 29 Oct 2026 (session 4 aage, K2-4 pehla hissa): owner "K2-4 shuru karo"; #71 (K2-3) abhi khula draft, isliye usi branch par. Autosave me adhoora kuch nahi (sirf state file). Learn ki DSA sheet (`learn/LearnSheet.tsx`) aur lesson reader (`learn/LearnLesson.tsx`) asli API par; `/potd` me `month`, `date`, `daysOff` (chhoti API kami). 10 unit + 2 e2e (asli API) + 8 visual. Agla: K2-4 doosra hissa (problems bank + POTD calendar).
