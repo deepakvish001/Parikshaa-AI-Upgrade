@@ -16,7 +16,7 @@ export const SESSION = `parikshaa.practice.${SITE}.session`;
 export type Handler = (url: URL) => { status?: number; body: unknown } | Promise<{ status?: number; body: unknown }>;
 export interface FakeApi {
   readonly routes: Record<string, Handler>;
-  readonly calls: { method: string; path: string; auth: string | null }[];
+  readonly calls: { method: string; path: string; auth: string | null; body?: unknown }[];
 }
 
 export const task = (id: string, title: string, kind: PlanTask["kind"], done = false, extra: Partial<PlanTask> = {}): PlanTask => ({
@@ -161,7 +161,7 @@ export function fakeApi(): FakeApi {
       const path = decodeURIComponent(url.pathname.replace(/^\/api/, ""));
       const method = init.method ?? "GET";
       const headers = (init.headers ?? {}) as Record<string, string>;
-      api.calls.push({ method, path, auth: headers["authorization"] ?? null });
+      api.calls.push({ method, path, auth: headers["authorization"] ?? null, ...(typeof init.body === "string" ? { body: JSON.parse(init.body) as unknown } : {}) });
       const handler = api.routes[`${method} ${path}`];
       const { status = 200, body } = handler === undefined ? { status: 404, body: { error: "not_found" } } : await handler(url);
       return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });

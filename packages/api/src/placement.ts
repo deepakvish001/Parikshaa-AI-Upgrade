@@ -19,6 +19,16 @@ import { importStudents, type StudentProblem } from "./student-import.js";
  * roll numbers, so its marks come from the ledger like any other.
  */
 
+/**
+ * A drive's own apply code. One that began `c_` would read as a partner
+ * college's code (`#byCode` sends those to the colleges) and its link would
+ * find nothing, about one drive in 4,096; such a code starts `d_` instead.
+ */
+export function driveApplyCode(bytes: Buffer = randomBytes(9)): string {
+  const code = bytes.toString("base64url");
+  return code.startsWith("c_") ? `d${code.slice(1)}` : code;
+}
+
 export class ImportRejected extends Error {
   constructor(readonly problems: readonly StudentProblem[]) {
     super(`${problems.length} row${problems.length === 1 ? "" : "s"} could not be read`);
@@ -587,7 +597,7 @@ export class PlacementService {
   async setApplyLink(actor: Actor, id: string, open: boolean, openToNew: boolean): Promise<{ readonly link: string | null }> {
     this.#require(actor);
     const drive = await this.#drive(actor, id);
-    const code = open ? (drive.applyCode ?? randomBytes(9).toString("base64url")) : null;
+    const code = open ? (drive.applyCode ?? driveApplyCode()) : null;
     await this.#placement.setApply(actor.orgId, id, code, open && openToNew);
     await this.#exams.recordAudit(actor, open ? "drive.apply_opened" : "drive.apply_closed", id, open ? { openToNew } : {});
     return { link: code === null ? null : this.applyLink(actor.orgId, code) };

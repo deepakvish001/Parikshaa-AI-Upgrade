@@ -83,7 +83,9 @@ describe("addresses", () => {
     expect(routeOf(SITE, "/practice/demo/")).toBe("aaj");
     expect(routeOf(SITE, "/practice/demo/sql")).toBe("sql");
     expect(routeOf(SITE, "/practice/demo/sql/")).toBe("sql");
-    expect(routeOf(SITE, "/practice/demo/problems/two-sum")).toBeNull();
+    // A problem opens its workspace (K2-5); a contest's own page is not in Learn yet.
+    expect(routeOf(SITE, "/practice/demo/problems/two-sum")).toBe("problems/two-sum");
+    expect(routeOf(SITE, "/practice/demo/contests/weekly-12")).toBeNull();
     expect(routeOf(SITE, "/practice/demo-2/sql")).toBeNull();
   });
 });
@@ -167,10 +169,10 @@ describe("Learn v2's shell", () => {
   });
 
   it("says when an address is not in Learn yet, and links to it on the current site", () => {
-    at(`/practice/${SITE}/problems/two-sum`);
+    at(`/practice/${SITE}/contests/weekly-12`);
     renderLearn();
     expect(screen.getByRole("heading", { level: 1, name: hg(T.notHereTitle) })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: hg(T.openOld) })).toHaveAttribute("href", `/practice/${SITE}/problems/two-sum?learn_v2=0`);
+    expect(screen.getByRole("link", { name: hg(T.openOld) })).toHaveAttribute("href", `/practice/${SITE}/contests/weekly-12?learn_v2=0`);
   });
 
   it("narrows the side bar at 1180 px and below; every link keeps its name, shown as a tooltip", () => {

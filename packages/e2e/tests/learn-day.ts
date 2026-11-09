@@ -38,7 +38,28 @@ export interface LearnDay {
   readonly contest: string;
   /** Only when seeded with `mine`. */
   readonly mine: LearnMine | null;
+  /** Only when seeded with `code` (K2-5): a code problem (Python and C++) outside the plan, with its first hint and an editorial. */
+  readonly code: { readonly slug: string; readonly title: string } | null;
 }
+
+/** The code problem's right answer in Python, for e2e to submit: two pointers from both ends. */
+export const PAIR_SOLUTION = [
+  "n = int(input())",
+  "a = list(map(int, input().split()))",
+  "t = int(input())",
+  "l, r = 0, n - 1",
+  "while l < r:",
+  "    s = a[l] + a[r]",
+  "    if s == t:",
+  "        print(l, r)",
+  "        break",
+  "    if s < t:",
+  "        l += 1",
+  "    else:",
+  "        r -= 1",
+  "else:",
+  "    print(-1)",
+].join("\n");
 
 export const istDay = (offsetDays = 0): string => new Date(Date.now() + 5.5 * 3_600_000 + offsetDays * 86_400_000).toISOString().slice(0, 10);
 
@@ -50,7 +71,7 @@ async function ok(res: Promise<APIResponse>, status = 200): Promise<Record<strin
 
 export async function seedLearnDay(
   request: APIRequestContext,
-  { org, site, learner, mine = false }: { readonly org: string; readonly site: string; readonly learner: { readonly name: string; readonly email: string }; readonly mine?: boolean },
+  { org, site, learner, mine = false, code = false }: { readonly org: string; readonly site: string; readonly learner: { readonly name: string; readonly email: string }; readonly mine?: boolean; readonly code?: boolean },
 ): Promise<LearnDay> {
   const owner = await seedOrganisation(hashPassword, org, "Nalanda Institute of Technology");
   const signedIn = await ok(request.post("/api/auth/login", { data: { email: owner.email, password: owner.password } }));
@@ -113,6 +134,44 @@ export async function seedLearnDay(
     201,
   );
 
+  // A code problem for the workspace (K2-5): two examples and two hidden tests, run by the e2e stack's runner.
+  let pair: { slug: string; title: string } | null = null;
+  if (code) {
+    const title = "Pair with target sum";
+    const filed = await ok(
+      request.post("/api/bank", {
+        headers: staff,
+        data: {
+          question: {
+            kind: "code",
+            stem: `${title}\n\nThe array \`a\` is sorted. Print two positions \`i < j\` (from 0) whose values add up to **target**, or \`-1\` when no pair does.`,
+            maxScore: 1,
+            rubric: [],
+            language: "python",
+            languages: ["python", "cpp"],
+            starter: "n = int(input())\n",
+            starters: { python: "n = int(input())\n", cpp: "#include <bits/stdc++.h>\nint main() {}\n" },
+            inputFormat: "`n`, then the `n` numbers of `a`, then `target`, each on its own line.",
+            outputFormat: "`i j`, or `-1`.",
+            constraints: "2 ≤ n ≤ 2 · 10⁵",
+            tests: [
+              { id: "t1", input: "6\n1 3 4 6 8 11\n10\n", expected: "2 3\n", weight: 1, hidden: false, explanation: "a[2] + a[3] = 4 + 6 = 10" },
+              { id: "t2", input: "3\n2 5 9\n4\n", expected: "-1\n", weight: 1, hidden: false },
+              { id: "t3", input: "2\n5 5\n10\n", expected: "0 1\n", weight: 1, hidden: true },
+              { id: "t4", input: "4\n1 2 3 9\n12\n", expected: "2 3\n", weight: 1, hidden: true },
+            ],
+          },
+          difficulty: "medium",
+          tags: ["two pointers"],
+        },
+      }),
+      201,
+    );
+    const editorial = ["Sort once, then walk in from both ends.", "## Brute force", "Try every pair: O(n²).", "## Optimal", "Move the left pointer up when the sum is small, the right one down when it is big: O(n).", "```python", PAIR_SOLUTION, "```"].join("\n\n");
+    const made = (await ok(request.post("/api/practice-admin/problems", { headers: staff, data: { bankQuestionId: filed["id"], editorial, hint: "The array is sorted. What does a sum that is too small tell you?" } }), 201)) as { slug: string };
+    pair = { slug: made.slug, title };
+  }
+
   const signedUp = await ok(request.post(`/api/practice/${site}/signup`, { data: { name: learner.name, email: learner.email, password: "practice every single day" } }), 201);
   const token = signedUp["token"] as string;
   const auth = { authorization: `Bearer ${token}` };
@@ -135,7 +194,7 @@ export async function seedLearnDay(
       { slug: sorting.slug, title: "Stable sorting" },
       { slug: searching.slug, title: "Searching a sorted array" },
     ],
-    now: { slug: stable.slug, title: stable.title }, potd: { slug: search.slug, title: search.title }, company: "Infosys", contest: "Weekly Round 13" };
+    now: { slug: stable.slug, title: stable.title }, potd: { slug: search.slug, title: search.title }, company: "Infosys", contest: "Weekly Round 13", code: pair };
   if (!mine) return { ...day, mine: null };
 
   // Revision, lists and notes (K2-3). A lesson's quiz answered wrong makes both its problems due today.
