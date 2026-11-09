@@ -395,7 +395,23 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
     `--force-confold` (bina terminal ke dpkg ka sawaal fail karta, chhote package se jaancha); `setup-server.test.sh` me 4 check.
     **Kahan ruka:** K2-6 + VM fix #86 par (CI dekhna, owner merge). Staging: owner ka step 2 + DNS + secrets, phir "ho gaya" par Claude
     `deploy-api.yml` aur `deploy-web.yml` (staging) chalaye. **Agla:** K2-7 SQL.
-  - [ ] K2-7 SQL
+  - [ ] K2-7 SQL (9 Nov raat, owner "K2-7 shuru karo"; usi draft PR #86 me jayega). **5 ghante ki limit (0.82) par ruka: code commit NAHI,
+    autosave `autosave/claude/learn-v2--eb426b80` me** (restore: us branch se files lo; §1). **Bana aur unit se jaancha:** API `GET /problems` ke har
+    item me `languages` (`practice.ts`, `practice-routes.ts`, test `learn-v2.test.ts`, `docs/openapi.json` regen); `learn/LearnSql.tsx` +
+    `learn-sql.css` (apna lazy chunk; Learn ka kuch import nahi karta, warna bundler saajhe chunk dobara kaatta aur `i18n-*.js` gayab, index +7 KB:
+    `t` aur icon workspace deta, `sql-view.ts` ka parse copy): tables (column + type), example ki rows, result rows, aapka vs sahi nateeja
+    (missing/extra row shabd + rang, "rows wahi, kram alag"), 12 rows / 10 columns / 120 akshar + "aur N"; `LearnWorkspace.tsx` SQL par: Query pane,
+    "Aapki query", apni tables, `runtime_error` = "Query me error" + database ka text, chhupa test sirf verdict; `LearnProblems.tsx` `sql` screen
+    (sirf `languages` me `sql`; sheets/POTD nahi); `LearnApp.tsx` route `sql`; icons `Table2`, `Database`; `LearnApp.test.tsx` ka popstate test ab
+    `roadmap` par; `LearnSql.test.tsx` 14 (axe). Learn unit 170/170, build:clients, budget (`LearnSql-*.js` 2.7/3, `.css` 0.7/1 naye; baaki wahi),
+    lint:css hare; poora `npm run check` aakhri fix ke baad dobara nahi chala. Problems par Plus ka taala API me nahi (sirf lesson/plan).
+    **Likha, chalaya nahi:** e2e `tests/learn-sql.spec.ts` (2), seed `seedLearnSql` + `BIG_COUNTRIES` (`tests/learn-day.ts`: SQL starter pack + plan),
+    visual `learn.visual.ts` me 10 nayi images `learn-sql-*` (site `visual-learn-sql`; baselines abhi nahi).
+    **Agla, isi kram me:** `npm run check`; Postgres (`/var/lib/postgresql/k1-e2e`) + fonts ki copy (FONTCONFIG_FILE + FONTCONFIG_PATH) ke saath
+    `npx playwright test tests/learn-*.spec.ts --project=chromium` (packages/e2e), `npm run visual:update -w @parikshaa/e2e -- -g "SQL"`, phir poora
+    `npm run visual` (purani images wahi); commit; tracker row 140 (K2-7) + row 94 me Learn path + Build log ki #86 line; DESIGN-SYSTEM §10 me K2-7;
+    yahan tick + §7; push; #86 ka title/body; CI. Kadam 3/4: PK/FK nishaan, result ke column naam (runner sirf rows deta), dialect (sirf SQLite),
+    SQL ka alag sheet page.
   - [ ] K2-8 aptitude (maujooda MCQ par; mocks Kadam 3/4)
   - [ ] K2-9 contests
   - [ ] K2-10 profile B + share
