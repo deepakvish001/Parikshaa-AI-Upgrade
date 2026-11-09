@@ -390,7 +390,11 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
     `console-home-1440-light` laal: console ka Sittings calendar aaj ke mahine par khulta, November 2026 me 6 hafte (October me 5), to
     calendar aur neeche sab khiskta (Learn se nahi, tareekh ka bomb). Ab test screenshot se pehle calendar October 2026 par le jaate
     (`oneMonth`, `onboarding.visual.ts`, `screens.visual.ts`), images wahi.
-    **Kahan ruka:** K2-6 poora, #86 par CI dekhna. **Agla:** K2-7 SQL.
+    **Staging VM (9 Nov, isi PR me):** owner ne Hostinger VPS par bootstrap chalaya; sab bana, par runner shuru nahi hua: compose me
+    `cpus: 4`, machine me 2 CPU. Ab `cpus: ${RUNNER_CPUS:-4}`, setup-server.sh `nproc` se (4 tak) likhta; Caddy ka apt install
+    `--force-confold` (bina terminal ke dpkg ka sawaal fail karta, chhote package se jaancha); `setup-server.test.sh` me 4 check.
+    **Kahan ruka:** K2-6 + VM fix #86 par (CI dekhna, owner merge). Staging: owner ka step 2 + DNS + secrets, phir "ho gaya" par Claude
+    `deploy-api.yml` aur `deploy-web.yml` (staging) chalaye. **Agla:** K2-7 SQL.
   - [ ] K2-7 SQL
   - [ ] K2-8 aptitude (maujooda MCQ par; mocks Kadam 3/4)
   - [ ] K2-9 contests
@@ -507,6 +511,7 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
 
 ## 7. Log (naya upar)
 
+- 9 Nov 2026 (session 4 aage, raat): K2-6 agent 5 ghante ki limit par ruka tha; uska CI fix (jaancha hua: visual 137, check hara) `1aaf799` me push. Owner ne Hostinger VPS par bootstrap chalaya: pehli baar pooler ne URI ka user/db_name galat format bataya, doosri baar sahi URI se sab bana par runner `cpus: 4` > 2 CPU par ruka. Fix: `RUNNER_CPUS` + Caddy install bina sawaal; tests. Owner ko step 2 script di.
 - 9 Nov 2026 (session 4 aage, K2-6): owner "continue". #83 `main` me merge; `claude/learn-v2` ff `402745c`. Learn ka Sahayak panel (`learn/LearnSahayak.tsx`) asli tutor API par: shell, phone sheet, workspace; hint, review, doubt, follow-ups, note draft, credits, har refusal. API: lesson ki baatcheet + `costs.notes`; e2e fake model tutor ka jawab deta. 19 unit + 2 e2e + 4 visual. Naya draft PR #86. Agla: K2-7.
 - 29 Oct 2026 (session 4 aage, K2-5): owner "K2-5 shuru karo". Autosave me adhoora kuch nahi (sirf state file); `claude/learn-v2` `origin/main` (`7b636b8`) par fast-forward. Learn ka problem workspace + editorial (`learn/LearnWorkspace.tsx`): focus screen, kit ke panes, purani site ka editor (lazy), Run/Submit asli judge par, verdict + pehla fail test, submissions, draft, hints, editorial, note; Aaj/sheet/Abhyas/POTD/lists ke problem link ab yahin. API wahi. 24 unit + 2 e2e + 6 visual. Naya draft PR #83 (base `main`). Agla: K2-6.
 - 29 Oct 2026 (session 4 aage, K2-4 doosra hissa): problems bank (Abhyas, `learn/LearnProblems.tsx`) aur POTD calendar (`learn/LearnPotd.tsx`) asli API par; Aaj ka POTD link `potd` par. 7 unit + 2 e2e + 8 visual. **K2-4 poora** (#71 me, K2-3 ke saath). Agla: K2-5.

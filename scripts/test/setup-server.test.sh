@@ -51,6 +51,20 @@ setup split DOMAIN=api.staging.example.in
 check "re-run: the edge secret and the data key stay" '[[ "$(get split PARIKSHAA_EDGE_SECRET)" == "$edge" && "$(get split PARIKSHAA_DATA_KEY)" == "$key" ]]'
 check "re-run: Supabase and Vercel are remembered" '[[ "$(get split DATABASE_URL)" == "$db" && "$(get split APP_DOMAIN)" == staging.example.in ]]'
 
+# --- the runner's CPUs: what the machine has, four at most --------------------
+# Docker starts nothing when a limit is above the machine's CPUs. `machine N`
+# is a PATH on which nproc answers N.
+machine() {
+  mkdir -p "$work/cpus-$1"
+  printf '#!/bin/sh\necho %s\n' "$1" >"$work/cpus-$1/nproc"
+  chmod +x "$work/cpus-$1/nproc"
+  printf '%s' "$work/cpus-$1:$PATH"
+}
+setup small PATH="$(machine 2)" DOMAIN=exam.college.in
+check "two CPUs: the runner may use both, and no more" '[[ "$(get small RUNNER_CPUS)" == 2 ]]'
+setup small PATH="$(machine 16)" DOMAIN=exam.college.in
+check "the same machine made larger: four, as before" '[[ "$(get small RUNNER_CPUS)" == 4 ]]'
+
 # --- refused ----------------------------------------------------------------
 if setup same DOMAIN=exam.example.in APP_DOMAIN=exam.example.in; then fail "the pages and the API on one name are refused"; else
   check "the pages and the API on one name are refused" 'grep -q "must differ" "$work/same.log"'
@@ -66,6 +80,10 @@ if command -v docker >/dev/null && docker compose version >/dev/null 2>&1; then
   out="$(docker compose --project-directory "$REPO" -f "$REPO/docker-compose.yml" -f "$REPO/deploy/vm/external-db.yml" config api)"
   check "compose: the API uses Supabase's database" 'grep -q "DATABASE_URL: $db" <<<"$out"'
   check "compose: and starts without the local one" '! grep -q "service_healthy\|service_completed_successfully" <<<"$out"'
+  two="$(RUNNER_CPUS=2 docker compose --project-directory "$REPO" -f "$REPO/docker-compose.yml" -f "$REPO/deploy/vm/external-db.yml" config runner)"
+  plain="$(env -u RUNNER_CPUS docker compose --project-directory "$REPO" -f "$REPO/docker-compose.yml" config runner)"
+  check "compose: the runner's CPU limit is the settings file's" 'grep -q "cpus: 2$" <<<"$two"'
+  check "compose: and four where nothing sets it" 'grep -q "cpus: 4$" <<<"$plain"'
 fi
 
 if ((failures > 0)); then

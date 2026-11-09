@@ -125,7 +125,9 @@ services:
       - /tmp:size=512m,mode=1777
     mem_limit: 4g
     pids_limit: 1024
-    cpus: 4
+    # Docker refuses a limit above what the machine has, so setup-server.sh
+    # sets RUNNER_CPUS to all of a machine with fewer than four.
+    cpus: ${RUNNER_CPUS:-4}
 
 volumes:
   parikshaa-data:
