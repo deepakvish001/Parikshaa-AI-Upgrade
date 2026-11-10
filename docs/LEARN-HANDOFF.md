@@ -20,7 +20,7 @@ account ka Claude **isi file se** shuru karta hai aur isi ko update karta hai. O
    `claude/learn-v2` fast-forward). **Kadam 2 ab draft [#71](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/71) me** (K2-3 se, 28 Oct khola; [HANDOFF.md](HANDOFF.md) ki row dekho;
    wo bhi merge ho chuka ho to naya draft PR kholo), base `claude/festive-maxwell-pb4k5v` jab tak #66 khula hai, phir `main`.
    **29 Oct 2026:** #71 aur #82 (docs) `main` me merge; `claude/learn-v2` ab `main` se (fast-forward `7b636b8`). K2-5 ka PR
-   [#83](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/83) `main` me merge (`402745c`). K2-6 wala [#86](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/86) `main` me merge (9 Nov). **K2-7 + CI fix: draft PR [#87](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/87), base `main`** (10 Nov). Merge ho jaye to `origin/main` laao (ff-only, warna normal merge commit) aur naya draft PR.
+   [#83](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/83) `main` me merge (`402745c`). K2-6 wala [#86](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/86) `main` me merge (9 Nov). K2-7 + CI fix wala [#87](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/87) `main` me merge (10 Nov, `94eea54`); `claude/learn-v2` ff. **Agla tukda K2-8, naye draft PR me** (owner ke "K2-8 shuru karo" par).
    Merge hua PR dobara mat kholo, us par commit mat jodo.
 2. **Doosra session to nahi chal raha?** §6 ki aakhri row. "Chal raha" ho aur 30 minute ke andar commit ho, to owner
    se poochho.
@@ -422,8 +422,9 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
     4.38:1; ab `#8891b3` (5.05:1), `components/CodeEditor.tsx`. Local: web 435, build:clients, budget, e2e chromium 65/65, visual 143/143 (purani wahi).
     CI `2549b24`: SQL hara, par WebKit me F1 (`prep-flows.spec.ts`) laal: test "Start this plan" dabate hi `/home` par jaata tha, plan ka POST poora hone se
     pehle; WebKit ne save kaat diya, Home par "No study plan yet". Ab test "Study plan: Arrays" heading ka intezaar karta (chromium me POST 1.5 s rok kar wahi error bana, fix se hara).
-    **Kahan ruka (10 Nov):** agent ~03:35 UTC par limit par ruka, ye fix commit nahi hua tha; main session ne 07:45 UTC par contrast dobara naap kar (4.38 → 5.05) commit + push kiya. Agla session: #87 ke head par CI
-    padho (`e2e` ~35 min); laal ho to `gh api repos/.../actions/jobs/<id>/logs` se wajah. Hara ho to owner merge (F5). **Agla: K2-8** aptitude.
+    **Kahan ruka (10 Nov):** agent ~03:35 UTC par limit par ruka, ye fix commit nahi hua tha; main session ne 07:45 UTC par contrast dobara naap kar (4.38 → 5.05) commit + push kiya. Phir `e2e` me WebKit par
+    `prep-flows.spec.ts` F1 laal (test plan save hone se pehle page chhod deta tha; ab saved plan ka heading dekh kar), `380918a` par CI poora
+    hara. Owner ne 10 Nov 08:38 UTC par merge kiya; `main` par deploy-api aur deploy-web hare (VPS fetch ab job ke token se chalta). **Agla: K2-8** aptitude.
   - [ ] K2-8 aptitude (maujooda MCQ par; mocks Kadam 3/4)
   - [ ] K2-9 contests
   - [ ] K2-10 profile B + share
@@ -539,6 +540,7 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
 
 ## 7. Log (naya upar)
 
+- 10 Nov 2026 (session 4 aage): #87 (K2-7 SQL, #85 ke baad ka CI fix, private repo se deploy) `main` me merge (`94eea54`); `main` par deploy-api aur deploy-web hare, staging par SQL bhi. Staging DB me abhi koi practice site nahi: owner ko admin-cli + console se site + starter packs ka tareeka diya. Agla: K2-8 (owner ki haan par).
 - 10 Nov 2026 (session 4 aage, K2-7): owner "continue". #85 (dependabot dev group) ke baad `main` ka CI laal tha: jsdom 31 chhupe tab ke field ko focus nahi deta (console test ab Questions tab kholta), axe 4.14 ka `label-content-name-mismatch` (Learn logo ka Hindi naam "Parikshaa Learn, आज"), Playwright 1.65.0 ka Firefox axe par crash (`@playwright/test` 1.64.1 par pin, tracker Faisle). Alag commit `c82a575`. Phir K2-7 SQL poora (autosave wala kaam, e2e/visual chalakar), usi draft #87 me. Local: Playwright 1.64 ko `chromium_headless_shell-1248` wrapper (1.65 ke liye `-1254` bhi bana, repo me kuch nahi). Agla: K2-8.
 - 9 Nov 2026 (session 4 aage, raat): K2-6 agent 5 ghante ki limit par ruka tha; uska CI fix (jaancha hua: visual 137, check hara) `1aaf799` me push. Owner ne Hostinger VPS par bootstrap chalaya: pehli baar pooler ne URI ka user/db_name galat format bataya, doosri baar sahi URI se sab bana par runner `cpus: 4` > 2 CPU par ruka. Fix: `RUNNER_CPUS` + Caddy install bina sawaal; tests. Owner ko step 2 script di.
 - 9 Nov 2026 (session 4 aage, K2-6): owner "continue". #83 `main` me merge; `claude/learn-v2` ff `402745c`. Learn ka Sahayak panel (`learn/LearnSahayak.tsx`) asli tutor API par: shell, phone sheet, workspace; hint, review, doubt, follow-ups, note draft, credits, har refusal. API: lesson ki baatcheet + `costs.notes`; e2e fake model tutor ka jawab deta. 19 unit + 2 e2e + 4 visual. Naya draft PR #86. Agla: K2-7.
