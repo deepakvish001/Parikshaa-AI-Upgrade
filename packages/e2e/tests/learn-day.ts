@@ -222,3 +222,47 @@ export async function seedLearnDay(
     },
   };
 }
+
+/** What `seedLearnSql` makes (K2-7). */
+export interface LearnSql {
+  readonly token: string;
+  /** The SQL starter pack's track, the learner's plan. */
+  readonly track: { readonly slug: string; readonly title: string };
+  /** Its first problem: one table, `World`, of four rows in the visible test. */
+  readonly problem: { readonly slug: string; readonly title: string };
+}
+
+/** Big countries' answer from the pack itself, and a wrong one that drops the population rule (Nepal goes missing). */
+export const BIG_COUNTRIES = {
+  right: "SELECT name, population, area FROM World WHERE area >= 3000000 OR population >= 25000000;",
+  wrong: "SELECT name, population, area FROM World WHERE area > 3000000;",
+  typo: "SELECT nme FROM World;",
+} as const;
+
+/**
+ * SQL in Learn (tracker row 140, K2-7) on a practice site of its own: the
+ * site takes in the SQL starter pack (the repo's own content: eight problems,
+ * each with its tables, tests and approaches, and their track), and a learner
+ * signs up with a plan on that track. Nothing made up: the problems are the
+ * pack's, run by the e2e stack's judge on SQLite.
+ */
+export async function seedLearnSql(
+  request: APIRequestContext,
+  { org, site, learner }: { readonly org: string; readonly site: string; readonly learner: { readonly name: string; readonly email: string } },
+): Promise<LearnSql> {
+  const owner = await seedOrganisation(hashPassword, org, "Nalanda Institute of Technology");
+  const signedIn = await ok(request.post("/api/auth/login", { data: { email: owner.email, password: owner.password } }));
+  const staff = { authorization: `Bearer ${signedIn["token"] as string}` };
+  await ok(request.put("/api/practice-admin/site", { headers: staff, data: { slug: site, title: "Nalanda Practice", welcome: "", open: true } }));
+  const pack = await ok(request.post("/api/practice-admin/starter-packs/sql-starter", { headers: staff }), 201);
+  const signedUp = await ok(request.post(`/api/practice/${site}/signup`, { data: { name: learner.name, email: learner.email, password: "practice every single day" } }), 201);
+  const token = signedUp["token"] as string;
+  await ok(
+    request.post(`/api/practice/${site}/plan`, {
+      headers: { authorization: `Bearer ${token}` },
+      data: { track: pack["track"], level: "beginner", deadline: istDay(30), dailyMinutes: 60, offDays: [], goal: "SQL for the OA" },
+    }),
+    201,
+  );
+  return { token, track: { slug: pack["track"] as string, title: "SQL, from SELECT to window functions" }, problem: { slug: "big-countries", title: "Big countries" } };
+}

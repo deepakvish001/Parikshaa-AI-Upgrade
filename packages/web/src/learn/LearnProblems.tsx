@@ -22,6 +22,10 @@ import "./learn-problems.css";
  * time with "show more". A problem still opens on the current site until the
  * workspace comes (K2-5); "a random one" picks among those not solved.
  *
+ * The SQL screen (`sql`, K2-7) is the same list with only the SQL problems
+ * (the API names a code problem's languages): no sheets or problem of the
+ * day there, as nothing says which of those are SQL.
+ *
  * Not shown (no backend yet, Kadam 3/4): the mock's progress by pattern
  * rings, the "working with AI" strip (ticket labs, drills: Kadam 3), retry
  * your misses as a list of its own, and the last 30 days' chart.
@@ -72,6 +76,20 @@ export const PB = {
   ],
   signIn: ["Sign in", "Sign in karo", "साइन इन करें"],
   allSolved: ["You have solved every problem here.", "Aapne yahan ka har problem solve kar liya.", "आपने यहाँ का हर प्रश्न हल कर लिया।"],
+  // The SQL screen (K2-7)
+  sqlTitle: ["Queries on real tables.", "Asli tables par queries.", "असली तालिकाओं पर क्वेरी।"],
+  sqlSub: [
+    "Each problem gives you its tables. Write one query; the judge runs it on every test's own tables, on SQLite.",
+    "Har problem apni tables deta hai. Ek query likho; judge use har test ki apni tables par chalata hai, SQLite par.",
+    "हर प्रश्न अपनी तालिकाएँ देता है। एक क्वेरी लिखें; जज उसे हर टेस्ट की अपनी तालिकाओं पर चलाता है, SQLite पर।",
+  ],
+  sqlNoneTitle: ["No SQL problems here yet", "Yahan abhi SQL ka koi problem nahi", "यहाँ अभी SQL का कोई प्रश्न नहीं"],
+  sqlNoneBody: [
+    "When the site's team adds SQL problems (the SQL starter pack, for one), they show here. Abhyas has every other problem.",
+    "Site ki team SQL problems jodegi (jaise SQL starter pack) to yahan dikhenge. Baaki saare problems Abhyas me hain.",
+    "साइट की टीम SQL प्रश्न जोड़ेगी (जैसे SQL स्टार्टर पैक) तो यहाँ दिखेंगे। बाक़ी सारे प्रश्न अभ्यास में हैं।",
+  ],
+  toPractice: ["Open Abhyas", "Abhyas kholo", "अभ्यास खोलें"],
 } as const satisfies Record<string, Tri>;
 
 const LEVEL_WORD: Record<Difficulty, Tri> = { easy: A.easy, medium: A.medium, hard: A.hard };
@@ -120,41 +138,44 @@ function StandingIcon({ status }: { readonly status: Standing }) {
   );
 }
 
-function Frame({ children }: { readonly children: ReactNode }) {
+function Frame({ children, sql = false }: { readonly children: ReactNode; readonly sql?: boolean }) {
   const { t } = useLearn();
   return (
     <div className="ln-stack">
-      <h1 className="ln-page-h1">{t(screenById("practice")?.title ?? PB.eyebrow)}</h1>
+      <h1 className="ln-page-h1">{t(screenById(sql ? "sql" : "practice")?.title ?? PB.eyebrow)}</h1>
       {children}
     </div>
   );
 }
 
-export function Problems() {
+/** An SQL problem, as the list names it. */
+export const isSqlProblem = (p: ProblemSummary): boolean => p.languages?.includes("sql") === true;
+
+export function Problems({ sql = false }: { readonly sql?: boolean }) {
   const problems = useProblems();
   const tracks = useTracks();
   if (waitingForNetwork(problems)) {
     return (
-      <Frame>
+      <Frame sql={sql}>
         <Offline waiting />
       </Frame>
     );
   }
   if (problems.isPending) {
     return (
-      <Frame>
+      <Frame sql={sql}>
         <Loading shape="list" />
       </Frame>
     );
   }
   if (problems.isError) {
     return (
-      <Frame>
+      <Frame sql={sql}>
         <Failed error={problems.error} onRetry={() => void problems.refetch()} retrying={problems.isFetching} />
       </Frame>
     );
   }
-  return <Bank all={problems.data} tracks={tracks.data ?? []} />;
+  return sql ? <Bank all={problems.data.filter(isSqlProblem)} tracks={[]} sql /> : <Bank all={problems.data} tracks={tracks.data ?? []} />;
 }
 
 /** The problems a filter keeps, in the site's order. */
@@ -174,7 +195,15 @@ export function filterProblems(
   );
 }
 
-function Bank({ all, tracks }: { readonly all: readonly ProblemSummary[]; readonly tracks: readonly { readonly slug: string; readonly title: string; readonly items: number; readonly done: number }[] }) {
+function Bank({
+  all,
+  tracks,
+  sql = false,
+}: {
+  readonly all: readonly ProblemSummary[];
+  readonly tracks: readonly { readonly slug: string; readonly title: string; readonly items: number; readonly done: number }[];
+  readonly sql?: boolean;
+}) {
   const { t, go } = useLearn();
   const { signedIn } = useLearnData();
   const online = useOnline();
@@ -215,9 +244,9 @@ function Bank({ all, tracks }: { readonly all: readonly ProblemSummary[]; readon
       {online ? null : <Offline />}
       <header className="lp-head">
         <div className="lp-head-text">
-          <p className="ln-eyebrow">{t(PB.eyebrow)}</p>
-          <h1 className="ln-page-h1">{t(PB.title)}</h1>
-          <p className="lp-sub">{t(PB.sub)}</p>
+          <p className="ln-eyebrow">{sql ? "SQL" : t(PB.eyebrow)}</p>
+          <h1 className="ln-page-h1">{t(sql ? PB.sqlTitle : PB.title)}</h1>
+          <p className="lp-sub">{t(sql ? PB.sqlSub : PB.sub)}</p>
         </div>
         <div className="lp-acts">
           {unsolved.length === 0 ? null : (
@@ -226,10 +255,12 @@ function Bank({ all, tracks }: { readonly all: readonly ProblemSummary[]; readon
               {t(PB.random)}
             </button>
           )}
-          <ScreenLink to="potd" className="ln-btn ln-btn-pri">
-            <Target aria-hidden="true" />
-            {t(PB.potd)}
-          </ScreenLink>
+          {sql ? null : (
+            <ScreenLink to="potd" className="ln-btn ln-btn-pri">
+              <Target aria-hidden="true" />
+              {t(PB.potd)}
+            </ScreenLink>
+          )}
         </div>
       </header>
 
@@ -260,14 +291,27 @@ function Bank({ all, tracks }: { readonly all: readonly ProblemSummary[]; readon
       {signedIn ? null : (
         <p className="ln-notice ln-notice-info lp-signed-out">
           <span className="ln-grow">{t(PB.signedOut)}</span>
-          <ScreenLink to="signin?next=practice" className="ln-btn ln-btn-sm ln-btn-pri">
+          <ScreenLink to={sql ? "signin?next=sql" : "signin?next=practice"} className="ln-btn ln-btn-sm ln-btn-pri">
             {t(PB.signIn)}
           </ScreenLink>
         </p>
       )}
 
       {all.length === 0 ? (
-        <Empty title={t(PB.noneTitle)} body={t(PB.noneBody)} headingLevel={2} />
+        sql ? (
+          <Empty
+            title={t(PB.sqlNoneTitle)}
+            body={t(PB.sqlNoneBody)}
+            headingLevel={2}
+            action={
+              <ScreenLink to="practice" className="ln-btn ln-btn-pri">
+                {t(PB.toPractice)}
+              </ScreenLink>
+            }
+          />
+        ) : (
+          <Empty title={t(PB.noneTitle)} body={t(PB.noneBody)} headingLevel={2} />
+        )
       ) : (
         <section className="ln-card lp-bank" aria-labelledby={`${id}-bank`}>
           <h2 className="ln-sr" id={`${id}-bank`}>

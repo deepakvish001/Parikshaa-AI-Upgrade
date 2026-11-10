@@ -160,9 +160,9 @@ describe("Learn v2's shell", () => {
     expect(screen.queryByRole("complementary", { name: hg(T.rail) })).not.toBeInTheDocument();
     expect(document.title).toBe("Courses · Parikshaa Learn");
 
-    window.history.pushState(null, "", `/practice/${SITE}/sql`);
+    window.history.pushState(null, "", `/practice/${SITE}/roadmap`);
     act(() => window.dispatchEvent(new PopStateEvent("popstate")));
-    expect(screen.getByRole("heading", { level: 1, name: "SQL" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Roadmaps" })).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("link", { name: hg(T.toToday) }));
     expect(await screen.findByRole("heading", { level: 1, name: /Shubh sandhya/ })).toBeInTheDocument();

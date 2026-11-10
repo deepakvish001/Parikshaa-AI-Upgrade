@@ -143,7 +143,9 @@ export function CodeEditor({ value, language, label, disabled, onChange, dark: i
           themeSlot.current.of(isDark ? dark : light),
           sizeSlot.current.of(sized(fontSize)),
           completionSlot.current.of(completing(completion)),
-          EditorView.contentAttributes.of({ "aria-label": label }),
+          // In the tab order by name too: a long line scrolls the editor sideways (SQL on a phone), and axe
+          // counts a scrolling region as reachable only through a focusable element inside it.
+          EditorView.contentAttributes.of({ "aria-label": label, tabindex: "0" }),
           EditorView.updateListener.of((update) => {
             if (update.docChanged) onChangeRef.current(update.state.doc.toString());
           }),

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { istDay, seedLearnDay } from "../tests/learn-day.js";
+import { BIG_COUNTRIES, istDay, seedLearnDay, seedLearnSql } from "../tests/learn-day.js";
 
 /**
  * Learn v2 with the flag `learn_v2` on, held to its committed images (K1-4;
@@ -12,7 +12,9 @@ import { istDay, seedLearnDay } from "../tests/learn-day.js";
  * Notes, on a second learner seeded with them; since K2-5 a code problem's workspace (the second
  * learner's site), at rest and, last of all, after a wrong submission (its time and memory set to one text, then masked);
  * since K2-6 Sahayak's panel: the workspace's pane on that verdict (a doubt seeded through the e2e stack's fake model) and,
- * on a phone, the sheet Aaj's "Fail kyun? Poochho" opens;
+ * on a phone, the sheet Aaj's "Fail kyun? Poochho" opens; since K2-7 SQL on a third site that took in the SQL
+ * starter pack: the SQL screen, an SQL problem's workspace (on a phone its Problem tab, the tables) and, last,
+ * a wrong query's result beside the expected;
  * at 1440 and 390, dark (Learn's default) and light,
  * and the narrow side bar at 1100. Signed in as the seeded learner, except on
  * the sign-in page (the side bar shows their name). What the date changes is in `.ln-dated`: set to one date,
@@ -30,11 +32,15 @@ let mineToken = "";
 let lesson = "";
 // The code problem on the second learner's site (K2-5).
 let code = "";
+// SQL (K2-7): a site of its own with the SQL starter pack, its learner's plan on that track.
+const SQL = "visual-learn-sql";
+let sqlToken = "";
 
 test.describe.configure({ mode: "serial" });
 
 test.beforeAll(async ({ request }) => {
   ({ token } = await seedLearnDay(request, { org: "e2e-learn-visual", site: SITE, learner: { name: "Asha Verma", email: "asha@students.learn-visual.test" } }));
+  ({ token: sqlToken } = await seedLearnSql(request, { org: "e2e-learn-visual-sql", site: SQL, learner: { name: "Asha Verma", email: "asha@students.learn-sql-visual.test" } }));
   const mine = await seedLearnDay(request, { org: "e2e-learn-visual-mine", site: MINE, learner: { name: "Asha Verma", email: "asha@students.learn-mine-visual.test" }, mine: true, code: true });
   mineToken = mine.token;
   lesson = mine.lessons[1]!.slug;
@@ -77,7 +83,7 @@ async function open(page: Page, path: string, theme: "light" | "dark", signedIn 
   await page.addInitScript(([key, value, t]) => {
     if (value !== "") localStorage.setItem(key!, value!);
     localStorage.setItem("parikshaa.learn.theme", t!);
-  }, [`parikshaa.practice.${site}.session`, signedIn ? (site === MINE ? mineToken : token) : "", theme]);
+  }, [`parikshaa.practice.${site}.session`, signedIn ? (site === MINE ? mineToken : site === SQL ? sqlToken : token) : "", theme]);
   await page.goto(`/practice/${site}${path}?learn_v2=1`);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   if (path === "/revision") await expect(page.getByRole("article", { name: "Card 1 / 2" })).toBeVisible();
@@ -90,6 +96,7 @@ async function open(page: Page, path: string, theme: "light" | "dark", signedIn 
     await expect(page.getByRole("region", { name: "Aage" })).toContainText("Weekly Round 13");
   }
   if (path === "/practice") await expect(page.getByRole("status")).toHaveText("3 me se 3 problems");
+  if (path === "/sql") await expect(page.getByRole("status")).toHaveText("8 me se 8 problems");
   if (path === "/potd") {
     await expect(page.getByRole("table").locator('[aria-current="date"]')).toBeVisible();
     await expect(page.getByText("Abhi ki streak")).toBeVisible();
@@ -103,7 +110,7 @@ async function open(page: Page, path: string, theme: "light" | "dark", signedIn 
   if (path === "/onboarding") await expect(page.getByRole("button", { name: /^DSA for placements/ })).toBeVisible();
   if (path.startsWith("/problems/")) {
     // The editor's own chunk, and the hint (in the problem pane, a hidden tab on a phone).
-    await expect(page.locator(".cm-content")).toContainText("n = int(input())");
+    await expect(page.locator(".cm-content")).toContainText(site === SQL ? "SELECT" : "n = int(input())");
     await expect(page.locator(".lw-hint-next")).toHaveCount(1);
   }
   await page.waitForLoadState("networkidle");
@@ -178,6 +185,14 @@ for (const theme of ["dark", "light"] as const) {
         await expect(page).toHaveScreenshot(`learn-${name}-1440-${theme}.png`, { fullPage: true, mask: masks(page) });
       });
     }
+
+    test("SQL: the screen and a problem's tables (K2-7)", async ({ page }) => {
+      await open(page, "/sql", theme, true, SQL);
+      await expect(page).toHaveScreenshot(`learn-sql-1440-${theme}.png`, { fullPage: true, mask: masks(page) });
+      await open(page, "/problems/big-countries", theme, true, SQL);
+      await expect(page.getByRole("region", { name: "World ke columns" })).toBeVisible();
+      await expect(page).toHaveScreenshot(`learn-sql-workspace-1440-${theme}.png`, { mask: masks(page) });
+    });
 
     test("problem workspace (K2-5)", async ({ page }) => {
       await open(page, `/problems/${code}`, theme, true, MINE);
@@ -263,6 +278,16 @@ for (const theme of ["dark", "light"] as const) {
       });
     }
 
+    test("SQL: the screen and a problem's tables (K2-7)", async ({ page }) => {
+      await open(page, "/sql", theme, true, SQL);
+      await expect(page).toHaveScreenshot(`learn-sql-390-${theme}.png`, { fullPage: true, mask: masks(page) });
+      await open(page, "/problems/big-countries", theme, true, SQL);
+      await page.getByRole("tablist", { name: "Workspace ke pane" }).getByRole("tab", { name: "Problem" }).click();
+      await expect(page.getByRole("region", { name: "World ke columns" })).toBeVisible();
+      await page.mouse.move(0, 0);
+      await expect(page).toHaveScreenshot(`learn-sql-workspace-390-${theme}.png`, { mask: masks(page) });
+    });
+
     test("problem workspace (K2-5)", async ({ page }) => {
       await open(page, `/problems/${code}`, theme, true, MINE);
       await expect(page).toHaveScreenshot(`learn-workspace-390-${theme}.png`, { mask: masks(page) });
@@ -309,6 +334,19 @@ for (const theme of ["dark", "light"] as const) {
       });
       await page.mouse.move(0, 0);
       await expect(page).toHaveScreenshot(`learn-sahayak-1440-${theme}.png`, { mask: [...masks(page), page.locator(".lw-time")] });
+    });
+
+    test("a wrong SQL query: its rows beside the expected (K2-7)", async ({ page }) => {
+      await open(page, "/problems/big-countries", theme, true, SQL);
+      await page.getByRole("textbox", { name: "Aapki query" }).fill(BIG_COUNTRIES.wrong);
+      await page.getByRole("button", { name: "Submit", exact: true }).click();
+      await expect(page.getByRole("region", { name: "Pehla fail test: test 1" }).getByRole("group", { name: "Sahi nateeja" })).toBeVisible({ timeout: 30_000 });
+      await page.waitForLoadState("networkidle");
+      await page.evaluate(() => {
+        for (const el of document.querySelectorAll(".lw-time")) el.textContent = " · 10 ms · 9.9 MB";
+      });
+      await page.mouse.move(0, 0);
+      await expect(page).toHaveScreenshot(`learn-sql-wa-1440-${theme}.png`, { mask: [...masks(page), page.locator(".lw-time")] });
     });
   });
 }
