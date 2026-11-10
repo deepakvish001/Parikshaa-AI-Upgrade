@@ -87,17 +87,28 @@ jobs:
           npm run build
           node packages/store/dist/migrate-cli.js
 
+      # The repository is private, so the machine fetches with this job's own
+      # token (read-only, gone when the job ends). It goes over SSH's input and
+      # into git's environment, never onto a command line, where any process
+      # on the machine could read it.
       - name: Update the machine
         if: steps.settings.outputs.ready == 'true'
         env:
           SHA: ${{ github.sha }}
+          FETCH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           install -m 700 -d ~/.ssh
           printf '%s\n' "$VM_SSH_KEY" >~/.ssh/id_deploy && chmod 600 ~/.ssh/id_deploy
           printf '%s\n' "$VM_KNOWN_HOSTS" >~/.ssh/known_hosts
-          ssh -i ~/.ssh/id_deploy -o BatchMode=yes "$VM_USER@$VM_HOST" \
-            "set -e; cd ~/parikshaa; git fetch --quiet origin '$SHA'; git checkout --quiet --detach '$SHA'; sudo ./scripts/setup-server.sh"
+          printf '%s\n' "$FETCH_TOKEN" | ssh -i ~/.ssh/id_deploy -o BatchMode=yes "$VM_USER@$VM_HOST" \
+            "set -e; read -r token; cd ~/parikshaa
+            GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.https://github.com/.extraheader \
+              GIT_CONFIG_VALUE_0=\"AUTHORIZATION: basic \$(printf 'x-access-token:%s' \"\$token\" | base64 -w0)\" \
+              git fetch --quiet origin '$SHA'
+            unset token
+            git checkout --quiet --detach '$SHA'
+            sudo ./scripts/setup-server.sh </dev/null"
 
       - name: The server check
         if: steps.settings.outputs.ready == 'true' && env.APP_URL != ''

@@ -403,6 +403,12 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
     (browser terminal se). VM par code `41662a3` chal raha (sirf docs peeche). Agla: owner key dobara sahi paste kare; phir bhi na chale to
     workflow ko ek-line base64 key bhi maanne do (`base64 -w0 /root/deploy_key`; step me `BEGIN` na ho to `base64 -d`, `tr -d '\r'`,
     `ssh-keygen -y` se saaf error), test + push + dobara run. Phir `api.staging.parikshaa.org/api/health` seedha → 403 jaanchna, docs.
+    **9–10 Nov:** owner ne key dobara daali; `deploy-api` [run](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/actions/runs/42704589800)
+    hara (Migrate, Update the machine, server check): **staging poori live** (pages Vercel, API VPS, DB Supabase). Staging par
+    `ANTHROPIC_API_KEY` aur SMTP abhi nahi. Owner ne #86 aur #85 (dependabot dev group) merge kiye; repo ab **private**, isliye `main`
+    par `deploy-api` laal ("could not read Username"): VM bina login fetch nahi kar sakta. Fix: `deploy-api.yml` job ka apna token
+    (read-only) SSH ke stdin se git ke environment me (`GIT_CONFIG_*`), nakli machine par jaancha. #85 ke baad `main` par CI bhi laal
+    (`check` me `npm test`, `e2e`): agle PR me theek karna.
     `deploy-api.yml` aur `deploy-web.yml` (staging) chalaye. **Agla:** K2-7 SQL.
   - [ ] K2-7 SQL (9 Nov raat, owner "K2-7 shuru karo"; usi draft PR #86 me jayega). **5 ghante ki limit (0.82) par ruka: code commit NAHI,
     autosave `autosave/claude/learn-v2--eb426b80` me** (restore: us branch se files lo; §1). **Bana aur unit se jaancha:** API `GET /problems` ke har
