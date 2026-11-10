@@ -418,7 +418,10 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
     (phone par lambi SQL line editor ko side me scroll karti; axe `scrollable-region-focusable`). check, build:clients, budget (`LearnSql-*.js` 2.7/3,
     `.css` 0.7/1, `LearnWorkspace-*.js` 13.9/14), lint:css, openapi wahi, e2e chromium 65/65 (Learn 21), visual 143/143 test (10 nayi images `learn-sql-*`, purani wahi).
     Kadam 3/4: PK/FK nishaan, result ke column naam (runner sirf rows deta), dialect (sirf SQLite), SQL ka alag sheet page, schema browser.
-    **Kahan ruka:** K2-7 aur #85 ke baad ka CI fix #87 par (owner merge). **Agla: K2-8** aptitude.
+    CI `24207ae`: Firefox/WebKit me SQL laptop (dark) par axe `color-contrast`: editor ka comment rang `#7d86a8` active line (`#1a2140`) par
+    4.38:1; ab `#8891b3` (5.05:1), `components/CodeEditor.tsx`. Local: web 435, build:clients, budget, e2e chromium 65/65, visual 143/143 (purani wahi).
+    **Kahan ruka (10 Nov):** agent ~03:35 UTC par limit par ruka, ye fix commit nahi hua tha; main session ne 07:45 UTC par contrast dobara naap kar (4.38 → 5.05) commit + push kiya. Agla session: #87 ke head par CI
+    padho (`e2e` ~35 min); laal ho to `gh api repos/.../actions/jobs/<id>/logs` se wajah. Hara ho to owner merge (F5). **Agla: K2-8** aptitude.
   - [ ] K2-8 aptitude (maujooda MCQ par; mocks Kadam 3/4)
   - [ ] K2-9 contests
   - [ ] K2-10 profile B + share

@@ -50,7 +50,8 @@ const darkHighlight = HighlightStyle.define([
   { tag: [tags.keyword, tags.controlKeyword, tags.moduleKeyword, tags.operatorKeyword], color: "#c7a0ff" },
   { tag: [tags.string, tags.special(tags.string)], color: "#9fe39f" },
   { tag: [tags.number, tags.bool, tags.null], color: "#ffb86b" },
-  { tag: [tags.comment, tags.lineComment, tags.blockComment], color: "#7d86a8", fontStyle: "italic" },
+  // 5.05:1 on the active line (#1a2140), 5.75:1 on the editor: #7d86a8 was 4.38:1 on the active line, under AA.
+  { tag: [tags.comment, tags.lineComment, tags.blockComment], color: "#8891b3", fontStyle: "italic" },
   { tag: [tags.function(tags.variableName), tags.function(tags.propertyName)], color: "#7ec8ff" },
   { tag: [tags.typeName, tags.className], color: "#ffd479" },
   { tag: [tags.definition(tags.variableName)], color: "#e6e9f5" },
