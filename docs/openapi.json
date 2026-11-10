@@ -22476,6 +22476,14 @@
                               "code"
                             ]
                           },
+                          "languages": {
+                            "readOnly": true,
+                            "description": "A code problem's languages (`sql` for an SQL one); empty for the rest.",
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
                           "acceptance": {
                             "description": "Share of submissions accepted, 0 to 1.",
                             "type": [
@@ -22509,6 +22517,7 @@
                           "patterns",
                           "companies",
                           "kind",
+                          "languages",
                           "acceptance",
                           "solvedBy",
                           "status"

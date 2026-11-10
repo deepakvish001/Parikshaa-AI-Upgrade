@@ -2147,6 +2147,8 @@ describe("proctoring (ROADMAP §14)", () => {
     await userEvent.type(screen.getByLabelText("Every (seconds)"), "120");
     await userEvent.click(screen.getByRole("checkbox", { name: /Record leaving the tab/ }));
     await userEvent.type(screen.getByLabelText("Title"), "Watched");
+    // The question is on its own tab: a field in a hidden panel cannot take focus, so nothing typed reaches it.
+    await userEvent.click(screen.getByRole("tab", { name: "Questions" }));
     await userEvent.type(screen.getByLabelText("Question"), "Which is stable?");
     await userEvent.type(screen.getByLabelText("Option 1"), "quicksort");
     await userEvent.type(screen.getByLabelText("Option 2"), "mergesort");

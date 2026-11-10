@@ -284,7 +284,11 @@ Profile dashboard nahi, ek **document** hai jo HR ek nazar me maan le: har line 
    upar patti (kis par: problem/lesson ka mono chip, credits, "Credits lo"), beech me baatcheet (`role="log"`, learner ka sawaal ink ka bulbula,
    Sahayak ka jawab icon + naam + keemat ke saath Markdown elements me), "Fail kyun?" ka `--ai-soft` card, maangne ke chips (har ek par keemat),
    neeche hamesha "galat ho sakta hai" ke saath sawaal ka dabba; taala (contest, Plus, band) mock ke `.ai-locked` jaisa. Shell ka pane wahi push
-   pane (phone par sheet), workspace me teesra pane; dono me ek hi panel. Mock ka Build mode, typing caret aur jawab par raay nahi (backend nahi). Baaki screens apne K2 tukde me (tracker row 140).
+   pane (phone par sheet), workspace me teesra pane; dono me ek hi panel. Mock ka Build mode, typing caret aur jawab par raay nahi (backend nahi).
+   K2-7: SQL wahi workspace (mock ka "SQL = DSA workspace"; `LearnSql.tsx` + `learn-sql.css`): Code pane ka naam "Query", editor "Aapki query",
+   Problem tab me har table ka card (`Table2` icon, column + type mono me), example ki rows mono table me; nateeje me aapka aur sahi nateeja
+   saath, kam ya zyada row `--red-soft` me aage "−"/"+" ke saath (screen reader ke liye shabd bhi; sirf rang nahi), upar "N rows kam,
+   M rows zyada" ya "rows wahi, kram alag"; query ka error mono me database ke shabd. Abhyas me `sql` screen (`Database` icon). Baaki screens apne K2 tukde me (tracker row 140).
 4. Admin pages `packages/console` me, roles matrix `ADMIN-PANEL.md` §1 + `runtime`, `recruiters`.
 5. 🟡 (shell ki baselines CI me: K1-4, 26 Oct 2026, `packages/e2e/visual/learn.visual.ts`, 1440/390 × dark/light; K2-1 se Aaj seeded din par (`packages/e2e/tests/learn-day.ts`), tareekh wala text `.ln-dated` me aur mask; har naye screen ki apni baseline uske K2 tukde me) Har screen ki **visual baseline** mock ke screenshots se milao (1440/390, dono theme); axe serious/critical 0; phone par
    touch 40 px; har mukhya screen ki 5 haalatein; bundle budget.

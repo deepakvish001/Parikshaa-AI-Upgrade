@@ -45,6 +45,8 @@ export interface ProblemSummary {
   /** Companies that asked it lately, as far as this learner may see. */
   readonly companies: readonly { readonly slug: string; readonly name: string }[];
   readonly kind: CandidateQuestion["kind"];
+  /** A code problem's languages (`sql` for an SQL one); empty for the rest. Absent from a server that predates them. */
+  readonly languages?: readonly string[];
   readonly acceptance: number | null;
   readonly solvedBy: number;
   readonly status: Standing;

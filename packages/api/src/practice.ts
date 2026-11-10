@@ -118,6 +118,8 @@ export interface ProblemListItem {
   /** Companies that asked it lately, as far as the learner may see. */
   readonly companies: readonly { readonly slug: string; readonly name: string }[];
   readonly kind: Question["kind"];
+  /** A code problem's languages (`sql` for an SQL one, so Learn can list those apart); empty for the rest. */
+  readonly languages: readonly string[];
   /** Share of submissions accepted, 0–1; null before anyone submits. */
   readonly acceptance: number | null;
   readonly solvedBy: number;
@@ -381,6 +383,7 @@ export class PracticeService {
         patterns: patternsOf(p.tags),
         companies: companies.get(p.id) ?? [],
         kind: p.question.kind,
+        languages: p.question.kind === "code" ? languagesOf(p.question) : [],
         acceptance: s === undefined || s.submissions === 0 ? null : s.accepted / s.submissions,
         solvedBy: s?.solvedBy ?? 0,
         status: solved.has(p.id) ? "solved" : attempted.has(p.id) ? "attempted" : null,

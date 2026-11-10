@@ -55,7 +55,7 @@ Do naam chahiye, jaise `staging.example.in` (pages, Vercel) aur `api.staging.exa
    4 se kam CPU wali machine bhi chalti hai: code runner ko 4 CPU milte, ya chhoti machine ke saare (`RUNNER_CPUS`, setup-server.sh har baar khud tay karta; Docker machine se zyada ki limit par kuch shuru hi nahi karta).
    **Staging abhi (9 Nov 2026):** Hostinger KVM 2 VPS (2 vCPU, Ubuntu 24.04), `api.staging.parikshaa.org`; pages `staging.parikshaa.org` (Vercel).
 2. DNS: `api.staging.<domain>` → VM ka IP.
-3. Machine par, repo clone karke (private repo ho to ek read-only deploy key):
+3. Machine par, repo clone karke (private repo ho to pehli baar ke liye ek read-only deploy key; uske baad har deploy `deploy-api.yml` job ke apne token se fetch karta hai, jo SSH ke input se git ke environment me jaata hai, kisi command line par nahi):
    ```bash
    git clone https://github.com/deepakvish001/Parikshaa-AI-Upgrade.git ~/parikshaa && cd ~/parikshaa
    sudo DOMAIN=api.staging.<domain> APP_DOMAIN=staging.<domain> \

@@ -178,7 +178,11 @@ jobs:
   # killed mid-write, then under load. Slower than `check`, so its own job.
   e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # A private repository's runner has 2 cores, not 4: on 10 Nov 2026 the
+    # browser install took 8 minutes and the three browsers 17, and the job
+    # was stopped at 30 with every test green but chaos, load and the drill
+    # still to run.
+    timeout-minutes: 45
     services:
       postgres:
         image: postgres:16

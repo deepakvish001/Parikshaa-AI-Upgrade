@@ -8,7 +8,7 @@ import { argumentsOf, LANGUAGE_NAMES, memory, readCodeAnswer, splitStem, starter
 import { approachesOf, type Problem, type Submission, type TutorAnswer, type Verdict } from "../practice/client.ts";
 import { ScreenLink, useLearn, type SahayakAbout } from "./context.tsx";
 import { Failed, Loading, Offline, useLearnData, useLearnQuery, useOnline, useProblem, useSubmissions, useTutor, waitingForNetwork } from "./data.tsx";
-import { BookOpen, CodeXml, icon, Lightbulb, Lock, Sparkles } from "./icons.tsx";
+import { BookOpen, CodeXml, Database, icon, Lightbulb, Lock, Sparkles, Table2 } from "./icons.tsx";
 import { PROBLEM_SCREEN, type Tri } from "./screens.ts";
 import { fill, T } from "./text.ts";
 import "./learn-workspace.css";
@@ -41,6 +41,12 @@ import "./learn-workspace.css";
  * with K2-6 ("Fail kyun? Poochho" opens its pane already). Not shown (no
  * backend yet): the mock's smallest failing test, faster-than percentages,
  * the task timer, likes, and "report a mistake".
+ *
+ * An SQL problem (K2-7: a code problem in the language `sql`) opens in the
+ * same panes: its tables (columns and types) and each example's rows, the
+ * query in the same editor, and results as tables, the learner's beside the
+ * expected; a query error is the database's own words. That part is
+ * LearnSql.tsx, a chunk of its own; until it loads, the plain text shows.
  */
 
 export const LW = {
@@ -182,6 +188,24 @@ export const LW = {
   notFoundTitle: ["No problem at this address", "Is pate par koi problem nahi", "इस पते पर कोई प्रश्न नहीं"],
   notFoundBody: ["It may have been moved or taken down. Abhyas has every problem.", "Shayad hata ya badal diya gaya. Abhyas me har problem hai.", "शायद हटा या बदल दिया गया। अभ्यास में हर प्रश्न है।"],
   toProblems: ["Open Abhyas", "Abhyas kholo", "अभ्यास खोलें"],
+  // SQL (K2-7)
+  query: ["Query", "Query", "क्वेरी"],
+  queryEditor: ["Your query", "Aapki query", "आपकी क्वेरी"],
+  queryError: ["Query error", "Query me error", "क्वेरी में त्रुटि"],
+  tables: ["Tables", "Tables", "तालिकाएँ"],
+  tablesNote: [
+    "Each test makes these tables afresh, with rows of its own; your query runs on SQLite.",
+    "Har test ye tables nayi banata hai, apni rows ke saath; query SQLite par chalti hai.",
+    "हर टेस्ट ये तालिकाएँ नए सिरे से बनाता है, अपनी पंक्तियों के साथ; क्वेरी SQLite पर चलती है।",
+  ],
+  rowsOut: ["Result", "Nateeja", "परिणाम"],
+  customTables: ["Your tables", "Apni tables", "अपनी तालिकाएँ"],
+  customSql: ["Your tables, as the SQL that makes and fills them", "Apni tables, unhe banane aur bharne wali SQL", "अपनी तालिकाएँ, उन्हें बनाने और भरने वाली SQL"],
+  sqlRunNote: [
+    "Run tries your query on the examples' tables and records nothing. Submit judges it on every test's tables, the hidden ones too.",
+    "Run query ko examples ki tables par chalata hai, kuch record nahi hota. Submit har test ki tables par jaanchta hai, chhupe test bhi.",
+    "चलाएँ क्वेरी को उदाहरणों की तालिकाओं पर चलाता है, कुछ दर्ज नहीं होता। जमा करें हर टेस्ट की तालिकाओं पर जाँचता है, छिपे टेस्ट भी।",
+  ],
 } as const satisfies Record<string, Tri>;
 
 type Pane = "stmt" | "code" | "ai";
@@ -240,6 +264,15 @@ const FileText = icon(
  * loaded only when a code problem opens; a plain text box stands in until then.
  */
 const CodeEditor = lazy(() => import("../components/CodeEditor.tsx").then((m) => ({ default: m.CodeEditor })));
+/** SQL's tables and results (K2-7), a chunk of its own: loaded when an SQL problem opens. */
+const sqlChunk = () => import("./LearnSql.tsx");
+const SqlSchema = lazy(() => sqlChunk().then((m) => ({ default: m.SqlSchema })));
+const SqlSetup = lazy(() => sqlChunk().then((m) => ({ default: m.SqlSetup })));
+const SqlRows = lazy(() => sqlChunk().then((m) => ({ default: m.SqlRows })));
+const SqlCompare = lazy(() => sqlChunk().then((m) => ({ default: m.SqlCompare })));
+/** An SQL problem: a code problem in the language `sql`. */
+export const isSql = (question: CandidateQuestion): boolean => question.kind === "code" && question.language === "sql";
+
 /** Sahayak's panel (K2-6), the shell's own chunk: loaded when its pane first opens. */
 const SahayakPanel = lazy(() => import("./LearnSahayak.tsx").then((m) => ({ default: m.SahayakPanel })));
 
@@ -260,8 +293,9 @@ function saveDraft(site: string, slug: string, value: string): void {
   }
 }
 
-/** A verdict's name: the judge's statuses, and a word for any it may add later. */
-export const verdictWord = (status: string): Tri => (Object.hasOwn(LW, status) && /^[a-z_]+$/.test(status) ? (LW[status as keyof typeof LW] as Tri) : LW.verdictOther);
+/** A verdict's name: the judge's statuses, and a word for any it may add later; on SQL a runtime error is the query's. */
+export const verdictWord = (status: string, sql = false): Tri =>
+  sql && status === "runtime_error" ? LW.queryError : Object.hasOwn(LW, status) && /^[a-z_]+$/.test(status) ? (LW[status as keyof typeof LW] as Tri) : LW.verdictOther;
 
 /** The statement without its first paragraph when that is the title, as the bank writes it ("Title\n\nWhat to do…"). */
 export function statementBody(stem: string, title: string): string {
@@ -371,8 +405,9 @@ function Loaded({
     return draft.source.trim() === "" ? undefined : draft;
   };
   const code = problem.question.kind === "code";
-  const labels: Record<Pane, string> = { stmt: t(LW.problem), code: t(code ? LW.code : LW.answer), ai: t(T.sahayak) };
-  const icons: Record<Pane, ReactNode> = { stmt: <FileText />, code: <CodeXml />, ai: <Sparkles /> };
+  const sql = isSql(problem.question);
+  const labels: Record<Pane, string> = { stmt: t(LW.problem), code: t(sql ? LW.query : code ? LW.code : LW.answer), ai: t(T.sahayak) };
+  const icons: Record<Pane, ReactNode> = { stmt: <FileText />, code: sql ? <Database /> : <CodeXml />, ai: <Sparkles /> };
   const sub = [t(LW[problem.difficulty]), ...problem.tags.slice(0, 2)].join(" · ");
   const toggles = (
     <div className="lw-toggles" role="group" aria-label={t(LW.paneToggles)}>
@@ -535,6 +570,7 @@ function Statement({ problem }: { readonly problem: Problem }) {
 
 function CodeSections({ question }: { readonly question: CandidateCodeQuestion }) {
   const { t } = useLearn();
+  const sql = isSql(question);
   const parts: readonly [Tri, string | null][] = [
     [LW.inputFormat, question.inputFormat],
     [LW.outputFormat, question.outputFormat],
@@ -552,17 +588,32 @@ function CodeSections({ question }: { readonly question: CandidateCodeQuestion }
           </section>
         ),
       )}
+      {sql && question.samples[0] !== undefined ? (
+        <section className="lw-part">
+          <h3 className="lw-part-h">{t(LW.tables)}</h3>
+          <p className="ln-faint lw-small">{t(LW.tablesNote)}</p>
+          <Suspense fallback={null}>
+            <SqlSchema setup={question.samples[0].input} t={t} icon={<Table2 aria-hidden="true" />} />
+          </Suspense>
+        </section>
+      ) : null}
       {question.samples.map((sample, i) => (
         <section key={i} className="lw-part">
           <h3 className="lw-part-h">{fill(t(LW.example), { n: i + 1 })}</h3>
           <dl className="lw-ex">
-            <dt>{t(LW.input)}</dt>
+            <dt>{t(sql ? LW.tables : LW.input)}</dt>
             <dd>
               <Input question={question} input={sample.input} />
             </dd>
-            <dt>{t(LW.output)}</dt>
+            <dt>{t(sql ? LW.rowsOut : LW.output)}</dt>
             <dd>
-              <pre tabIndex={0}>{sample.output}</pre>
+              {sql ? (
+                <Suspense fallback={<pre tabIndex={0}>{sample.output}</pre>}>
+                  <SqlRows t={t} text={sample.output} label={`${fill(t(LW.example), { n: i + 1 })}: ${t(LW.rowsOut)}`} />
+                </Suspense>
+              ) : (
+                <pre tabIndex={0}>{sample.output}</pre>
+              )}
             </dd>
             {sample.explanation === null || sample.explanation.trim() === "" ? null : (
               <>
@@ -579,8 +630,16 @@ function CodeSections({ question }: { readonly question: CandidateCodeQuestion }
   );
 }
 
-/** An input as the learner reads it: a function's arguments by name, else the program's input as it is. */
+/** An input as the learner reads it: an SQL test's tables, a function's arguments by name, else the program's input as it is. */
 function Input({ question, input }: { readonly question: CandidateCodeQuestion; readonly input: string }) {
+  const { t } = useLearn();
+  if (isSql(question)) {
+    return (
+      <Suspense fallback={<pre tabIndex={0}>{input}</pre>}>
+        <SqlSetup setup={input} t={t} />
+      </Suspense>
+    );
+  }
   if (question.function === null) return <pre tabIndex={0}>{input}</pre>;
   const values = argumentsOf(input);
   return (
@@ -747,6 +806,7 @@ function Submissions({ problem, onLoad }: { readonly problem: Problem; readonly 
   if (list.data.length === 0) return <Empty icon={<Send />} title={t(LW.noSubs)} headingLevel={3} />;
   const when = new Intl.DateTimeFormat(lang === "hi" ? "hi-IN" : "en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   const code = problem.question.kind === "code";
+  const sql = isSql(problem.question);
   return (
     <ol className="lw-subs">
       {list.data.map((s: Submission, i) => {
@@ -757,7 +817,7 @@ function Submissions({ problem, onLoad }: { readonly problem: Problem; readonly 
             <button type="button" className="lw-sub-row" aria-expanded={open === s.id} onClick={() => setOpen(open === s.id ? null : s.id)}>
               {ok ? <CircleCheck aria-hidden="true" className="lw-ic-ok" /> : <CircleX aria-hidden="true" className="lw-ic-bad" />}
               <span className="lw-sub-main">
-                <b>{t(verdictWord(s.status))}</b>
+                <b>{t(verdictWord(s.status, sql))}</b>
                 <span className="ln-faint lw-small">
                   {fill(t(LW.subN), { n })}
                   {s.total > 0 ? ` · ${fill(t(LW.testsPassed), { passed: s.passed, total: s.total })}` : ""}
@@ -916,6 +976,7 @@ function CodePane({
   const queryClient = useQueryClient();
   const id = useId();
   const { language, source } = readCodeAnswer(value, question);
+  const sql = isSql(question);
   const [tab, setTab] = useState<"testcase" | "result">("testcase");
   const [picked, setPicked] = useState<number | "custom">(question.samples.length > 0 ? 0 : "custom");
   const [custom, setCustom] = useState(question.samples[0]?.input ?? "");
@@ -963,7 +1024,7 @@ function CodePane({
   };
 
   const plain = (
-    <textarea className="lw-plain" aria-label={t(LW.editor)} spellCheck={false} value={source} onChange={(event) => write({ language, source: event.target.value })} />
+    <textarea className="lw-plain" aria-label={t(sql ? LW.queryEditor : LW.editor)} spellCheck={false} value={source} onChange={(event) => write({ language, source: event.target.value })} />
   );
   const tabs = [
     ["testcase", LW.testcase],
@@ -972,10 +1033,10 @@ function CodePane({
   const trouble_ = failed === null ? null : trouble(failed);
   return (
     <>
-      <PaneHead onClose={onClose} closeLabel={fill(t(LW.hide), { pane: t(LW.code) })}>
+      <PaneHead onClose={onClose} closeLabel={fill(t(LW.hide), { pane: t(sql ? LW.query : LW.code) })}>
         <span className="lw-file">
-          <CodeXml aria-hidden="true" />
-          {t(LW.code)}
+          {sql ? <Database aria-hidden="true" /> : <CodeXml aria-hidden="true" />}
+          {t(sql ? LW.query : LW.code)}
         </span>
         <span className="ln-grow" />
         {question.languages.length > 1 ? (
@@ -995,7 +1056,7 @@ function CodePane({
       </PaneHead>
       <div className="lw-editor">
         <Suspense fallback={plain}>
-          <CodeEditor value={source} language={language} label={t(LW.editor)} disabled={false} onChange={(next) => write({ language, source: next })} dark={theme === "dark"} completion onRunShortcut={doRun} onSubmitShortcut={doSubmit} />
+          <CodeEditor value={source} language={language} label={t(sql ? LW.queryEditor : LW.editor)} disabled={false} onChange={(next) => write({ language, source: next })} dark={theme === "dark"} completion onRunShortcut={doRun} onSubmitShortcut={doSubmit} />
         </Suspense>
       </div>
       <section className="lw-console" aria-label={t(LW.console)}>
@@ -1016,18 +1077,18 @@ function CodePane({
                   </button>
                 ))}
                 <button type="button" className="lw-chip" aria-pressed={picked === "custom"} onClick={() => setPicked("custom")}>
-                  {t(LW.custom)}
+                  {t(sql ? LW.customTables : LW.custom)}
                 </button>
               </div>
               {picked === "custom" ? (
                 <label className="ln-field">
-                  <span>{t(LW.customStdin)}</span>
+                  <span>{t(sql ? LW.customSql : LW.customStdin)}</span>
                   <textarea className="ln-input lw-mono" rows={4} spellCheck={false} value={custom} onChange={(event) => setCustom(event.target.value)} />
                 </label>
               ) : (
                 <Input question={question} input={question.samples[picked]?.input ?? ""} />
               )}
-              <p className="ln-faint lw-small">{t(LW.runNote)}</p>
+              <p className="ln-faint lw-small">{t(sql ? LW.sqlRunNote : LW.runNote)}</p>
             </>
           ) : busy ? (
             <p className="ln-faint" role="status">
@@ -1093,6 +1154,23 @@ function Block({ label, text }: { readonly label: string; readonly text: string 
   );
 }
 
+/** An SQL result beside the expected one, as tables (LearnSql.tsx); the text while that chunk loads. */
+function SqlOut({ yours, expected }: { readonly yours: string; readonly expected: string | null }) {
+  const { t } = useLearn();
+  return (
+    <Suspense
+      fallback={
+        <>
+          <Block label={t(LW.yours)} text={yours} />
+          {expected === null ? null : <Block label={t(LW.expected)} text={expected} />}
+        </>
+      }
+    >
+      <SqlCompare t={t} yours={yours} expected={expected} />
+    </Suspense>
+  );
+}
+
 /** What Run did: each example's outcome, or the learner's own input. */
 function RunView({ question, outcome, custom }: { readonly question: CandidateCodeQuestion; readonly outcome: RunOutcome; readonly custom: boolean }) {
   const { t } = useLearn();
@@ -1113,11 +1191,12 @@ function RunView({ question, outcome, custom }: { readonly question: CandidateCo
   const first = results.find((r) => r.status !== "passed" && r.status !== "ran")?.status;
   const r = results[Math.min(at, results.length - 1)];
   const fn = question.function !== null;
+  const sql = isSql(question);
   return (
     <div className="lw-verdict" data-status={custom ? "ran" : (first ?? "passed")}>
       <p className={`lw-v-title ${first === undefined ? "lw-ok" : "lw-bad"}`}>
         {first === undefined ? <CircleCheck aria-hidden="true" /> : <CircleX aria-hidden="true" />}
-        {custom ? t(LW.ran) : t(verdictWord(first ?? "passed"))}
+        {custom ? t(LW.ran) : t(verdictWord(first ?? "passed", sql))}
         {custom ? null : <span className="ln-faint lw-small"> · {fill(t(LW.examplesPass), { passed, total: results.length })}</span>}
       </p>
       {results.length > 1 ? (
@@ -1126,7 +1205,7 @@ function RunView({ question, outcome, custom }: { readonly question: CandidateCo
             <button key={i} type="button" className={`lw-chip ${x.status === "passed" || x.status === "ran" ? "lw-ok" : "lw-bad"}`} aria-pressed={i === at} onClick={() => setAt(i)}>
               {x.status === "passed" ? <CircleCheck aria-hidden="true" /> : x.status === "ran" ? null : <CircleX aria-hidden="true" />}
               {fill(t(LW.caseN), { n: i + 1 })}
-              <span className="ln-sr"> ({t(verdictWord(x.status))})</span>
+              <span className="ln-sr"> ({t(verdictWord(x.status, sql))})</span>
             </button>
           ))}
         </div>
@@ -1137,10 +1216,19 @@ function RunView({ question, outcome, custom }: { readonly question: CandidateCo
             <span className="ln-eyebrow">{t(LW.input)}</span>
             <Input question={question} input={r.input} />
           </div>
-          <Block label={t(LW.yours)} text={fn ? (r.result ?? "null") : r.stdout} />
-          {r.expectedOutput === null ? null : <Block label={t(LW.expected)} text={r.expectedOutput} />}
+          {sql ? (
+            // A query that failed has its error below, not an empty result.
+            r.stderr !== "" && r.status !== "passed" ? null : (
+              <SqlOut yours={r.stdout} expected={r.expectedOutput} />
+            )
+          ) : (
+            <>
+              <Block label={t(LW.yours)} text={fn ? (r.result ?? "null") : r.stdout} />
+              {r.expectedOutput === null ? null : <Block label={t(LW.expected)} text={r.expectedOutput} />}
+            </>
+          )}
           {fn && r.stdout !== "" ? <Block label={t(LW.printed)} text={r.stdout} /> : null}
-          {r.stderr === "" ? null : <Block label={t(LW.stderr)} text={r.stderr} />}
+          {r.stderr === "" ? null : <Block label={t(sql ? LW.queryError : LW.stderr)} text={r.stderr} />}
           {r.checkerMessage === null || r.checkerMessage === undefined ? null : <Block label={t(LW.checker)} text={r.checkerMessage} />}
           <p className="ln-faint lw-small lw-time">{fill(t(LW.timeUsed), { ms: r.timeMs })}{memory(r.memoryKb) === null ? "" : ` · ${memory(r.memoryKb)}`}</p>
         </div>
@@ -1154,6 +1242,7 @@ function VerdictView({ question, verdict, onAskWhy, onEditorial }: { readonly qu
   const { t } = useLearn();
   const ok = verdict.status === "passed";
   const fn = question.function !== null;
+  const sql = isSql(question);
   const failing = verdict.cases.find((c) => c.status !== "passed");
   const slowest = Math.max(0, ...verdict.cases.map((c) => c.timeMs));
   return (
@@ -1161,7 +1250,7 @@ function VerdictView({ question, verdict, onAskWhy, onEditorial }: { readonly qu
       <div className="lw-v-head">
         <p className={`lw-v-title ${ok ? "lw-ok" : "lw-bad"}`}>
           {ok ? <CircleCheck aria-hidden="true" /> : <CircleX aria-hidden="true" />}
-          {t(verdictWord(verdict.status))}
+          {t(verdictWord(verdict.status, sql))}
         </p>
         {verdict.reward === undefined || verdict.reward.coins <= 0 ? null : <span className="ln-badge lw-coins">{fill(t(LW.coins), { n: verdict.reward.coins })}</span>}
       </div>
@@ -1176,9 +1265,9 @@ function VerdictView({ question, verdict, onAskWhy, onEditorial }: { readonly qu
           {verdict.cases.length === 0 ? null : (
             <ol className="lw-testbar" aria-label={fill(t(LW.passedOf), { passed: verdict.passed, total: verdict.total })}>
               {verdict.cases.map((c) => (
-                <li key={c.number} className={c.status === "passed" ? "lw-ok" : "lw-bad"} title={`${fill(t(c.visible ? LW.testN : LW.hiddenTestN), { n: c.number })}: ${t(verdictWord(c.status))}`}>
+                <li key={c.number} className={c.status === "passed" ? "lw-ok" : "lw-bad"} title={`${fill(t(c.visible ? LW.testN : LW.hiddenTestN), { n: c.number })}: ${t(verdictWord(c.status, sql))}`}>
                   <span className="ln-sr">
-                    {fill(t(c.visible ? LW.testN : LW.hiddenTestN), { n: c.number })}: {t(verdictWord(c.status))}
+                    {fill(t(c.visible ? LW.testN : LW.hiddenTestN), { n: c.number })}: {t(verdictWord(c.status, sql))}
                   </span>
                 </li>
               ))}
@@ -1194,9 +1283,17 @@ function VerdictView({ question, verdict, onAskWhy, onEditorial }: { readonly qu
                     <span className="ln-eyebrow">{t(LW.input)}</span>
                     <Input question={question} input={failing.input ?? ""} />
                   </div>
-                  <Block label={t(LW.yours)} text={fn ? (failing.result ?? "null") : (failing.stdout ?? "")} />
-                  <Block label={t(LW.expected)} text={failing.expectedOutput ?? ""} />
-                  {failing.stderr === null || failing.stderr === "" ? null : <Block label={t(LW.stderr)} text={failing.stderr} />}
+                  {sql ? (
+                    failing.stderr !== null && failing.stderr !== "" ? null : (
+                      <SqlOut yours={failing.stdout ?? ""} expected={failing.expectedOutput ?? ""} />
+                    )
+                  ) : (
+                    <>
+                      <Block label={t(LW.yours)} text={fn ? (failing.result ?? "null") : (failing.stdout ?? "")} />
+                      <Block label={t(LW.expected)} text={failing.expectedOutput ?? ""} />
+                    </>
+                  )}
+                  {failing.stderr === null || failing.stderr === "" ? null : <Block label={t(sql ? LW.queryError : LW.stderr)} text={failing.stderr} />}
                 </>
               ) : (
                 <p className="ln-faint lw-small">

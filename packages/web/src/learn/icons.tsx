@@ -186,3 +186,13 @@ export const ScanSearch = icon(
     <path d="m16 16-1.9-1.9" />
   </>,
 );
+// SQL in Learn (K2-7): a table of the problem, and the query.
+export const Table2 = icon("table-2", <path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18" />);
+export const Database = icon(
+  "database",
+  <>
+    <ellipse cx="12" cy="5" rx="9" ry="3" />
+    <path d="M3 5V19A9 3 0 0 0 21 19V5" />
+    <path d="M3 12A9 3 0 0 0 21 12" />
+  </>,
+);

@@ -208,6 +208,29 @@ describe("a shared solution", () => {
 });
 
 describe("the problem list's filters", () => {
+  it("names a code problem's languages, so Learn lists the SQL ones apart (K2-7)", async () => {
+    await addProblem(
+      "query",
+      {
+        kind: "code",
+        stem: "Big countries\n\nReturn every country of at least 25,000,000 people.",
+        maxScore: 1,
+        rubric: [],
+        language: "sql",
+        languages: ["sql"],
+        tests: [
+          { id: "t1", input: "CREATE TABLE World (name TEXT, population INTEGER);\nINSERT INTO World VALUES ('India', 1428627663);\n", expected: "India\n", hidden: false, weight: 1 },
+          { id: "t2", input: "CREATE TABLE World (name TEXT, population INTEGER);\n", expected: "", hidden: true, weight: 1 },
+        ],
+      },
+      ["sql"],
+    );
+    const seen = new Map(((await ok("GET", null, `${S}/problems`)).problems as { slug: string; languages: string[] }[]).map((p) => [p.slug, p.languages]));
+    expect(seen.get(problems.query!.slug)).toEqual(["sql"]);
+    expect(seen.get(problems.sum!.slug)).toEqual(["python"]);
+    expect(seen.get(problems.stable!.slug)).toEqual([]);
+  });
+
   it("names each problem's patterns and, as far as the learner may see, its companies", async () => {
     const list = async (token: string | null) => new Map(((await ok("GET", token, `${S}/problems`)).problems as { slug: string; patterns: string[]; companies: { slug: string }[] }[]).map((p) => [p.slug, p]));
     let seen = await list(null);

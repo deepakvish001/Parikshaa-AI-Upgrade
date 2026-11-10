@@ -37,6 +37,7 @@ const LAZY: Readonly<Record<string, () => ReactNode>> = {
   notes: () => <Notes />,
   sheet: () => <Sheet track={null} />,
   practice: () => <Problems />,
+  sql: () => <Problems sql />,
   potd: () => <Potd />,
 };
 
