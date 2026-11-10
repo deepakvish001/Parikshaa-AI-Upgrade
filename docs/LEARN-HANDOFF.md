@@ -426,6 +426,10 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
     `prep-flows.spec.ts` F1 laal (test plan save hone se pehle page chhod deta tha; ab saved plan ka heading dekh kar), `380918a` par CI poora
     hara. Owner ne 10 Nov 08:38 UTC par merge kiya; `main` par deploy-api aur deploy-web hare (VPS fetch ab job ke token se chalta). **Agla: K2-8** aptitude.
   - [ ] K2-8 aptitude (maujooda MCQ par; mocks Kadam 3/4)
+    **K2-8 ke saath theek karna (owner ne staging par 10 Nov ko pakda):** (1) band ya na-maujood practice site par Learn ka sign-up/sign-in
+    "That did not go through… try again" kehta hai (API `not_found` 404); saaf kahe "ye practice site abhi band hai / maujood nahi".
+    (2) na-maujood site ka page "This did not load… Try again in a moment · not_found · 404" dikhata hai; wahi saaf sandesh, "try again" nahi.
+    Staging: owner ka console account (`parikshaa` org), site `demo` (open), starter packs; learner sign-up chal gaya.
   - [ ] K2-9 contests
   - [ ] K2-10 profile B + share
   - [ ] K2-11 Plus
