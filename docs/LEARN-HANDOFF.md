@@ -20,7 +20,7 @@ account ka Claude **isi file se** shuru karta hai aur isi ko update karta hai. O
    `claude/learn-v2` fast-forward). **Kadam 2 ab draft [#71](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/71) me** (K2-3 se, 28 Oct khola; [HANDOFF.md](HANDOFF.md) ki row dekho;
    wo bhi merge ho chuka ho to naya draft PR kholo), base `claude/festive-maxwell-pb4k5v` jab tak #66 khula hai, phir `main`.
    **29 Oct 2026:** #71 aur #82 (docs) `main` me merge; `claude/learn-v2` ab `main` se (fast-forward `7b636b8`). K2-5 ka PR
-   [#83](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/83) `main` me merge (`402745c`). **K2-6 draft PR [#86](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/86), base `main`** (9 Nov). Merge ho jaye to `origin/main` laao (ff-only, warna normal merge commit) aur naya draft PR.
+   [#83](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/83) `main` me merge (`402745c`). K2-6 wala [#86](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/86) `main` me merge (9 Nov). **K2-7 + CI fix: draft PR [#87](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/87), base `main`** (10 Nov). Merge ho jaye to `origin/main` laao (ff-only, warna normal merge commit) aur naya draft PR.
    Merge hua PR dobara mat kholo, us par commit mat jodo.
 2. **Doosra session to nahi chal raha?** §6 ki aakhri row. "Chal raha" ho aur 30 minute ke andar commit ho, to owner
    se poochho.
@@ -410,23 +410,15 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
     (read-only) SSH ke stdin se git ke environment me (`GIT_CONFIG_*`), nakli machine par jaancha. #85 ke baad `main` par CI bhi laal
     (`check` me `npm test`, `e2e`): agle PR me theek karna.
     `deploy-api.yml` aur `deploy-web.yml` (staging) chalaye. **Agla:** K2-7 SQL.
-  - [ ] K2-7 SQL (9 Nov raat, owner "K2-7 shuru karo"; usi draft PR #86 me jayega). **5 ghante ki limit (0.82) par ruka: code commit NAHI,
-    autosave `autosave/claude/learn-v2--eb426b80` me** (restore: us branch se files lo; §1). **Bana aur unit se jaancha:** API `GET /problems` ke har
-    item me `languages` (`practice.ts`, `practice-routes.ts`, test `learn-v2.test.ts`, `docs/openapi.json` regen); `learn/LearnSql.tsx` +
-    `learn-sql.css` (apna lazy chunk; Learn ka kuch import nahi karta, warna bundler saajhe chunk dobara kaatta aur `i18n-*.js` gayab, index +7 KB:
-    `t` aur icon workspace deta, `sql-view.ts` ka parse copy): tables (column + type), example ki rows, result rows, aapka vs sahi nateeja
-    (missing/extra row shabd + rang, "rows wahi, kram alag"), 12 rows / 10 columns / 120 akshar + "aur N"; `LearnWorkspace.tsx` SQL par: Query pane,
-    "Aapki query", apni tables, `runtime_error` = "Query me error" + database ka text, chhupa test sirf verdict; `LearnProblems.tsx` `sql` screen
-    (sirf `languages` me `sql`; sheets/POTD nahi); `LearnApp.tsx` route `sql`; icons `Table2`, `Database`; `LearnApp.test.tsx` ka popstate test ab
-    `roadmap` par; `LearnSql.test.tsx` 14 (axe). Learn unit 170/170, build:clients, budget (`LearnSql-*.js` 2.7/3, `.css` 0.7/1 naye; baaki wahi),
-    lint:css hare; poora `npm run check` aakhri fix ke baad dobara nahi chala. Problems par Plus ka taala API me nahi (sirf lesson/plan).
-    **Likha, chalaya nahi:** e2e `tests/learn-sql.spec.ts` (2), seed `seedLearnSql` + `BIG_COUNTRIES` (`tests/learn-day.ts`: SQL starter pack + plan),
-    visual `learn.visual.ts` me 10 nayi images `learn-sql-*` (site `visual-learn-sql`; baselines abhi nahi).
-    **Agla, isi kram me:** `npm run check`; Postgres (`/var/lib/postgresql/k1-e2e`) + fonts ki copy (FONTCONFIG_FILE + FONTCONFIG_PATH) ke saath
-    `npx playwright test tests/learn-*.spec.ts --project=chromium` (packages/e2e), `npm run visual:update -w @parikshaa/e2e -- -g "SQL"`, phir poora
-    `npm run visual` (purani images wahi); commit; tracker row 140 (K2-7) + row 94 me Learn path + Build log ki #86 line; DESIGN-SYSTEM §10 me K2-7;
-    yahan tick + §7; push; #86 ka title/body; CI. Kadam 3/4: PK/FK nishaan, result ke column naam (runner sirf rows deta), dialect (sirf SQLite),
-    SQL ka alag sheet page.
+  - [x] K2-7 SQL (10 Nov, PR [#87](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/87); pichhle agent ka autosave wala kaam yahan poora). API `GET /problems` ke har item me `languages` (test + openapi); `learn/LearnSql.tsx` + `learn-sql.css` (apna lazy chunk, Learn ka kuch import nahi karta:
+    `t` aur icon workspace deta, `sql-view.ts` ka parse copy, warna bundler saajha chunk dobara kaatta): tables (column + type), example ki rows, result rows,
+    aapka vs sahi nateeja ("−"/"+" nishaan, "rows wahi, kram alag"), 12 rows / 10 columns / 120 akshar + "aur N"; workspace SQL par Query pane,
+    "Aapki query", apni tables, `runtime_error` = "Query me error" + database ka text, chhupa test sirf verdict; Abhyas ki `sql` screen, route `sql`.
+    Is session me: e2e ka ek locator Problem pane tak (Testcase pane me wahi table), aur `components/CodeEditor.tsx` ka content `tabindex="0"`
+    (phone par lambi SQL line editor ko side me scroll karti; axe `scrollable-region-focusable`). check, build:clients, budget (`LearnSql-*.js` 2.7/3,
+    `.css` 0.7/1, `LearnWorkspace-*.js` 13.9/14), lint:css, openapi wahi, e2e chromium 65/65 (Learn 21), visual 143/143 test (10 nayi images `learn-sql-*`, purani wahi).
+    Kadam 3/4: PK/FK nishaan, result ke column naam (runner sirf rows deta), dialect (sirf SQLite), SQL ka alag sheet page, schema browser.
+    **Kahan ruka:** K2-7 aur #85 ke baad ka CI fix #87 par (owner merge). **Agla: K2-8** aptitude.
   - [ ] K2-8 aptitude (maujooda MCQ par; mocks Kadam 3/4)
   - [ ] K2-9 contests
   - [ ] K2-10 profile B + share
@@ -542,6 +534,7 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
 
 ## 7. Log (naya upar)
 
+- 10 Nov 2026 (session 4 aage, K2-7): owner "continue". #85 (dependabot dev group) ke baad `main` ka CI laal tha: jsdom 31 chhupe tab ke field ko focus nahi deta (console test ab Questions tab kholta), axe 4.14 ka `label-content-name-mismatch` (Learn logo ka Hindi naam "Parikshaa Learn, आज"), Playwright 1.65.0 ka Firefox axe par crash (`@playwright/test` 1.64.1 par pin, tracker Faisle). Alag commit `c82a575`. Phir K2-7 SQL poora (autosave wala kaam, e2e/visual chalakar), usi draft #87 me. Local: Playwright 1.64 ko `chromium_headless_shell-1248` wrapper (1.65 ke liye `-1254` bhi bana, repo me kuch nahi). Agla: K2-8.
 - 9 Nov 2026 (session 4 aage, raat): K2-6 agent 5 ghante ki limit par ruka tha; uska CI fix (jaancha hua: visual 137, check hara) `1aaf799` me push. Owner ne Hostinger VPS par bootstrap chalaya: pehli baar pooler ne URI ka user/db_name galat format bataya, doosri baar sahi URI se sab bana par runner `cpus: 4` > 2 CPU par ruka. Fix: `RUNNER_CPUS` + Caddy install bina sawaal; tests. Owner ko step 2 script di.
 - 9 Nov 2026 (session 4 aage, K2-6): owner "continue". #83 `main` me merge; `claude/learn-v2` ff `402745c`. Learn ka Sahayak panel (`learn/LearnSahayak.tsx`) asli tutor API par: shell, phone sheet, workspace; hint, review, doubt, follow-ups, note draft, credits, har refusal. API: lesson ki baatcheet + `costs.notes`; e2e fake model tutor ka jawab deta. 19 unit + 2 e2e + 4 visual. Naya draft PR #86. Agla: K2-7.
 - 29 Oct 2026 (session 4 aage, K2-5): owner "K2-5 shuru karo". Autosave me adhoora kuch nahi (sirf state file); `claude/learn-v2` `origin/main` (`7b636b8`) par fast-forward. Learn ka problem workspace + editorial (`learn/LearnWorkspace.tsx`): focus screen, kit ke panes, purani site ka editor (lazy), Run/Submit asli judge par, verdict + pehla fail test, submissions, draft, hints, editorial, note; Aaj/sheet/Abhyas/POTD/lists ke problem link ab yahin. API wahi. 24 unit + 2 e2e + 6 visual. Naya draft PR #83 (base `main`). Agla: K2-6.
