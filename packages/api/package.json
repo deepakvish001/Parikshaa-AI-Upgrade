@@ -56,7 +56,7 @@
     "jose": "^6.2.12",
     "nodemailer": "^10.0.16",
     "qrcode-generator": "^2.0.4",
-    "unpdf": "1.9.1",
+    "unpdf": "2.1.0",
     "web-push": "^3.6.7",
     "zod": "^4.0.0"
   },
