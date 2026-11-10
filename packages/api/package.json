@@ -54,7 +54,7 @@
     "fastify-type-provider-zod": "^7.0.0",
     "fflate": "^0.8.3",
     "jose": "^6.2.12",
-    "nodemailer": "^10.0.16",
+    "nodemailer": "^10.3.1",
     "qrcode-generator": "^2.0.4",
     "unpdf": "1.9.1",
     "web-push": "^3.6.7",
