@@ -87,6 +87,25 @@ describe("signing in", () => {
     expect(refusal(new TypeError("offline"))).toBe(W.failed);
   });
 
+  it("says plainly when the site is closed or missing, not 'try again' (owner, staging)", async () => {
+    // The API answers not_found for a closed or missing site's every address.
+    api.routes["GET /practice/demo/sign-in-options"] = () => ({ status: 404, body: { error: "not_found" } });
+    api.routes["POST /practice/demo/signup"] = () => ({ status: 404, body: { error: "not_found" } });
+    at("/signup");
+    const { container } = renderLearn();
+    expect(await screen.findByRole("alert")).toHaveTextContent(hg(W.siteMissing));
+    await userEvent.type(screen.getByLabelText(hg(W.name)), "Asha Verma");
+    await userEvent.type(screen.getByLabelText(hg(W.email)), "asha@example.com");
+    await userEvent.type(screen.getByLabelText(hg(W.password)), "practice every single day");
+    await userEvent.click(screen.getByRole("button", { name: hg(W.signUp) }));
+    await waitFor(() => expect(api.calls.some((c) => c.method === "POST" && c.path === "/practice/demo/signup")).toBe(true));
+    // Said once, and never "that did not go through".
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+    expect(screen.queryByText(hg(W.failed))).not.toBeInTheDocument();
+    expect(refusal(new ApiError(404, "not_found"))).toBe(W.siteMissing);
+    expect(await violations(container)).toEqual([]);
+  });
+
   it("never follows a return address off this site's screens", async () => {
     at("/signin?next=%2F%2Fevil.example%2Fplan");
     renderLearn();

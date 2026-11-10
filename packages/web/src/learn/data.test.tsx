@@ -229,6 +229,27 @@ describe("the states", () => {
     expect(await violations(container)).toEqual([]);
   });
 
+  it("say a closed or missing site plainly, without a retry, and keep the usual failure for one missing thing (owner, staging)", async () => {
+    // The site's own address is not found: closed, or never there.
+    const missing = render(<Failed error={new ApiError(404, "not_found")} onRetry={vi.fn()} />, { wrapper: wrapper() });
+    expect(await screen.findByRole("heading", { name: D.siteMissingTitle[1] })).toBeInTheDocument();
+    expect(screen.getByText(D.siteMissingBody[1])).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: D.retry[1] })).not.toBeInTheDocument();
+    expect(screen.queryByText(/not_found · 404/)).not.toBeInTheDocument();
+    expect(await violations(missing.container)).toEqual([]);
+    missing.unmount();
+    // The site is there: a missing problem is the usual failure, with its reference.
+    routes["GET /practice/demo"] = () => ({ body: { slug: "demo", title: "Demo", welcome: "" } });
+    render(<Failed error={new ApiError(404, "not_found")} onRetry={vi.fn()} />, { wrapper: wrapper() });
+    await waitFor(() => expect(calls.filter((c) => c.path === "/practice/demo")).toHaveLength(2));
+    expect(await screen.findByText("Reference: not_found · 404")).toBeInTheDocument();
+    expect(screen.queryByText(D.siteMissingTitle[1])).not.toBeInTheDocument();
+    // Any other failure never asks.
+    calls.length = 0;
+    render(<Failed error={new ApiError(500, "server_error")} onRetry={vi.fn()} />, { wrapper: wrapper() });
+    expect(calls.filter((c) => c.path === "/practice/demo")).toHaveLength(0);
+  });
+
   it("fill a text's places", () => {
     expect(fill("{n} kaam baaki, {m} min", { n: 3, m: 45 })).toBe("3 kaam baaki, 45 min");
     expect(fill("{n} and {gone}", { n: 1 })).toBe("1 and {gone}");

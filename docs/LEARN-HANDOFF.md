@@ -20,7 +20,7 @@ account ka Claude **isi file se** shuru karta hai aur isi ko update karta hai. O
    `claude/learn-v2` fast-forward). **Kadam 2 ab draft [#71](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/71) me** (K2-3 se, 28 Oct khola; [HANDOFF.md](HANDOFF.md) ki row dekho;
    wo bhi merge ho chuka ho to naya draft PR kholo), base `claude/festive-maxwell-pb4k5v` jab tak #66 khula hai, phir `main`.
    **29 Oct 2026:** #71 aur #82 (docs) `main` me merge; `claude/learn-v2` ab `main` se (fast-forward `7b636b8`). K2-5 ka PR
-   [#83](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/83) `main` me merge (`402745c`). K2-6 wala [#86](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/86) `main` me merge (9 Nov). **K2-7 + CI fix: draft PR [#87](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/87), base `main`** (10 Nov). Merge ho jaye to `origin/main` laao (ff-only, warna normal merge commit) aur naya draft PR.
+   [#83](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/83) `main` me merge (`402745c`). K2-6 wala [#86](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/86) `main` me merge (9 Nov). K2-7 + CI fix wala [#87](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/87) `main` me merge (10 Nov, `94eea54`); `claude/learn-v2` ff. **Agla tukda K2-8, naye draft PR me** (owner ke "K2-8 shuru karo" par).
    Merge hua PR dobara mat kholo, us par commit mat jodo.
 2. **Doosra session to nahi chal raha?** §6 ki aakhri row. "Chal raha" ho aur 30 minute ke andar commit ho, to owner
    se poochho.
@@ -422,9 +422,42 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
     4.38:1; ab `#8891b3` (5.05:1), `components/CodeEditor.tsx`. Local: web 435, build:clients, budget, e2e chromium 65/65, visual 143/143 (purani wahi).
     CI `2549b24`: SQL hara, par WebKit me F1 (`prep-flows.spec.ts`) laal: test "Start this plan" dabate hi `/home` par jaata tha, plan ka POST poora hone se
     pehle; WebKit ne save kaat diya, Home par "No study plan yet". Ab test "Study plan: Arrays" heading ka intezaar karta (chromium me POST 1.5 s rok kar wahi error bana, fix se hara).
-    **Kahan ruka (10 Nov):** agent ~03:35 UTC par limit par ruka, ye fix commit nahi hua tha; main session ne 07:45 UTC par contrast dobara naap kar (4.38 → 5.05) commit + push kiya. Agla session: #87 ke head par CI
-    padho (`e2e` ~35 min); laal ho to `gh api repos/.../actions/jobs/<id>/logs` se wajah. Hara ho to owner merge (F5). **Agla: K2-8** aptitude.
+    **Kahan ruka (10 Nov):** agent ~03:35 UTC par limit par ruka, ye fix commit nahi hua tha; main session ne 07:45 UTC par contrast dobara naap kar (4.38 → 5.05) commit + push kiya. Phir `e2e` me WebKit par
+    `prep-flows.spec.ts` F1 laal (test plan save hone se pehle page chhod deta tha; ab saved plan ka heading dekh kar), `380918a` par CI poora
+    hara. Owner ne 10 Nov 08:38 UTC par merge kiya; `main` par deploy-api aur deploy-web hare (VPS fetch ab job ke token se chalta). **Agla: K2-8** aptitude.
   - [ ] K2-8 aptitude (maujooda MCQ par; mocks Kadam 3/4)
+    **Owner ka faisla (10 Nov):** screen + naya aptitude starter pack (~60 sawaal: quant, reasoning, verbal, har ek ke saath samjhaav),
+    `starter-packs.ts` me baaki packs ki tarah; staging/launch par owner ki manzoori (F6) ke baad. Tracker "Faisle" me darj.
+    **K2-8 ke saath theek karna (owner ne staging par 10 Nov ko pakda):** (1) band ya na-maujood practice site par Learn ka sign-up/sign-in
+    "That did not go through… try again" kehta hai (API `not_found` 404); saaf kahe "ye practice site abhi band hai / maujood nahi".
+    (2) na-maujood site ka page "This did not load… Try again in a moment · not_found · 404" dikhata hai; wahi saaf sandesh, "try again" nahi.
+    Staging: owner ka console account (`parikshaa` org), site `demo` (open), starter packs; learner sign-up chal gaya.
+    **10 Nov (agent, `claude/learn-v2`, draft #93): dono sandesh theek ✅.** (1) `learn/LearnAccount.tsx` `refusal()`: 404 `not_found`
+    = `W.siteMissing` ("Ye practice site band hai ya maujood nahi…", en/hg/hi); sign-in-options 404 ho to form ke upar wahi line pehle
+    se (submit par dobara nahi). (2) `learn/data.tsx` `Failed`: 404 aaye to `useSite()` (`GET /practice/<site>`) poochhta; wo bhi 404
+    = Empty "band hai ya maujood nahi" (retry nahi, reference nahi); site hai to purana failure (missing problem). Tests: `data.test.tsx`
+    +1, `LearnAccount.test.tsx` +1; `fake-api.tsx` ab site aur sign-in-options ka jawab deta. Local: learn unit 170/170; `npm run check` (web 437), build:clients,
+    budget (`data-*.js` 15.8/16, `LearnAccount-*.js` 3.7/4; koi limit nahi badhi), lint:css hare. **Local e2e/visual is commit par nahi chale** (5 ghante ki limit 0.85 ke paas): CI dekho.
+    **Kahan ruka (10 Nov ~09:40 UTC, limit):** aptitude ka code shuru nahi hua. **Agla, isi kram me (code padh kar tay):**
+    1. Content/API: practice site par aptitude = `GET /problems` ke `kind` `mcq`/`numeric` wale problems; tags[0] = section,
+       tags[1] ?? tags[0] = topic (CS pack: subject, topic). Asli content sirf CS fundamentals pack (80 MCQ, 6 subject, 41 topic);
+       quant/reasoning/verbal ka content repo me nahi (Library ka `aptitude` section khaali) → naya content F6 ke baad, Kadam 3/4.
+       Explanation = editorial; API use sahi jawab par ya 3 galat (`EDITORIAL_AFTER_FAILURES`) ke baad kholti; galat par sahi option
+       nahi batati. Ye niyam mat badlo (coins/solvedBy ki imaandari); screen kahe "sahi karne par ya 3 galat ke baad (N/3)".
+       Plus lock problems par nahi; contest chalte editorial band (`problem.contest`). Timer/mock API me nahi.
+    2. `screens.ts` `SUB_ROUTE` me `aptitude`; `LearnApp.tsx` LAZY `aptitude` + sub `aptitude/<topic>` (topic slug = section+topic
+       slugify), `aptitude/misses` (status `attempted`). Naya lazy `learn/LearnAptitude.tsx` + `learn-aptitude.css` (mock
+       `screens/aptitude.tsx` `AptitudeBody`/`AptSetBody`, CSS `styles/learn.css` "aptitude": `.qnav/.qn`, `.qcard`, `.sol`, `.opt-letter`).
+       Hub: section card → topic rows (Meter solved/total), upar "x/y sahi, z galtiyan" + misses link; signed out notice; Empty.
+       Set: palette (solved ok / attempted bad / now, shabd bhi), sawaal `useProblem` (Markdown brand se), options, Check =
+       `client.submit`, phir `["practice", site]` invalidate; sahi/galat chune option par; explanation editorial ya lock line;
+       "pichhle jawab" `useSubmissions`; "Sahayak se poochho" = `openSahayak({kind:"problem",slug,title,why:true})`, `setHere`; Aage.
+    3. Choice field dohra mat banao: `LearnWorkspace.tsx` `AnswerPane` ka mcq/numeric field `learn/choice.tsx` me nikaalo (dono
+       use karein; naya saajha chunk `choice-*.js` budget me 1); radio ka naam option ka text hi rahe (e2e `learn-workspace.spec.ts`).
+    4. Tests: `LearnAptitude.test.tsx` (loading, failed, offline, signed out, empty, sahi + explanation, galat + lock line, contest
+       lock, misses, axe); e2e `tests/learn-aptitude.spec.ts` + `learn-day.ts` me `seedLearnAptitude` (naya site, CS pack
+       `POST /api/practice-admin/starter-packs/cs-fundamentals`, `seedLearnSql` jaisa); visual `learn-aptitude-{hub,set}-{1440,390}-
+       {dark,light}` apni site par (purani images wahi). Phir tracker row 140 ✅/🟡 + Build log, DESIGN-SYSTEM §10, ye entry, #93 ka title/body.
   - [ ] K2-9 contests
   - [ ] K2-10 profile B + share
   - [ ] K2-11 Plus
@@ -539,6 +572,8 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
 
 ## 7. Log (naya upar)
 
+- 10 Nov 2026 (session 4 aage, K2-8 agent): owner "K2-8 shuru karo". Draft #93 par: owner ke staging wale dono sandesh theek (band/na-maujood site par sign-in/up aur page ab saaf kehte "band hai ya maujood nahi"), tests ke saath. Aptitude ka code nahi: 5 ghante ki limit 0.85 ke paas; poora plan §5 K2-8 me.
+- 10 Nov 2026 (session 4 aage): #87 (K2-7 SQL, #85 ke baad ka CI fix, private repo se deploy) `main` me merge (`94eea54`); `main` par deploy-api aur deploy-web hare, staging par SQL bhi. Staging DB me abhi koi practice site nahi: owner ko admin-cli + console se site + starter packs ka tareeka diya. Agla: K2-8 (owner ki haan par).
 - 10 Nov 2026 (session 4 aage, K2-7): owner "continue". #85 (dependabot dev group) ke baad `main` ka CI laal tha: jsdom 31 chhupe tab ke field ko focus nahi deta (console test ab Questions tab kholta), axe 4.14 ka `label-content-name-mismatch` (Learn logo ka Hindi naam "Parikshaa Learn, आज"), Playwright 1.65.0 ka Firefox axe par crash (`@playwright/test` 1.64.1 par pin, tracker Faisle). Alag commit `c82a575`. Phir K2-7 SQL poora (autosave wala kaam, e2e/visual chalakar), usi draft #87 me. Local: Playwright 1.64 ko `chromium_headless_shell-1248` wrapper (1.65 ke liye `-1254` bhi bana, repo me kuch nahi). Agla: K2-8.
 - 9 Nov 2026 (session 4 aage, raat): K2-6 agent 5 ghante ki limit par ruka tha; uska CI fix (jaancha hua: visual 137, check hara) `1aaf799` me push. Owner ne Hostinger VPS par bootstrap chalaya: pehli baar pooler ne URI ka user/db_name galat format bataya, doosri baar sahi URI se sab bana par runner `cpus: 4` > 2 CPU par ruka. Fix: `RUNNER_CPUS` + Caddy install bina sawaal; tests. Owner ko step 2 script di.
 - 9 Nov 2026 (session 4 aage, K2-6): owner "continue". #83 `main` me merge; `claude/learn-v2` ff `402745c`. Learn ka Sahayak panel (`learn/LearnSahayak.tsx`) asli tutor API par: shell, phone sheet, workspace; hint, review, doubt, follow-ups, note draft, credits, har refusal. API: lesson ki baatcheet + `costs.notes`; e2e fake model tutor ka jawab deta. 19 unit + 2 e2e + 4 visual. Naya draft PR #86. Agla: K2-7.

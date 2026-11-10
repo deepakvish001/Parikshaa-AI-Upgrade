@@ -115,6 +115,13 @@ export const D = {
   failedTitle: ["This did not load", "Ye load nahi hua", "यह लोड नहीं हुआ"],
   failedBody: ["Nothing of yours is lost. Try again in a moment.", "Aapka kuch nahi gaya. Thodi der me phir koshish karo.", "आपका कुछ नहीं गया। थोड़ी देर में फिर कोशिश करें।"],
   retry: ["Try again", "Phir koshish karo", "फिर कोशिश करें"],
+  // A site that is closed or was never there: the API answers `not_found` for the site itself (owner, staging, 10 Nov 2026).
+  siteMissingTitle: ["This practice site is closed or does not exist", "Ye practice site band hai ya maujood nahi", "यह प्रैक्टिस साइट बंद है या मौजूद नहीं"],
+  siteMissingBody: [
+    "Check the address with your college or company. Trying again will not help until they open the site.",
+    "Address apne college ya company se check karo. Jab tak wo site nahi kholte, dobara koshish se kuch nahi badlega.",
+    "पता अपने कॉलेज या कंपनी से जाँचें। जब तक वे साइट नहीं खोलते, दोबारा कोशिश से कुछ नहीं बदलेगा।",
+  ],
   reference: ["Reference", "Reference", "संदर्भ"],
   offlineTitle: ["You are offline.", "Aap offline ho.", "आप ऑफ़लाइन हैं।"],
   offlineBody: ["What is on the page stays; it updates when the network is back.", "Jo dikh raha hai wo rahega; net aate hi naya ho jayega.", "जो दिख रहा है वह रहेगा; नेट आते ही नया हो जाएगा।"],
