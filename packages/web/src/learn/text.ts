@@ -70,7 +70,8 @@ export function useLearnLang() {
 export const T = {
   skip: ["Skip to content", "Seedha content par jao", "सीधे सामग्री पर जाएँ"],
   nav: ["Learn menu", "Learn menu", "लर्न मेन्यू"],
-  home: ["Parikshaa Learn, today", "Parikshaa Learn, aaj", "परीक्षा लर्न, आज"],
+  // The logo shows "Parikshaa" in every language, so its name starts with that word (WCAG 2.5.3, label in name).
+  home: ["Parikshaa Learn, today", "Parikshaa Learn, aaj", "Parikshaa Learn, आज"],
   search: ["Search", "Khojo", "खोजें"],
   searchDialog: ["Search and go", "Khojo aur jao", "खोजें और जाएँ"],
   searchField: ["Search pages", "Pages khojo", "पेज खोजें"],
