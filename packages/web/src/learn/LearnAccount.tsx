@@ -3,7 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { CalendarRange, Check, ShieldCheck } from "lucide-react";
 import { ApiError } from "../api.ts";
 import { ScreenLink, useLearn } from "./context.tsx";
-import { keepNext, safeNext, useLearnData, useSignInOptions } from "./data.tsx";
+import { isNotFound, keepNext, safeNext, useLearnData, useSignInOptions } from "./data.tsx";
 import { ArrowRight, Sparkles } from "./icons.tsx";
 import type { Tri } from "./screens.ts";
 import { fill } from "./text.ts";
@@ -43,6 +43,11 @@ export const W = {
   taken: ["There is already an account with this email. Sign in instead.", "Is email ka account pehle se hai. Sign in karo.", "इस ईमेल का खाता पहले से है। साइन इन करें।"],
   tooMany: ["Too many tries. Wait a few minutes, then try again.", "Bahut koshishein. Kuch minute ruk kar phir karo.", "बहुत कोशिशें। कुछ मिनट रुककर फिर करें।"],
   invalid: ["Check your name, email and password (12 characters or more).", "Naam, email aur password (12+ akshar) dekho.", "नाम, ईमेल और पासवर्ड (12+ अक्षर) देखें।"],
+  siteMissing: [
+    "This practice site is closed or does not exist, so there is no signing in or up here. Check the address with your college or company.",
+    "Ye practice site band hai ya maujood nahi, isliye yahan sign in ya sign up nahi hoga. Address apne college ya company se check karo.",
+    "यह प्रैक्टिस साइट बंद है या मौजूद नहीं, इसलिए यहाँ साइन इन या साइन अप नहीं होगा। पता अपने कॉलेज या कंपनी से जाँचें।",
+  ],
   failed: ["That did not go through. Nothing is lost; try again.", "Ye nahi hua. Kuch nahi gaya; phir koshish karo.", "यह नहीं हुआ। कुछ नहीं गया; फिर कोशिश करें।"],
   checkEmail: ["Account made. We sent a link to {email}: open it to confirm your address.", "Account ban gaya. {email} par link bheja hai: kholkar email confirm karo.", "खाता बन गया। {email} पर लिंक भेजा है: खोलकर ईमेल पक्का करें।"],
   sample: ["Sample", "Namoona", "नमूना"],
@@ -67,6 +72,8 @@ function GoogleG() {
 /** Why a sign-in or sign-up was refused, in the learner's words. */
 export function refusal(error: unknown): Tri {
   if (!(error instanceof ApiError)) return W.failed;
+  // Signing in and up are the site's own addresses: not found means the site is closed or missing.
+  if (isNotFound(error)) return W.siteMissing;
   if (error.code === "sign_in_failed") return W.wrong;
   if (error.code === "email_taken") return W.taken;
   if (error.code === "too_many_attempts" || error.status === 429) return W.tooMany;
@@ -129,6 +136,11 @@ export function AccountPage({ mode }: { readonly mode: "signin" | "signup" }) {
               </p>
             </>
           ) : null}
+          {isNotFound(options.error) ? (
+            <p className="la-error" role="alert">
+              {t(W.siteMissing)}
+            </p>
+          ) : null}
           <form className="la-fields" onSubmit={submit} aria-label={t(mode === "signup" ? W.signUp : W.signIn)}>
             {mode === "signup" ? (
               <label className="ln-field">
@@ -159,7 +171,7 @@ export function AccountPage({ mode }: { readonly mode: "signin" | "signup" }) {
                 {t(W.passwordHint)}
               </span>
             ) : null}
-            {send.isError ? (
+            {send.isError && !(isNotFound(send.error) && isNotFound(options.error)) ? (
               <p className="la-error" role="alert">
                 {t(refusal(send.error))}
               </p>

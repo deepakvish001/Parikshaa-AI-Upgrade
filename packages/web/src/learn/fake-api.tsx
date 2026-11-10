@@ -147,6 +147,8 @@ export function fakeApi(): FakeApi {
   const api: FakeApi = {
     calls: [],
     routes: {
+      "GET /practice/demo": () => ({ body: { slug: "demo", title: "Demo Practice", welcome: "" } }),
+      "GET /practice/demo/sign-in-options": () => ({ body: { google: false, requireVerified: false } }),
       "GET /practice/demo/me": () => ({ body: { id: "l1", name: "Aarav Sharma", email: "aarav@example.com", emailVerified: true } }),
       "GET /practice/demo/home": () => ({ body: HOME }),
       "GET /practice/demo/companies/targets": () => ({ body: { targets: [{ slug: "infosys", name: "Infosys", readiness: { solved: 31, of: 50, percent: 62 } }] } }),

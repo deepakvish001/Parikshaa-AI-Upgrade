@@ -25,6 +25,7 @@ import {
   type ProblemSummary,
   type Revision,
   type SignInOptions,
+  type Site,
   type Submission,
   type TrackSummary,
   type TrackView,
@@ -220,6 +221,12 @@ export const useContests = (): UseQueryResult<readonly ContestSummary[]> => useL
 export const useSubmissions = (slug: string | null): UseQueryResult<readonly Submission[]> =>
   useLearnQuery(["submissions", slug], (client) => client.submissions(slug ?? ""), { enabled: slug !== null });
 
+/** The practice site itself; read only to tell a closed or missing site from one thing missing on it. Open to anyone. */
+export const useSite = (enabled = true): UseQueryResult<Site> => useLearnQuery(["site"], (client) => client.site(), { session: false, enabled });
+
+/** The API's answer for an address it does not have: a closed or missing site, or a missing thing on one. */
+export const isNotFound = (error: unknown): boolean => error instanceof ApiError && error.status === 404 && error.code === "not_found";
+
 /** How learners may sign in here (Google or not), and whether an address must be confirmed first. Open to anyone. */
 export const useSignInOptions = (enabled = true): UseQueryResult<SignInOptions> => useLearnQuery(["sign-in-options"], (client) => client.signInOptions(), { session: false, enabled });
 
@@ -301,6 +308,9 @@ export function Loading({ shape = "list", children }: { readonly shape?: Skeleto
 /** A failed read: what happened, that nothing is lost, try again, and a reference to quote. */
 export function Failed({ error, onRetry, retrying = false, headingLevel = 2 }: { readonly error: unknown; readonly onRetry: () => void; readonly retrying?: boolean; readonly headingLevel?: 2 | 3 }) {
   const { t } = useLearn();
+  // A 404 may be one thing missing (a problem) or the whole site: the site's own address says which.
+  const site = useSite(error instanceof ApiError && error.status === 404);
+  if (isNotFound(site.error)) return <Empty title={t(D.siteMissingTitle)} body={t(D.siteMissingBody)} headingLevel={headingLevel} />;
   const reference = error instanceof ApiError ? `${error.code} · ${error.status}` : "network";
   return (
     <ErrorState
