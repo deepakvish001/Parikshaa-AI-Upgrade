@@ -420,6 +420,8 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
     Kadam 3/4: PK/FK nishaan, result ke column naam (runner sirf rows deta), dialect (sirf SQLite), SQL ka alag sheet page, schema browser.
     CI `24207ae`: Firefox/WebKit me SQL laptop (dark) par axe `color-contrast`: editor ka comment rang `#7d86a8` active line (`#1a2140`) par
     4.38:1; ab `#8891b3` (5.05:1), `components/CodeEditor.tsx`. Local: web 435, build:clients, budget, e2e chromium 65/65, visual 143/143 (purani wahi).
+    CI `2549b24`: SQL hara, par WebKit me F1 (`prep-flows.spec.ts`) laal: test "Start this plan" dabate hi `/home` par jaata tha, plan ka POST poora hone se
+    pehle; WebKit ne save kaat diya, Home par "No study plan yet". Ab test "Study plan: Arrays" heading ka intezaar karta (chromium me POST 1.5 s rok kar wahi error bana, fix se hara).
     **Kahan ruka (10 Nov):** agent ~03:35 UTC par limit par ruka, ye fix commit nahi hua tha; main session ne 07:45 UTC par contrast dobara naap kar (4.38 → 5.05) commit + push kiya. Agla session: #87 ke head par CI
     padho (`e2e` ~35 min); laal ho to `gh api repos/.../actions/jobs/<id>/logs` se wajah. Hara ho to owner merge (F5). **Agla: K2-8** aptitude.
   - [ ] K2-8 aptitude (maujooda MCQ par; mocks Kadam 3/4)

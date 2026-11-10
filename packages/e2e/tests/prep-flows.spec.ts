@@ -75,6 +75,8 @@ test("F1: a learner signs up, plans a track, and finds today's work on the dashb
   await page.getByRole("button", { name: "Show the plan" }).click();
   await expect(page.getByText(/It fits: finished by/)).toBeVisible();
   await page.getByRole("button", { name: "Start this plan" }).click();
+  // The plan is saved once the page shows it. Leaving sooner can cancel the save (WebKit did).
+  await expect(page.getByRole("heading", { name: "Study plan: Arrays", level: 1 })).toBeVisible();
 
   await page.goto(`/practice/${site.slug}/home`);
   await expect(page.getByRole("heading", { name: "Namaste, Asha" })).toBeVisible();
