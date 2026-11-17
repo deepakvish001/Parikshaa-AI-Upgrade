@@ -32,6 +32,14 @@ const MIN_TESTS: Record<string, number> = { L0: 15, L1: 20, L2: 30, L3: 40, L4: 
 const LEVEL_DIFFICULTY: Record<string, string> = { L0: "easy", L1: "easy", L2: "medium", L3: "hard", L4: "hard" };
 const BRUTE_GROUPS = ["samples", "minimal", "edge", "random_small", "output_edge"];
 
+/**
+ * Whether an MCQ with pictures (`images`) may pass. The upload cannot store
+ * pictures from a bundle yet (CONTENT-FORMAT §12), so by default it fails, and
+ * says why, rather than publish a question without the picture it needs.
+ * Waiting on the owner (17 Nov 2026): true lets it pass with a warning.
+ */
+export const MCQ_IMAGES_PASS = false;
+
 const stripCode = (md: string) => md.replace(/```[\s\S]*?```/g, " ");
 export const countWords = (md: string) =>
   stripCode(md)
@@ -149,7 +157,10 @@ function mcq(item: McqItem, r: RuleReport) {
     if (!same(h3, want)) r.errors.push(`explanation: ### headings must be ${want.join(", ")}; found ${h3.join(", ") || "none"}`);
   }
   if ((item.section === "aptitude-quant" || item.variants !== undefined) && item.solver === undefined) r.errors.push("solver: required for quant items and for items with variants");
-  if ((item.images ?? []).length > 0) r.errors.push("images: pictures in an upload are not taken yet (the platform does not store them from a bundle); write the question without one, or add it in the console after publishing");
+  if ((item.images ?? []).length > 0) {
+    if (MCQ_IMAGES_PASS) r.warnings.push("images: the pictures are not uploaded with the bundle yet; add them in the console after publishing");
+    else r.errors.push("images: pictures in an upload are not taken yet (the platform does not store them from a bundle); write the question without one, or add it in the console after publishing");
+  }
 }
 
 function lesson(item: LessonItem, r: RuleReport) {

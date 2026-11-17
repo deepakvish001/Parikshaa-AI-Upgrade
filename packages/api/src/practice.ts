@@ -14,7 +14,7 @@ import {
   type OrgId,
   type Question,
 } from "@parikshaa/core";
-import { RunnerUnavailable, type CodeRunner, type RunResult } from "@parikshaa/runner";
+import { RunnerUnavailable, type CodeRunner, type RunRequest, type RunResult } from "@parikshaa/runner";
 import {
   practiceLearner,
   practiceStaff,
@@ -78,7 +78,8 @@ export class PracticeError extends Error {
       | "sold_out"
       | "limit_reached"
       | "too_new"
-      | "coupon_invalid",
+      | "coupon_invalid"
+      | "too_large",
     message: string,
   ) {
     super(message);
@@ -463,6 +464,21 @@ export class PracticeService {
   /** The judge's queue as it stands: for staff on a contest day. */
   judgeStats() {
     return this.#judge?.stats() ?? null;
+  }
+
+  /** Whether a code runner is configured. */
+  get judging(): boolean {
+    return this.#judge !== null;
+  }
+
+  /**
+   * A staff program through the judge's queue, in practice's lane: the bulk
+   * content upload's gates (row 141), which run one at a time, so an upload
+   * holds one place in the queue and learners keep theirs.
+   */
+  judgeRun(request: RunRequest): Promise<RunResult> {
+    if (this.#judge === null) throw new RunnerUnavailable("No code runner is configured");
+    return this.#judge.run(request, "practice");
   }
 
   async #run(question: CodeQuestion, answer: CodeAnswer, tests: readonly { id: string; input: string; expected: string }[], lane: JudgeLane, ownInput = false): Promise<RunResult> {

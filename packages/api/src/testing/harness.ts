@@ -47,6 +47,7 @@ import {
   DepartmentStore,
   ReportStore,
   LibraryStore,
+  ContentStore,
   staffScope,
   migrate,
   pgliteExecutor,
@@ -90,6 +91,7 @@ import { PrepCommunity } from "../prep-community.js";
 import { PrepEngage } from "../prep-engage.js";
 import { PrepCampus } from "../prep-campus.js";
 import { StarterPacks } from "../starter-packs.js";
+import { ContentUploads } from "../content-uploads.js";
 import { Sahayak } from "../sahayak.js";
 import { PracticeIdentity } from "../practice-identity.js";
 import { buildServer, type ServerOptions } from "../server.js";
@@ -170,6 +172,8 @@ export interface Wiring {
   readonly security: StaffSecurity;
   readonly app: FastifyInstance;
   readonly prepEngage: PrepEngage;
+  /** The bulk content upload: a test waits on its worker with `idle`. */
+  readonly contentUploads: ContentUploads;
 }
 
 export async function wire(
@@ -446,6 +450,13 @@ export async function wire(
     publicUrl: PUBLIC_URL,
     ...(options.now === undefined ? {} : { now: options.now }),
   });
+  const contentUploads = new ContentUploads({
+    store: new ContentStore(sql),
+    practice: new PracticeStore(sql),
+    prep: new PrepStore(sql),
+    run: practice.judging ? (request) => practice.judgeRun(request) : null,
+    ...(options.now === undefined ? {} : { now: options.now }),
+  });
   const app = buildServer({
     service,
     invitations,
@@ -522,6 +533,7 @@ export async function wire(
     practiceIdentity,
     prep: prepService,
     starterPacks: new StarterPacks({ practice: new PracticeStore(sql), prep: new PrepStore(sql), service: prepService }),
+    contentUploads,
     prepCommunity,
     prepEngage,
     prepCampus,
@@ -549,6 +561,7 @@ export async function wire(
     security,
     app,
     prepEngage,
+    contentUploads,
     results,
     rechecks,
     handlers: { ...integrations.handlers, staff_email: (item) =>

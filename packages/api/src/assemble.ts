@@ -5,7 +5,8 @@ import type { CodeRunner } from "@parikshaa/runner";
 import type { JudgeOptions } from "./judge-queue.js";
 import { attemptId, examId, orgId, type OrgId } from "@parikshaa/core";
 import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCampusStore, ClassStore, PrepCommunityStore, PrepEngageStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, FeedbackStore, LabStore, RecheckStore, MarkingStore, PlacementStore, SeatStore, ShortlistStore, InterviewStore, AiInterviewStore,
-  AccommodationStore, ProxyStore, ReviewStore, DepartmentStore, staffScope, LibraryStore, CandidateStore, HireStore, HireApplicationStore, HirePipelineStore, type BlobStore, type SqlExecutor } from "@parikshaa/store";
+  AccommodationStore, ProxyStore, ReviewStore, DepartmentStore, staffScope, LibraryStore, CandidateStore, HireStore, HireApplicationStore, HirePipelineStore, ContentStore, type BlobStore, type SqlExecutor } from "@parikshaa/store";
+import { ContentUploads } from "./content-uploads.js";
 import { LabService } from "./lab.js";
 import { RecheckService } from "./rechecks.js";
 import { MarkingService } from "./marking.js";
@@ -375,6 +376,13 @@ export function assemble(o: AssembleOptions): {
     practiceIdentity,
     prep: prepService,
     starterPacks: new StarterPacks({ practice: practiceStore, prep: prepStore, service: prepService }),
+    contentUploads: new ContentUploads({
+      store: new ContentStore(o.sql),
+      practice: practiceStore,
+      prep: prepStore,
+      run: practice.judging ? (request) => practice.judgeRun(request) : null,
+      onError: (error) => app.log.error({ err: error }, "The content upload's worker stopped"),
+    }),
     prepCommunity,
     prepEngage,
     prepCampus,

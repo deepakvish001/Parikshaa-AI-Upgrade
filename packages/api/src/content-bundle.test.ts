@@ -147,6 +147,8 @@ describe("gate 2: what an item means", () => {
     const dsa = dsaItem({ solutions: dsaItem().solutions.filter((s) => s.lang !== "java"), level: "L3" });
     expect(ruleProblems("dsa-problem", dsa).errors).toEqual(expect.arrayContaining(["solutions: no java reference", "level L3 goes with difficulty hard, not easy"]));
     expect(ruleProblems("mcq", mcqItem({ correct: 4 })).errors).toEqual(["correct is past the last option"]);
+    // Pictures cannot come in a bundle yet (MCQ_IMAGES_PASS, waiting on the owner): such a question fails, and says why.
+    expect(ruleProblems("mcq", mcqItem({ images: [{ file: "chart.png", alt: "Sales of the stall by month." }] })).errors).toEqual([expect.stringMatching(/^images: pictures in an upload are not taken yet/)]);
     const lesson = lessonItem();
     expect(ruleProblems("lesson", { ...lesson, sections: [...lesson.sections].reverse() }).errors).toEqual(["sections: the first section is the why"]);
     expect(ruleProblems("sql-problem", sqlItem({ editorial: "## Problem\n\nSee https://leetcode.com/problems/x" })).errors).toEqual(expect.arrayContaining(["links to another problem site (leetcode.com): use our own slugs in related"]));

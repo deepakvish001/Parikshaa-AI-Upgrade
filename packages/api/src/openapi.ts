@@ -7,7 +7,7 @@ import { HirePipeline } from "./hire-pipeline.js";
 import { HireApplications } from "./hire-apply.js";
 import type Anthropic from "@anthropic-ai/sdk";
 import { BillingStore, FeedbackStore, IdentityStore, LabStore, RecheckStore, MarkingStore, PlacementStore, SeatStore, ShortlistStore, InterviewStore, AiInterviewStore,
-  AccommodationStore, ProxyStore, ReviewStore, DepartmentStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, PracticeStore, PrepCampusStore, ClassStore, PrepCommunityStore, PrepEngageStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, LibraryStore, CandidateStore, HireStore, HireApplicationStore, HirePipelineStore, DataKeys, type SqlExecutor } from "@parikshaa/store";
+  AccommodationStore, ProxyStore, ReviewStore, DepartmentStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, PracticeStore, PrepCampusStore, ClassStore, PrepCommunityStore, PrepEngageStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, LibraryStore, CandidateStore, HireStore, HireApplicationStore, HirePipelineStore, ContentStore, DataKeys, type SqlExecutor } from "@parikshaa/store";
 import { LabService } from "./lab.js";
 import { RecheckService } from "./rechecks.js";
 import { MarkingService } from "./marking.js";
@@ -38,6 +38,7 @@ import { PrepEngage } from "./prep-engage.js";
 import { PrepCampus } from "./prep-campus.js";
 import { PrepCommunity } from "./prep-community.js";
 import { StarterPacks } from "./starter-packs.js";
+import { ContentUploads } from "./content-uploads.js";
 import { Sahayak } from "./sahayak.js";
 import { PracticeIdentity } from "./practice-identity.js";
 import { buildServer } from "./server.js";
@@ -147,6 +148,7 @@ export async function specDocument(): Promise<Record<string, unknown>> {
       prep: new PrepStore(unusable),
       service: new PrepService({ practice: new PracticeStore(unusable), store: new PrepStore(unusable) }),
     }),
+    contentUploads: new ContentUploads({ store: new ContentStore(unusable), practice: new PracticeStore(unusable), prep: new PrepStore(unusable), run: null }),
     prepCommunity: new PrepCommunity({ practice: new PracticeStore(unusable), prep: new PrepStore(unusable), store: new PrepCommunityStore(unusable) }),
     prepEngage: new PrepEngage({
       store: new PrepEngageStore(unusable),
