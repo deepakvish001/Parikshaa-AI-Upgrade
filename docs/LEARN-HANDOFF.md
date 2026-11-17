@@ -240,9 +240,17 @@ par ja sakta hai.
 - [x] Runner `fullOutput` (`40680cc`; `packages/runner/src/execute.ts`, `judge0.ts`, `server.ts`): `RunRequest.fullOutput: true` par har
   test ka poora stdout (1 MiB tak) wapas aata, warna pehle jaisa 4 KB. Kyun: gates reference ka output hi expected banate
   aur generator ka output hi test input; runner abhi 4 KB par kaat deta tha. Test `execute.test.ts` "whole output" (2).
+- [x] **Kadam 1** (17 Nov, doosra part B agent, worktree se; `ac64b33`): migration `0075_content_uploads.sql` (teen table,
+  design jaisa; `content_items` me saath me `built jsonb` = gates ne jo banaya (tests + expected) aur `children jsonb` =
+  lesson ke quiz/hands-on problems ka slug → id) + `packages/store/src/content-store.ts`: `createUpload`, `uploads`,
+  `upload` (har item ki report + slug par abhi kya rakha hai), `claimNext` (`FOR UPDATE SKIP LOCKED`, 5 minute chup ho to
+  dobara), `releaseItem`, `finishItem` (claim ka saboot `claimed_at`; draft rakhte waqt version niyam dobara, transaction
+  me; aakhri item par upload `done`), `standing` (upload ke waqt version niyam ki jaanch), `item`, `markPublished` (sirf
+  wahi version + hash). `versionDecision` = Faisle wala niyam. Starter pack/console wala slug → refuse. Tests:
+  `content-store.test.ts` (10, pglite, `parikshaa_app`, doosri org aur learner kuch nahi padhte) + `migrate.test.ts`.
 
 **Design (code padh kar tay; agla session yahi banaye, isi kram me):**
-1. **Migration `0075_content_uploads.sql`** (sirf jodna; RLS 0046 jaisa: `tenant_isolation` RESTRICTIVE + `<t>_staff`;
+1. **[x] (`ac64b33`) Migration `0075_content_uploads.sql`** (sirf jodna; RLS 0046 jaisa: `tenant_isolation` RESTRICTIVE + `<t>_staff`;
    learner ka koi policy nahi, ye sirf staff ke table): `content_uploads` (org_id, id, bundle_id, bundle_version, title,
    file_name, bytes, manifest jsonb, problems jsonb (bundle-level), state `checking|done`, created_by_id/name, created_at,
    finished_at); `content_upload_items` (org_id, upload_id, position, namespace `problem|lesson`, slug, type, version,
@@ -681,6 +689,7 @@ par ja sakta hai.
 ## 7. Log (naya upar)
 
 - 17 Nov 2026 (row 141 part A agent): content kit: format + schemas (`2062822`), 6 prompts, INSTRUCTIONS, validator + test, aptitude ke 10 samples (PASS). 5 ghante ki limit (0.74, 0.85 ke paas) par ruka; baaki 60 samples aur kram §5 "Row 141 content kit, part A" me.
+- 17 Nov 2026 (row 141 part B, doosra agent, worktree): kadam 1 push (`ac64b33`: migration 0075 + `ContentStore` + tests); agla kadam 2 (parse + schema), §5 "Row 141, part B".
 - 17 Nov 2026 (row 141 part B agent): bulk upload ka design §5 "Row 141" me; runner ka `fullOutput` (tests ke saath) push. 5 ghante ki limit (part A saath) par ruka; agla session §5 ke kram 1–11 se.
 - 10 Nov 2026 (session 4 aage, K2-8 agent): owner "K2-8 shuru karo". Draft #93 par: owner ke staging wale dono sandesh theek (band/na-maujood site par sign-in/up aur page ab saaf kehte "band hai ya maujood nahi"), tests ke saath. Aptitude ka code nahi: 5 ghante ki limit 0.85 ke paas; poora plan §5 K2-8 me.
 - 10 Nov 2026 (session 4 aage): #87 (K2-7 SQL, #85 ke baad ka CI fix, private repo se deploy) `main` me merge (`94eea54`); `main` par deploy-api aur deploy-web hare, staging par SQL bhi. Staging DB me abhi koi practice site nahi: owner ko admin-cli + console se site + starter packs ka tareeka diya. Agla: K2-8 (owner ki haan par).
