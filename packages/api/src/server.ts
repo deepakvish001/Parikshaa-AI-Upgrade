@@ -41,6 +41,8 @@ import type { PrepPlus } from "./prep-plus.js";
 import type { PrepCommunity } from "./prep-community.js";
 import { registerPrepCommunityRoutes } from "./prep-community-routes.js";
 import type { StarterPacks } from "./starter-packs.js";
+import { registerContentRoutes } from "./content-routes.js";
+import type { ContentUploads } from "./content-uploads.js";
 import { registerPrepPlusRoutes } from "./prep-plus-routes.js";
 import { registerPrepEngageRoutes } from "./prep-engage-routes.js";
 import { registerPrepCampusRoutes } from "./prep-campus-routes.js";
@@ -136,6 +138,8 @@ export interface ServerOptions {
   readonly prepCommunity?: PrepCommunity;
   /** Starter content for practice sites (ROADMAP §16). Needs `prepCommunity`. */
   readonly starterPacks?: StarterPacks;
+  /** The console's bulk content upload (row 141): bundles in, drafts checked by machine, published by a reviewer. */
+  readonly contentUploads?: ContentUploads;
   readonly invitations: InvitationService;
   readonly results: ResultsService;
   readonly webhooks: WebhookService;
@@ -531,6 +535,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         limit_reached: 409,
         too_new: 403,
         coupon_invalid: 422,
+        too_large: 413,
       }[error.code];
       return reply.code(status).send({ error: error.code, message: error.message });
     }
@@ -1385,6 +1390,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       if (options.prepEngage !== undefined) registerPrepEngageRoutes(routes, { practice: options.practice, engage: options.prepEngage, staff, bearer });
       if (options.prepCampus !== undefined) registerPrepCampusRoutes(routes, { campus: options.prepCampus, service, staff });
       if (options.prepCommunity !== undefined) registerPrepCommunityRoutes(routes, { practice: options.practice, community: options.prepCommunity, packs: options.starterPacks, service, staff, bearer });
+      if (options.contentUploads !== undefined) registerContentRoutes(routes, { uploads: options.contentUploads, service, staff });
       if (identity !== undefined) registerPracticeIdentityRoutes(routes, { practice: options.practice, identity, service, bearer, staff });
     }
 
