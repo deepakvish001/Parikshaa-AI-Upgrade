@@ -214,7 +214,7 @@ export class Judge0CodeRunner implements CodeRunner {
         status,
         timeMs: Number.isFinite(time) ? Math.round(time * 1000) : 0,
         memoryKb: typeof j.s.memory === "number" ? j.s.memory : null,
-        stdout: truncate(j.printed),
+        stdout: request.fullOutput === true ? j.printed : truncate(j.printed),
         stderr: truncate(j.stderr, 2048),
         ...(marker === undefined ? {} : { result: j.result === null ? null : truncate(j.result) }),
         ...(checkerMessage === undefined || checkerMessage === "" ? {} : { checkerMessage: truncate(checkerMessage, 1024) }),

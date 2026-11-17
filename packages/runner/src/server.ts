@@ -43,6 +43,7 @@ const runBody = z.object({
     ])
     .optional(),
   resultMarker: z.string().min(4).max(64).optional(),
+  fullOutput: z.boolean().optional(),
 });
 
 export interface RunnerServerOptions {
