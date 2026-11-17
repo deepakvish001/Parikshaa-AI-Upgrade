@@ -258,6 +258,17 @@ projects (pehle par `bundleFiles` debug) → system design. `hostel-water-meter`
 - Authoring ka tareeka (lessons): JSON ek Python builder se likha, aur `expected_output` usi waqt local chala kar bhara;
   validator ne phir runner par jaancha. Builder repo me nahi (scratchpad), kyunki samples hi asli cheez hain.
 
+- [x] **Projects 10/10 PASS** (`content/samples/projects/<slug>/item.json`, `88aedae` … `bb867d9`): Python
+  `proj-python-canteen-cart`, `proj-python-library-ledger` (premium); JS `proj-javascript-hostel-rooms`,
+  `proj-javascript-expense-split` (premium); Java `proj-java-parking-tickets`, `proj-java-bank-ledger` (premium); C
+  `proj-c-marks-report`, `proj-c-ring-buffer-log` (premium); C++ `proj-cpp-inventory`, `proj-cpp-lru-cache` (premium).
+  Har ek me driver (`editable: false`) + 1–2 learner files, 2–3 milestones, 8–10 command-script tests (2 visible),
+  rubric 65 tests / 20 review / 15 ai-feedback. Starter har jagah build hota aur 1–2 tests hi pass karta.
+  **`bundleFiles` paanchon bhasha me asli projects par jaancha**: Python (module finder), JS (CommonJS wrapper), Java
+  (imports hoisted, sirf `Main` public), C/C++ (local `#include` hata kar headers → sources → driver): koi bug nahi mila.
+  Tests ke expected outputs validator ke hi `bundleFiles` se jode solution ko local chala kar bane; validator ne runner
+  par dobara jaanche.
+
 **Baaki (agla session, isi kram me):**
 1. **DSA ke 9 bache: ruke hue** jab tak owner editorial ki lambai par jawab na de (coordinator 17 Nov). Uske baad
    (kul 5 public, 5 premium; 1 public easy ho gaya; editorial INSTRUCTIONS §4 ki lambai: public easy
@@ -765,6 +776,7 @@ par ja sakta hai.
 
 ## 7. Log (naya upar)
 
+- 17 Nov 2026 (row 141 part A): projects 10/10 PASS (har bhasha 2); `bundleFiles` paanchon bhasha me sahi. Agla: system design (5 HLD, 5 LLD).
 - 17 Nov 2026 (row 141 part A): language lessons 10/10 PASS (C, C++, Python, Java, JS × 2, har ek me hands-on). Agla: projects (pehle par `bundleFiles` debug).
 - 17 Nov 2026 (row 141 part A, limit reset ke baad): CS lessons 10/10 PASS (CN, OS, DBMS, LLD, OOD × 2; ek Hinglish); `hostel-water-meter` ka `related` maujood slugs par. DSA 2–10 owner ke jawab tak ruke. Agla: language lessons.
 - 17 Nov 2026 (row 141 part A, doosra agent): validator ke producing kadam runner par (`fullOutput`) + sandbox ki gadbad par retry, SQL ke 10 samples aur DSA ka pehla (`hostel-water-meter`), sab PASS; CONTENT-FORMAT §2a owner ke version faisle ke hisaab se. 5 ghante ki limit 0.86 (10:23) par ruka; agla: DSA sample 2 (§5 "Row 141 content kit, part A").
