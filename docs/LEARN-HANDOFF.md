@@ -229,6 +229,81 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
 (`--no-run` sirf schema + niyam, `--only mcq,sql-problem`, `--mutate`, `--pack bundle.json`). Machine par gcc, g++, javac,
 node, python3.
 
+### Row 141, part B: console me bulk upload (17 Nov 2026, `session_01CxKYSJpaMfGb259ZWTqTDB`, part B agent)
+
+**Kyun ruka:** 5 ghante ki limit (06:39 UTC par 0.88; part A saath chal raha tha). Part A (`docs/content/`,
+`content/samples/`, `scripts/content-validate.mjs`) usi working tree me; unke files mat chhuo. Part A ka validator
+abhi expected outputs local `python3` se banata hai (runner 4 KB par kaatta tha); `fullOutput` ab hai, to wo bhi runner
+par ja sakta hai.
+
+**Ho gaya (push, tests ke saath):**
+- [x] Runner `fullOutput` (`40680cc`; `packages/runner/src/execute.ts`, `judge0.ts`, `server.ts`): `RunRequest.fullOutput: true` par har
+  test ka poora stdout (1 MiB tak) wapas aata, warna pehle jaisa 4 KB. Kyun: gates reference ka output hi expected banate
+  aur generator ka output hi test input; runner abhi 4 KB par kaat deta tha. Test `execute.test.ts` "whole output" (2).
+
+**Design (code padh kar tay; agla session yahi banaye, isi kram me):**
+1. **Migration `0075_content_uploads.sql`** (sirf jodna; RLS 0046 jaisa: `tenant_isolation` RESTRICTIVE + `<t>_staff`;
+   learner ka koi policy nahi, ye sirf staff ke table): `content_uploads` (org_id, id, bundle_id, bundle_version, title,
+   file_name, bytes, manifest jsonb, problems jsonb (bundle-level), state `checking|done`, created_by_id/name, created_at,
+   finished_at); `content_upload_items` (org_id, upload_id, position, namespace `problem|lesson`, slug, type, version,
+   hash, title, item jsonb (resolved, `$file` andar), status `pending|checking|passed|failed|skipped`, problems jsonb
+   `[{gate, message}]`, warnings jsonb, claimed_at, checked_at; PK (org_id, upload_id, position)); `content_items`
+   (org_id, namespace, slug, type, title, version, hash, item jsonb, upload_id, state `draft|published`,
+   published_version, published_hash, published_at, published_by_id/name, problem_id, lesson_id; PK (org_id,
+   namespace, slug)). Namespace: problems (DSA, SQL, MCQ, project, system design) ek, lessons alag (CONTENT-FORMAT §2a).
+   Migration test `packages/store/src/migrate.test.ts` jaisa + store test (pglite).
+2. **Draft → published:** `practice_problems.published` aur `prep_lessons.published` pehle se hain aur RLS learner ko sirf
+   published dikhata, isliye Learn/practice API me kuch nahi badalna. Draft sirf `content_items` me; **Publish** par
+   projection likho (CONTENT-FORMAT §4–§7 "Stored as"), `published = true`, `published_version/hash/at/by`. Naya version
+   upload ho to purana live rehta hai jab tak naya publish na ho.
+3. **Version niyam:** naya slug → draft; bada version → draft badlo; same version + same hash → skipped; same version +
+   alag hash: **draft abhi publish nahi hua to draft badlo** (owner ka "re-upload updates the draft"), publish ho chuka to
+   refuse "version badhao"; chhota version refuse. (CONTENT-FORMAT §2a same-version ko hamesha refuse kehta hai: part A ko
+   bata diya, report me.) Slug kisi aise problem/lesson ka jo upload se nahi aaya (starter pack, haath se) → refuse.
+4. **Parse** (`packages/api/src/content-bundle.ts`): JSON (single file) ya ZIP (`fflate` pehle se dependency; `resume-worker.ts`
+   ki tarah stream me inflate gin kar: file ≤ 20 MiB, khula ≤ 60 MiB, ≤ 2,000 entries, ≤ 600 items, path me `..` nahi);
+   `$file` resolve (item ki JSON file ke relative, folder ke bahar nahi); hash = SHA-256 of canonical JSON (keys sorted).
+   Schema: `ajv` 8.20 (lockfile me pehle se fastify ke saath; `ajv/dist/2020`, MIT) ko `packages/api` ki dependency banao;
+   schemas `docs/content/schema/*.json` se ek generated module `packages/api/src/content/schemas.ts` me (Docker runtime me
+   `docs/` nahi hota), generator script + test jo docs se barabari jaanche (part A schema badle to script dobara chalao).
+   Gate 2 ke semantics (CONTENT-FORMAT §11): slug bundle me unique, difficulty↔level, test groups + totals, har bhasha ka
+   reference, editorial headings + `[[code-tabs]]` + `[[visual:id]]`, MCQ key range, rubric 100.
+5. **Job** (request ke andar nahi): POST upload gates 1–2 turant karke items `pending` likhta aur in-process worker kick karta;
+   worker `UPDATE … SET status='checking', claimed_at=now() WHERE status='pending' OR (status='checking' AND claimed_at <
+   now()-'5 min') … LIMIT 1 RETURNING` se ek-ek item leta (kai server/restart me bhi chale); GET status bhi worker kick
+   karta (restart ke baad). Runner judge queue se (`PracticeService` me public `judgeRun(request)` jodna, lane `practice`;
+   ek waqt me ek item, isliye queue ka ek hi slot).
+6. **Gates** (`packages/api/src/content-gates.ts`, fake runner ke saath unit tests): DSA: generator → inputs
+   (`fullOutput`), validator (exit 0), Python reference → expected (`fullOutput`, `literal expected` mile), har reference
+   har test pass, brute apne groups par, har wrong apne `expect` se fail, starters compile + pass nahi; SQL: `schema_sql +
+   rows_sql` input, reference → expected, alternatives same, wrong kam se kam ek dataset fail; MCQ: solver har variant set
+   par key de; lesson: `expected_output` wale code blocks, hands-on solution pass + starter fail, quiz key range.
+   Duplicate: slug (bundle + bank), text (title + statement, word 3-gram Jaccard ≥ 0.85 fail, 0.6–0.85 warning) bundle aur
+   site ke problems/lessons se, code (`@parikshaa/core` `fingerprintsOf`) Python references aapas me ≥ 0.9 warning.
+   **Abhi deferred (report me likho):** mutation (gate 10), TL gate (PROBLEM-STANDARD §4c), starter ka TL ke 20% me padhna,
+   variants ke set 2..n ke DSA/SQL gates (sirf sets[0]; MCQ solver har set), project/LLD kata ke runner gates (files jodna).
+7. **Routes** (`packages/api/src/content-routes.ts`, tag "Practice (staff)"): `POST /practice-admin/content/uploads`
+   (`{file: base64, name}`, bodyLimit ~28 MB, `exam:write`), `GET …/uploads` (history, `exam:read_key`), `GET
+   …/uploads/:id` (progress + har item ka report), `POST /practice-admin/content/publish` (`{upload, items?: [{namespace,
+   slug}]}`; items na ho to upload ke saare passed; `exam:write`; audit `practice.content_published`). `npm run openapi`.
+8. **Projection** at publish: DSA → `practice_problems` (`question` code: stem, language python, languages, starters,
+   formats, tests materialised `<group>-<n>`, checker, `limits.timeMs` = sabse bada, memoryMb; editorial me `[[code-tabs]]`
+   → har reference ka fenced block, `[[visual:id]]` → alt; hint = hints[0]; tags = topics+patterns+extra); SQL → code
+   `language sql`; MCQ → `mcq`/`numeric` (passage, explanation editorial); lesson → `prep_lessons` (sections → Markdown),
+   quiz → MCQ problems `<lesson>-q<n>` + `setLessonQuiz`, hands-on → code problems `<lesson>-<id>`; placement → track
+   (manifest ke `tracks`; track na ho to banao, ho to module me jodo; `PrepService.saveTrack` poore modules leta hai, isliye
+   merge karke bhejo). Project + system design: draft me rakho, Publish par "Learn abhi nahi dikha sakta" (Kadam 3/4).
+9. **Console** `packages/console/src/components/BulkUpload.tsx`, Practice panel ka naya tab "Bulk upload" (`exam:write`):
+   file chuno → upload → progress (poll `GET …/uploads/:id` jab tak `checking`) → report (Sab/Fail/Pass filter, har fail
+   saaf shabd me) → checkbox + "Publish selected" / "Publish all passed" → uploads ki history. Kit + `.tabs` style, axe test.
+10. **Tests:** unit (parse, schema, gates fake runner se, version niyam, draft/publish, permission, size cap), route
+    (`harness.ts` `wire()`), console (axe), e2e `packages/e2e/tests/content-upload.spec.ts` (local runner: ek DSA, SQL, MCQ,
+    lesson → report → publish → Learn `?learn_v2=1` me lesson + practice API me problems). Console visual suite ho to baseline.
+11. **Needs platform support (Kadam 3/4 ki list):** per-item Plus lock, per-language TL, hint rungs 2–3 (content_items me),
+    variants ka per-learner assign, revision card text, related links, sketch renderer (visuals), project/LLD multi-file
+    runner aur page, HLD case page, MCQ images ZIP se `/api/media`, track ka apna `free_modules` (abhi site-wide).
+
+
 ### Abhi yahan ho (21 Oct 2026, naya session pehle ye padhe)
 
 - **Sabse taaza (24 Oct 2026, session 4, doosra account, `session_01CxKYSJpaMfGb259ZWTqTDB`, ultracode):** **Kadam 0
@@ -606,6 +681,7 @@ node, python3.
 ## 7. Log (naya upar)
 
 - 17 Nov 2026 (row 141 part A agent): content kit: format + schemas (`2062822`), 6 prompts, INSTRUCTIONS, validator + test, aptitude ke 10 samples (PASS). 5 ghante ki limit (0.74, 0.85 ke paas) par ruka; baaki 60 samples aur kram §5 "Row 141 content kit, part A" me.
+- 17 Nov 2026 (row 141 part B agent): bulk upload ka design §5 "Row 141" me; runner ka `fullOutput` (tests ke saath) push. 5 ghante ki limit (part A saath) par ruka; agla session §5 ke kram 1–11 se.
 - 10 Nov 2026 (session 4 aage, K2-8 agent): owner "K2-8 shuru karo". Draft #93 par: owner ke staging wale dono sandesh theek (band/na-maujood site par sign-in/up aur page ab saaf kehte "band hai ya maujood nahi"), tests ke saath. Aptitude ka code nahi: 5 ghante ki limit 0.85 ke paas; poora plan §5 K2-8 me.
 - 10 Nov 2026 (session 4 aage): #87 (K2-7 SQL, #85 ke baad ka CI fix, private repo se deploy) `main` me merge (`94eea54`); `main` par deploy-api aur deploy-web hare, staging par SQL bhi. Staging DB me abhi koi practice site nahi: owner ko admin-cli + console se site + starter packs ka tareeka diya. Agla: K2-8 (owner ki haan par).
 - 10 Nov 2026 (session 4 aage, K2-7): owner "continue". #85 (dependabot dev group) ke baad `main` ka CI laal tha: jsdom 31 chhupe tab ke field ko focus nahi deta (console test ab Questions tab kholta), axe 4.14 ka `label-content-name-mismatch` (Learn logo ka Hindi naam "Parikshaa Learn, आज"), Playwright 1.65.0 ka Firefox axe par crash (`@playwright/test` 1.64.1 par pin, tracker Faisle). Alag commit `c82a575`. Phir K2-7 SQL poora (autosave wala kaam, e2e/visual chalakar), usi draft #87 me. Local: Playwright 1.64 ko `chromium_headless_shell-1248` wrapper (1.65 ke liye `-1254` bhi bana, repo me kuch nahi). Agla: K2-8.
