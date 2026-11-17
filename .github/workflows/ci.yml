@@ -238,8 +238,20 @@ jobs:
       # runner's two cores; fails on any error or broken chain.
       - run: npm run load -w @parikshaa/e2e -- 300 1 500 8
 
+      # The dump and restore tools must match the server (postgres:16 above):
+      # pg_restore 17 and later writes `SET transaction_timeout`, which a 16
+      # server refuses, and ubuntu-latest's own client is newer than 16. Both
+      # steps below use them; psql stays version-proof either way.
+      - name: PostgreSQL 16 client
+        run: |
+          sudo apt-get install -y -q postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y -q postgresql-client-16
+          echo /usr/lib/postgresql/16/bin >>"$GITHUB_PATH"
+
       - name: Restore drill
         run: |
+          pg_restore --version
           SOURCE_URL=postgres://parikshaa_backup@localhost:5432/parikshaa_e2e \
           ADMIN_URL=postgres://postgres@localhost:5432/postgres \
           ./scripts/restore-drill.sh
