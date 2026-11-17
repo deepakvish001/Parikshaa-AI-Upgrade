@@ -20,7 +20,7 @@
  */
 import { spawn, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
@@ -140,24 +140,37 @@ function resolveFiles(value, baseDir, root, problems, where) {
         problems.push(`${where}: $file ${value.$file} is outside the bundle`);
         return "";
       }
-      if (!existsSync(target)) {
-        problems.push(`${where}: $file ${value.$file} not found`);
+      const text = readText(target);
+      if (typeof text !== "string") {
+        problems.push(`${where}: $file ${value.$file} ${text === null ? "is a folder" : "not found"}`);
         return "";
       }
-      return readFileSync(target, "utf8");
+      return text;
     }
     return Object.fromEntries(keys.map((k) => [k, resolveFiles(value[k], baseDir, root, problems, where === "" ? k : `${where}.${k}`)]));
   }
   return value;
 }
 
+// Reads a file without checking for it first: a check and then a read races a change made in between.
+// undefined: no such file; null: a folder.
+function readText(path) {
+  try {
+    return readFileSync(path, "utf8");
+  } catch (e) {
+    if (e.code === "ENOENT") return undefined;
+    if (e.code === "EISDIR") return null;
+    throw e;
+  }
+}
+
 function walk(dir) {
   const out = [];
-  for (const name of readdirSync(dir).sort()) {
-    if (name === "node_modules" || name.startsWith(".")) continue;
-    const full = join(dir, name);
-    if (statSync(full).isDirectory()) out.push(...walk(full));
-    else if (name.endsWith(".json")) out.push(full);
+  for (const entry of readdirSync(dir, { withFileTypes: true }).sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))) {
+    if (entry.name === "node_modules" || entry.name.startsWith(".")) continue;
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) out.push(...walk(full));
+    else if (entry.name.endsWith(".json")) out.push(full);
   }
   return out;
 }
@@ -168,13 +181,21 @@ export function loadContent(paths) {
   const problems = [];
   for (const p of paths) {
     const full = resolve(p);
-    if (!existsSync(full)) {
+    const text = readText(full);
+    if (text === undefined) {
       problems.push(`${p}: not found`);
       continue;
     }
-    if (statSync(full).isDirectory()) {
+    if (text === null) {
       const manifestPath = join(full, "manifest.json");
-      if (existsSync(manifestPath)) manifests.push({ file: manifestPath, data: JSON.parse(readFileSync(manifestPath, "utf8")) });
+      const manifestText = readText(manifestPath);
+      if (typeof manifestText === "string") {
+        try {
+          manifests.push({ file: manifestPath, data: JSON.parse(manifestText) });
+        } catch (e) {
+          problems.push(`${relative(ROOT, manifestPath)}: not JSON (${e.message})`);
+        }
+      }
       for (const file of walk(full)) {
         if (file === manifestPath) continue;
         let data;
@@ -192,7 +213,7 @@ export function loadContent(paths) {
     } else {
       let data;
       try {
-        data = JSON.parse(readFileSync(full, "utf8"));
+        data = JSON.parse(text);
       } catch (e) {
         problems.push(`${p}: not JSON (${e.message})`);
         continue;
@@ -696,7 +717,7 @@ function mutants(src) {
   const out = [];
   lines.forEach((line, i) => {
     const code = line.replace(/#.*$/, "");
-    if (/^\s*(import|from)\s|sys\.stdin|input\(|print\(/.test(code) || code.trim() === "") return;
+    if (/^\s*(?:import|from)\s/.test(code) || /sys\.stdin|input\(|print\(/.test(code) || code.trim() === "") return;
     for (const [re, rep] of ops) {
       for (const m of code.matchAll(re)) {
         const changed = line.slice(0, m.index) + rep + line.slice(m.index + m[0].length);
