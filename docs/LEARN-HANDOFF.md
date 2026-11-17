@@ -247,6 +247,17 @@ projects (pehle par `bundleFiles` debug) → system design. `hostel-water-meter`
   (runner par chalne wala Python/SQL, `expected_output`) → misconception → interview (4 qa) → summary, quiz 4.
   4 par "under the 1,200 aim" warning (800 se upar, PASS): LLD 1,177 / 1,110, OOD 981 / 965.
 
+- [x] **Language lessons 10/10 PASS** (`content/samples/language-lessons/<slug>/item.json`, `5e37cfb` … `961a527`):
+  C `lang-c-pointers-and-arrays`, `lang-c-strings-null-terminator` (premium); C++ `lang-cpp-references-vs-pointers`,
+  `lang-cpp-vector-and-iterators` (premium); Python `lang-python-mutable-defaults`, `lang-python-generators` (premium);
+  Java `lang-java-equals-vs-double-equals`, `lang-java-hashmap-basics` (premium); JS `lang-javascript-closures`,
+  `lang-javascript-event-loop` (premium). Har ek me 2 runnable examples (runner par `expected_output`), ek "Planning the
+  hands-on task" trace, 4 quiz, aur ek hands-on (starter compile hota par fail, solution 4–6 tests pass; visible +
+  hidden). Sab 10 par "under the 1,200 aim" warning (lambai 931–1,128; code blocks gine nahi jaate): owner chahein to
+  isi dhaanche me 200–300 shabd aur.
+- Authoring ka tareeka (lessons): JSON ek Python builder se likha, aur `expected_output` usi waqt local chala kar bhara;
+  validator ne phir runner par jaancha. Builder repo me nahi (scratchpad), kyunki samples hi asli cheez hain.
+
 **Baaki (agla session, isi kram me):**
 1. **DSA ke 9 bache: ruke hue** jab tak owner editorial ki lambai par jawab na de (coordinator 17 Nov). Uske baad
    (kul 5 public, 5 premium; 1 public easy ho gaya; editorial INSTRUCTIONS §4 ki lambai: public easy
@@ -754,6 +765,7 @@ par ja sakta hai.
 
 ## 7. Log (naya upar)
 
+- 17 Nov 2026 (row 141 part A): language lessons 10/10 PASS (C, C++, Python, Java, JS × 2, har ek me hands-on). Agla: projects (pehle par `bundleFiles` debug).
 - 17 Nov 2026 (row 141 part A, limit reset ke baad): CS lessons 10/10 PASS (CN, OS, DBMS, LLD, OOD × 2; ek Hinglish); `hostel-water-meter` ka `related` maujood slugs par. DSA 2–10 owner ke jawab tak ruke. Agla: language lessons.
 - 17 Nov 2026 (row 141 part A, doosra agent): validator ke producing kadam runner par (`fullOutput`) + sandbox ki gadbad par retry, SQL ke 10 samples aur DSA ka pehla (`hostel-water-meter`), sab PASS; CONTENT-FORMAT §2a owner ke version faisle ke hisaab se. 5 ghante ki limit 0.86 (10:23) par ruka; agla: DSA sample 2 (§5 "Row 141 content kit, part A").
 - 17 Nov 2026 (row 141 part A agent): content kit: format + schemas (`2062822`), 6 prompts, INSTRUCTIONS, validator + test, aptitude ke 10 samples (PASS). 5 ghante ki limit (0.74, 0.85 ke paas) par ruka; baaki 60 samples aur kram §5 "Row 141 content kit, part A" me.
