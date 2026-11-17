@@ -1,0 +1,187 @@
+{
+  "schema": "parikshaa.content/lesson@1",
+  "slug": "cn-dns-resolution",
+  "version": 1,
+  "title": "How DNS turns a name into an address",
+  "tier": "premium",
+  "text_language": "en",
+  "course": "cn",
+  "difficulty": "medium",
+  "tags": {
+    "topics": [
+      "dns",
+      "application-layer"
+    ],
+    "patterns": [
+      "caching",
+      "delegation"
+    ],
+    "extra": [
+      "ttl"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own explanations of DNS resolution, examples, code, quiz and explanations; no text from any site, book or course.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-cs-core",
+      "module": "Computer networks",
+      "position": 1
+    }
+  ],
+  "est_minutes": 12,
+  "prerequisites": [
+    "cn-tcp-handshake"
+  ],
+  "outcomes": [
+    "can trace a lookup from the stub resolver through root, TLD and authoritative servers",
+    "can explain the difference between recursive and iterative queries",
+    "can predict when a cached answer is reused and when it expires from its TTL"
+  ],
+  "sections": [
+    {
+      "kind": "why",
+      "heading": "Why this matters",
+      "body": "When you type `api.parikshaa.in` into an app, the network cannot use that name: packets need an IP address. DNS is the system that finds it, and it does so billions of times a day in milliseconds. Interviewers ask about DNS because it combines **hierarchy, delegation and caching** in one small story, and because \"the site is down\" is very often \"DNS is answering wrong\"."
+    },
+    {
+      "kind": "concept",
+      "heading": "Names are a tree, and each part is delegated",
+      "body": "Read a domain name **right to left**. `api.parikshaa.in.` (the final dot is the root, usually hidden) means: the root knows who runs `in.`; the `in.` servers know who runs `parikshaa.in.`; and the `parikshaa.in.` servers know the address of `api`.\n\nNo single server knows everything. Each level only knows **who is responsible for the next level down**. That hand-over is called **delegation**, and the servers that hold the final answer for a zone are its **authoritative** servers.\n\nThis is what lets DNS scale: the root servers do not store the address of every website. They store a short list of who runs each top-level domain (TLD) such as `in.`, `com.` or `org.`.",
+      "visual": {
+        "id": "dns-tree",
+        "kind": "mermaid",
+        "alt": "A tree: the root delegates in. to the TLD servers, which delegate parikshaa.in. to its authoritative servers, which hold the records for api and cdn.",
+        "data": {
+          "source": "graph TD\n  R[root .] --> IN[in. TLD servers]\n  IN --> P[parikshaa.in. authoritative]\n  P --> A[api -> 10.0.0.7]\n  P --> C[cdn -> 10.0.0.9]"
+        }
+      }
+    },
+    {
+      "kind": "concept",
+      "heading": "Who does the walking: recursive and iterative queries",
+      "body": "Three kinds of programs take part:\n\n- The **stub resolver** on your phone or laptop. It is lazy on purpose: it sends one **recursive** query (\"give me the final answer, please\") to a resolver it was configured with, often your ISP's or a public one.\n- The **recursive resolver**. It does the actual walk. It asks the root, then the TLD servers, then the authoritative servers. Each of those answers **iteratively**: not with the final address, but with a **referral** (\"I don't know, ask these servers\").\n- The **authoritative servers**, which finally answer with the record.\n\n**Recursive means \"you do the work for me\"; iterative means \"tell me where to go next\".** The stub's query is recursive; the resolver's queries to root, TLD and authoritative servers are iterative.\n\n> **Note:** A full walk costs up to three round trips to servers that may be far away. That is far too slow to do for every request, which is why caching is the heart of DNS, not an add-on."
+    },
+    {
+      "kind": "concept",
+      "heading": "Caching and TTL",
+      "body": "Every answer carries a **TTL** (time to live) in seconds, set by the zone's owner. The resolver may reuse the answer until the TTL runs out, then must ask again.\n\nThe resolver caches **referrals too**. Once it learns who runs `in.` (a TTL of two days is typical), it never asks the root about `in.` names until that expires. So a cold lookup asks three servers, but a lookup for a *new* name in a zone it already knows asks only one.\n\nTTL is a trade-off the zone owner chooses:\n\n| TTL | Good | Bad |\n|---|---|---|\n| Long (hours, days) | Fewer queries, faster answers, survives a short outage of the authoritative servers | A change (new server IP) takes that long to reach everyone |\n| Short (seconds, minutes) | Changes spread quickly; useful for failover | More queries, more load, slower first byte |\n\nTeams that plan to move a service lower the TTL a day *before* the move, then raise it again after."
+    },
+    {
+      "kind": "example",
+      "heading": "A resolver with a cache, step by step",
+      "body": "The program below models a recursive resolver for the zone `parikshaa.in.`. `api` has a TTL of 300 seconds and `cdn` a TTL of 60. It prints, for each lookup at time `t`, which servers the resolver had to ask.",
+      "code": [
+        {
+          "lang": "python",
+          "src": "DELEGATION = {\"in.\": (\"tld-in\", 172800), \"parikshaa.in.\": (\"ns-parikshaa\", 86400)}\nRECORDS = {\"api.parikshaa.in.\": (\"10.0.0.7\", 300), \"cdn.parikshaa.in.\": (\"10.0.0.9\", 60)}\ncache = {}  # key -> (value, expires_at)\n\n\ndef cached(key, now):\n    hit = cache.get(key)\n    return hit[0] if hit and hit[1] > now else None\n\n\ndef resolve(name, now):\n    ip = cached(name, now)\n    if ip:\n        return ip, []\n    asked = []\n    for zone, who in ((\"in.\", \"root\"), (\"parikshaa.in.\", \"tld-in\")):\n        if cached(zone, now) is None:      # do we know who serves this zone?\n            asked.append(who)\n            server, ttl = DELEGATION[zone]\n            cache[zone] = (server, now + ttl)\n    asked.append(\"ns-parikshaa\")           # the authoritative server answers\n    ip, ttl = RECORDS[name]\n    cache[name] = (ip, now + ttl)\n    return ip, asked\n\n\nfor now, name in [(0, \"api.parikshaa.in.\"), (10, \"api.parikshaa.in.\"), (20, \"cdn.parikshaa.in.\"),\n                  (90, \"cdn.parikshaa.in.\"), (400, \"api.parikshaa.in.\")]:\n    ip, asked = resolve(name, now)\n    print(f\"t={now:<4}{name:<19}{ip:<10}asked: {', '.join(asked) or 'nobody (cache hit)'}\")\n",
+          "runnable": true,
+          "expected_output": "t=0   api.parikshaa.in.  10.0.0.7  asked: root, tld-in, ns-parikshaa\nt=10  api.parikshaa.in.  10.0.0.7  asked: nobody (cache hit)\nt=20  cdn.parikshaa.in.  10.0.0.9  asked: ns-parikshaa\nt=90  cdn.parikshaa.in.  10.0.0.9  asked: ns-parikshaa\nt=400 api.parikshaa.in.  10.0.0.7  asked: ns-parikshaa\n",
+          "caption": "A caching resolver: who it asks for each lookup"
+        }
+      ]
+    },
+    {
+      "kind": "example",
+      "heading": "Reading the output",
+      "body": "- **t = 0**: the cache is empty, so the resolver walks the whole tree: root, then the `in.` TLD servers, then the authoritative server. Three servers.\n- **t = 10**: `api` was cached at t = 0 with TTL 300, valid until t = 300. Nobody is asked.\n- **t = 20**: `cdn` is a new name, but the resolver already knows who runs `in.` and `parikshaa.in.`, so it skips root and TLD and asks only the authoritative server. **Cached referrals cut the walk from three servers to one.**\n- **t = 90**: `cdn` was cached at t = 20 with TTL 60, so it expired at t = 80. One query again.\n- **t = 400**: `api` expired at t = 300. One query, since the referrals are still cached for days."
+    },
+    {
+      "kind": "note",
+      "heading": "Seeing it on your own machine",
+      "body": "You can watch both kinds of query with the `dig` tool, which most Linux and macOS machines have.\n\n- `dig api.example.in` sends one **recursive** query to your configured resolver and prints the final answer. Look at the number next to the record: that is the **remaining TTL**. Run it again a few seconds later and the number is smaller, because you are now reading the resolver's cache, which counts down.\n- `dig +trace api.example.in` makes `dig` do the walk itself, **iteratively**: you see the root servers' referral, then the TLD servers' referral, then the authoritative answer, in that order.\n\nTwo more details worth knowing. A resolver also caches **\"this name does not exist\"** answers (negative caching) for a while, so a typo in a new record can keep failing for some minutes after you fix it. And the **CNAME** record type makes one name an alias of another, which adds one more lookup to the walk."
+    },
+    {
+      "kind": "misconception",
+      "heading": "Common mix-ups",
+      "body": "**Many students think the root servers know every website's address.** Actually they only know who runs each TLD, a list of a few thousand entries. Each level knows only the next level down.\n\n**Many students think changing a DNS record takes effect immediately everywhere.** Actually resolvers keep serving the old answer until its TTL runs out. A record with a TTL of 86,400 seconds can take a full day to change for some users. \"DNS propagation\" is really caches expiring at different times.\n\n**Many students think DNS always uses TCP like the web.** Most queries are a single small UDP request and reply; TCP is used for large answers and zone transfers."
+    },
+    {
+      "kind": "interview",
+      "heading": "Interview questions",
+      "body": "Answers as a strong candidate would say them.",
+      "qa": [
+        {
+          "q": "What happens, at the DNS level, when I open a website for the first time?",
+          "a": "My machine's stub resolver sends a recursive query to the configured resolver. If the resolver has nothing cached, it asks a root server, gets a referral to the TLD servers, asks them, gets a referral to the domain's authoritative servers, and asks those for the record. It returns the address to my stub and caches every answer and referral for its TTL."
+        },
+        {
+          "q": "Recursive versus iterative query?",
+          "a": "In a recursive query the client asks for the final answer and the server does the walking; the stub uses this with its resolver. In an iterative query the server answers with the best it knows, often a referral, and the asker follows it; resolvers use this with root, TLD and authoritative servers."
+        },
+        {
+          "q": "We changed our server's IP but some users still reach the old one. Why?",
+          "a": "Resolvers cached the old record and will keep it until its TTL expires. For planned moves, lower the TTL well before the change, keep the old server answering during the overlap, and raise the TTL again afterwards."
+        },
+        {
+          "q": "How can DNS help with load balancing or failover?",
+          "a": "An authoritative server can return several addresses, rotate their order, or answer based on the client's region; with short TTLs and health checks it can stop returning a failed server's address. It is coarse, though, because caches keep old answers until the TTL runs out."
+        }
+      ]
+    },
+    {
+      "kind": "summary",
+      "heading": "Summary",
+      "body": "- Names are a tree read right to left; each level delegates the next.\n- The stub asks recursively; the resolver walks root → TLD → authoritative iteratively.\n- Every answer and referral is cached for its TTL.\n- Cached referrals turn a three-server walk into one query for new names in a known zone.\n- Record changes reach users only as old cache entries expire."
+    }
+  ],
+  "quiz": [
+    {
+      "stem": "A resolver has `in.` and `parikshaa.in.` referrals cached but not `mail.parikshaa.in.`. How many servers must it ask?",
+      "options": [
+        "0",
+        "1: the authoritative server",
+        "2: TLD and authoritative",
+        "3: root, TLD and authoritative"
+      ],
+      "correct": 1,
+      "explanation": "It already knows who runs parikshaa.in., so it asks that zone's authoritative server directly."
+    },
+    {
+      "stem": "A record with TTL 600 is cached at t = 100. At which time does the resolver ask again?",
+      "options": [
+        "Any time after t = 600",
+        "Any time after t = 700",
+        "Only when the record changes",
+        "At t = 101"
+      ],
+      "correct": 1,
+      "explanation": "It may reuse the answer until 100 + 600 = 700."
+    },
+    {
+      "stem": "Which query does your laptop's stub resolver send to its configured resolver?",
+      "options": [
+        "Iterative",
+        "Recursive",
+        "A zone transfer",
+        "A reverse lookup"
+      ],
+      "correct": 1,
+      "explanation": "The stub wants the final answer and lets the resolver do the walk: a recursive query."
+    },
+    {
+      "stem": "A team will move its API to a new IP next week. What should they do with the TTL?",
+      "options": [
+        "Raise it now",
+        "Lower it a day or more before the move, raise it after",
+        "Set it to 0 forever",
+        "TTL does not matter for moves"
+      ],
+      "correct": 1,
+      "explanation": "A low TTL before the move means caches pick up the new address quickly; afterwards a higher TTL cuts load again."
+    }
+  ],
+  "revision_card": {
+    "front": "DNS lookup for api.parikshaa.in with a cold cache: who asks whom, and what does TTL control?",
+    "back": "Stub → resolver (recursive). Resolver → root → in. TLD → parikshaa.in. authoritative (iterative referrals). Answers and referrals cached for their TTL; changes spread only as caches expire."
+  },
+  "next": [
+    "os-paging-address-translation"
+  ]
+}

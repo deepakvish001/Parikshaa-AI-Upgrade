@@ -310,6 +310,6 @@ The hidden tests are built around the questions we asked at the start:
 
 ### Related problems
 
-From our bank, easier to harder: `sql-cab-running-fare` (a running total in SQL), `metro-turnstile-window` (sums of fixed-size windows), `canteen-bill-split-subarray` (count ranges with a given sum using prefix sums and a hash map).
+From our bank: `sql-cab-running-fare` (the same running-total idea, written as a SQL window) and `sql-monthly-growth-with-gaps` (period totals and comparing one period with the one before). More DSA range-sum problems will join this list as the bank grows.
 
 **Reflection connects new learning to old ideas: a prefix sum is just a running total you remember, and many "range" questions become one subtraction once you see it.**
