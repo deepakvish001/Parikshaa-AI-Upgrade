@@ -13,10 +13,12 @@
  *                     packages/runner/dist/main.js with RUNNER_ISOLATION=unsafe-none: a developer's tool only,
  *                     the code it runs is the content author's own.
  *
- * Producing steps (generators, the Python reference's expected outputs, SQL expected rows, MCQ solvers) run with
- * the local python3, because the runner's report keeps only the first few kilobytes of output. Judging steps (every
- * solution against every test) run on the runner. Exit code 0 when every item passes, 1 when any fails, 2 on a
- * usage or setup error. No dependencies beyond Node and python3 (and gcc, g++, javac/java, node for the runner).
+ * Producing steps (generators' test inputs, the input validator, the Python reference's expected outputs, SQL
+ * datasets and expected rows) run on the runner with fullOutput, which returns a test's whole output (up to the
+ * runner's 1 MiB) instead of the few kilobytes a report keeps. Judging steps (every solution against every test) run
+ * there too. Only MCQ and estimate solvers run with the local python3: their output is one short line, and an
+ * MCQ-only bundle then needs no runner. Exit code 0 when every item passes, 1 when any fails, 2 on a usage or setup
+ * error. No dependencies beyond Node and python3 (and gcc, g++, javac/java, node for the runner).
  */
 import { spawn, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
@@ -24,7 +26,7 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSy
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const SCHEMA_DIR = join(ROOT, "docs", "content", "schema");
@@ -447,28 +449,17 @@ function semanticDesign(item, errors) {
 const SEMANTIC = { "dsa-problem": semanticDsa, "sql-problem": semanticSql, mcq: semanticMcq, lesson: semanticLesson, project: semanticProject, "system-design": semanticDesign };
 
 // ---------------------------------------------------------------------------------------------------------------
-// Local python3, for producing steps.
+// Local python3, for MCQ and estimate solvers (one short line of output each).
 
-function python(source, stdin, { cwd, timeoutMs = 60_000 } = {}) {
-  const r = spawnSync("python3", ["-I", "-B", "-c", source], { input: stdin, encoding: "utf8", maxBuffer: 64 * MIB, timeout: timeoutMs, cwd, env: { PATH: process.env.PATH ?? "/usr/bin:/bin", LANG: "C.UTF-8", PYTHONHASHSEED: "0" } });
+function python(source, stdin, { timeoutMs = 60_000 } = {}) {
+  const r = spawnSync("python3", ["-I", "-B", "-c", source], { input: stdin, encoding: "utf8", maxBuffer: 64 * MIB, timeout: timeoutMs, env: { PATH: process.env.PATH ?? "/usr/bin:/bin", LANG: "C.UTF-8" } });
   if (r.error !== undefined) return { ok: false, stdout: "", stderr: String(r.error.message) };
   return { ok: r.status === 0, stdout: r.stdout, stderr: r.stderr, status: r.status };
 }
 
 const norm = (s) => s.replace(/\r\n?/g, "\n").split("\n").map((l) => l.replace(/[ \t]+$/, "")).join("\n").replace(/\n+$/, "");
 const sameOutput = (a, b, unordered) => (unordered ? norm(a).split("\n").sort().join("\n") === norm(b).split("\n").sort().join("\n") : norm(a) === norm(b));
-
-let sqlDriver = null;
-async function sqlRows(query, input) {
-  if (sqlDriver === null) sqlDriver = (await import(pathToFileURL(join(ROOT, "packages", "runner", "dist", "languages.js")).href)).SQL_DRIVER;
-  const dir = mkdtempSync(join(tmpdir(), "content-sql-"));
-  try {
-    writeFileSync(join(dir, "main.sql"), query);
-    return python(sqlDriver, input, { cwd: dir });
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
-}
+const lastLine = (s) => String(s ?? "").trim().split("\n").pop();
 
 // ---------------------------------------------------------------------------------------------------------------
 // The runner: started locally from packages/runner/dist/main.js, or one already up.
@@ -550,7 +541,7 @@ export class Runner {
   }
 
   /** Runs every test, in batches the runner takes (100 tests, about 40 MB). */
-  async run({ language, source, tests, timeMs = 2000, memoryMb = 256, checker }) {
+  async run({ language, source, tests, timeMs = 2000, memoryMb = 256, checker, fullOutput = false }) {
     const batches = [];
     let batch = [];
     let size = 0;
@@ -569,11 +560,24 @@ export class Runner {
     for (const b of batches) {
       const body = { language, source, tests: b, limits: { timeMs: Math.min(10_000, Math.max(100, Math.round(timeMs))), memoryMb: Math.min(1024, Math.max(32, memoryMb)) } };
       if (checker !== undefined && checker.kind !== "exact") body.checker = checker;
+      if (fullOutput) body.fullOutput = true;
       const r = await this.#slot(() => this.#post(body));
       if (!r.compiled) return { compiled: false, compileOutput: r.compileOutput, tests: [] };
       results.push(...r.tests);
     }
     return { compiled: true, tests: results };
+  }
+
+  /**
+   * Runs a producing program (a generator, an input validator, the reference that makes the expected outputs) once
+   * per input and returns each run's whole standard output (RunRequest.fullOutput). ok: it exited 0, whatever it
+   * printed.
+   */
+  async produce({ language, source, inputs, timeMs = 10_000, memoryMb = 512 }) {
+    const tests = inputs.map((input, i) => ({ id: `p${i + 1}`, input, expected: "" }));
+    const r = await this.run({ language, source, tests, timeMs, memoryMb, fullOutput: true });
+    if (!r.compiled) return inputs.map(() => ({ ok: false, stdout: "", stderr: String(r.compileOutput) }));
+    return r.tests.map((t) => ({ ok: t.status === "passed" || t.status === "wrong_answer", stdout: t.stdout, stderr: t.stderr || (verdict[t.status] ?? t.status), status: t.status }));
   }
 }
 
@@ -661,44 +665,55 @@ export function bundleFiles(language, files, overrides, order) {
 // ---------------------------------------------------------------------------------------------------------------
 // Running gates.
 
-function buildDsaTests(item, setIndex, errors) {
+async function buildDsaTests(item, setIndex, runner, errors) {
   const gens = new Map((item.generators ?? []).map((g) => [g.name, g]));
   const tests = [];
+  const wanted = new Map(); // generator name -> the tests it makes, in order
   for (const g of item.test_plan) {
     let n = 0;
     const brute = g.brute ?? ["samples", "minimal", "edge", "random_small", "output_edge"].includes(g.group);
     for (const t of g.tests ?? []) tests.push({ id: `${g.group}-${++n}`, group: g.group, hidden: g.hidden, brute, input: t.input, given: t.expected, explanation: t.explanation });
     if (g.gen !== undefined && gens.has(g.gen)) {
       for (const args of g.args ?? []) {
-        const id = `${g.group}-${++n}`;
-        const out = python(gens.get(g.gen).src, args.join(" ") + "\n");
-        if (!out.ok) {
-          errors.push(`generator ${g.gen} ${args.join(" ")}: failed: ${out.stderr.trim().split("\n").pop()}`);
-          continue;
-        }
-        tests.push({ id, group: g.group, hidden: g.hidden, brute, input: out.stdout, args });
+        const t = { id: `${g.group}-${++n}`, group: g.group, hidden: g.hidden, brute, input: null, args };
+        tests.push(t);
+        if (!wanted.has(g.gen)) wanted.set(g.gen, []);
+        wanted.get(g.gen).push(t);
       }
     }
   }
+  // Generators: one run each on the runner, one test per argument line, whole output kept.
+  await Promise.all(
+    [...wanted].map(async ([name, list]) => {
+      const outs = await runner.produce({ language: "python", source: gens.get(name).src, inputs: list.map((t) => t.args.join(" ") + "\n") });
+      list.forEach((t, i) => {
+        if (outs[i].ok) t.input = outs[i].stdout;
+        else errors.push(`generator ${name} ${t.args.join(" ")}: failed: ${lastLine(outs[i].stderr)}`);
+      });
+    }),
+  );
+  if (errors.length > 0) return tests;
   for (const t of tests) if (Buffer.byteLength(t.input) > MIB) errors.push(`test ${t.id}: input over 1 MiB (runner limit)`);
+  if (errors.length > 0) return tests;
+  const inputs = tests.map((t) => t.input);
   if (item.validator !== undefined) {
-    for (const t of tests) {
-      const v = python(item.validator.src, t.input);
-      if (!v.ok) errors.push(`test ${t.id} breaks the constraints (validator): ${(v.stderr || "").trim().split("\n").pop()}`);
-    }
+    const checked = await runner.produce({ language: "python", source: item.validator.src, inputs });
+    checked.forEach((v, i) => {
+      if (!v.ok) errors.push(`test ${tests[i].id} breaks the constraints (validator): ${lastLine(v.stderr)}`);
+    });
   }
   const reference = item.solutions.find((s) => s.role === "reference" && s.lang === "python");
-  for (const t of tests) {
-    const out = python(reference.src, t.input);
+  const made = await runner.produce({ language: "python", source: reference.src, inputs, memoryMb: item.limits.memory_mb });
+  made.forEach((out, i) => {
+    const t = tests[i];
     if (!out.ok) {
-      errors.push(`Python reference fails on ${t.id}: ${out.stderr.trim().split("\n").pop()}`);
+      errors.push(`Python reference fails on ${t.id}: ${lastLine(out.stderr)}`);
       t.expected = "";
-      continue;
+      return;
     }
     t.expected = out.stdout;
-    if (Buffer.byteLength(t.expected) > MIB) errors.push(`test ${t.id}: expected output over 1 MiB (runner limit)`);
     if (setIndex === 0 && t.given !== undefined && !sameOutput(t.given, t.expected, item.checker?.kind === "unordered")) errors.push(`test ${t.id}: the given expected output differs from the reference's`);
-  }
+  });
   return tests;
 }
 
@@ -734,7 +749,7 @@ async function runDsa(item, runner, report, options) {
   for (const { index, item: it } of expandVariants(item)) {
     const tag = item.variants === undefined ? "" : ` [set ${index}]`;
     const errors = [];
-    const tests = buildDsaTests(it, index, errors);
+    const tests = await buildDsaTests(it, index, runner, errors);
     report.errors.push(...errors.map((e) => e + tag));
     if (errors.length > 0) continue;
     const judge = (t) => ({ id: t.id, input: t.input, expected: t.expected });
@@ -785,28 +800,33 @@ async function runSql(item, runner, report) {
   for (const { index, item: it } of expandVariants(item)) {
     const tag = item.variants === undefined ? "" : ` [set ${index}]`;
     const unordered = !it.order_matters;
+    // Datasets made by a generator: run on the runner, whole output kept.
+    const made = new Map();
+    await Promise.all(
+      it.datasets
+        .filter((d) => d.gen !== undefined)
+        .map(async (d) => {
+          const [g] = await runner.produce({ language: "python", source: d.gen.src, inputs: [(d.gen.args ?? "") + "\n"] });
+          if (g.ok) made.set(d.id, g.stdout);
+          else report.errors.push(`dataset ${d.id}: generator failed: ${lastLine(g.stderr)}${tag}`);
+        }),
+    );
+    const ready = it.datasets.filter((d) => d.gen === undefined || made.has(d.id));
+    const inputs = ready.map((d) => `${it.schema_sql.trim()}\n${d.gen === undefined ? d.rows_sql : made.get(d.id)}`);
+    const rows = await runner.produce({ language: "sql", source: it.reference, inputs, timeMs: 5000 });
     const tests = [];
-    for (const d of it.datasets) {
-      let rows = d.rows_sql;
-      if (d.gen !== undefined) {
-        const g = python(d.gen.src, (d.gen.args ?? "") + "\n");
-        if (!g.ok) {
-          report.errors.push(`dataset ${d.id}: generator failed: ${g.stderr.trim().split("\n").pop()}${tag}`);
-          continue;
-        }
-        rows = g.stdout;
-      }
-      const input = `${it.schema_sql.trim()}\n${rows}`;
+    ready.forEach((d, i) => {
+      const input = inputs[i];
+      const out = rows[i];
       if (Buffer.byteLength(input) > MIB) report.errors.push(`dataset ${d.id}: over 1 MiB${tag}`);
-      const out = await sqlRows(it.reference, input);
       if (!out.ok) {
-        report.errors.push(`reference fails on dataset ${d.id}: ${out.stderr.trim().split("\n").pop()}${tag}`);
-        continue;
+        report.errors.push(`reference fails on dataset ${d.id}: ${lastLine(out.stderr)}${tag}`);
+        return;
       }
       if (index === 0 && d.expected !== undefined && !sameOutput(d.expected, out.stdout, unordered)) report.errors.push(`dataset ${d.id}: the given expected rows differ from the reference's${tag}`);
       if (d.purpose === "empty" && norm(out.stdout) !== "" && !/COUNT|SUM|TOTAL|COALESCE/i.test(it.reference)) report.warnings.push(`dataset ${d.id} (empty) gives rows${tag}`);
       tests.push({ id: d.id, input, expected: out.stdout });
-    }
+    });
     if (tests.length !== it.datasets.length) continue;
     const distinct = new Set(tests.map((t) => norm(t.expected)));
     if (distinct.size < Math.min(3, tests.length)) report.warnings.push(`only ${distinct.size} different expected outputs across datasets${tag}`);

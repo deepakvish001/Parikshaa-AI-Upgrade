@@ -1,0 +1,83 @@
+{
+  "schema": "parikshaa.content/sql-problem@1",
+  "slug": "sql-hostel-complaints-open",
+  "version": 1,
+  "title": "Open hostel complaints and their latest status",
+  "tier": "public",
+  "text_language": "en",
+  "difficulty": "medium",
+  "level": "L2",
+  "tags": { "topics": ["window-functions", "joins"], "patterns": ["latest-row-per-group"], "extra": ["ties", "null-handling"] },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own hostel complaint story, datasets, queries and editorial; no text from any problem site.",
+    "review": { "state": "self-checked" }
+  },
+  "placement": [{ "track": "samples-sql", "module": "Medium", "position": 3 }],
+  "dialect": "sqlite",
+  "stem": "The hostel office logs every maintenance complaint and every update on it. The warden wants the list of complaints that are **still open**.\n\n**Tables**\n\n`complaints`\n\n| Column | Type | Meaning |\n|---|---|---|\n| `complaint_id` | INTEGER, primary key | |\n| `room_no` | INTEGER, not null | |\n| `category` | TEXT, not null | `'water'`, `'wifi'`, ... |\n| `raised_on` | TEXT, not null | ISO date |\n\n`updates`\n\n| Column | Type | Meaning |\n|---|---|---|\n| `update_id` | INTEGER, primary key | Ids grow as rows are **entered**, which is not always the order things happened |\n| `complaint_id` | INTEGER, not null | |\n| `status` | TEXT, not null | `'assigned'`, `'in-progress'`, `'resolved'` or `'reopened'` |\n| `updated_at` | TEXT, not null | `'YYYY-MM-DD HH:MM'` |\n\nA complaint's **current status** is the status of its latest update: the one with the largest `updated_at`; if several share that time, the one with the largest `update_id`. A complaint with no update yet has current status `'new'`.\n\n**Task:** return `complaint_id`, `room_no`, `current_status` and `last_update` (the `updated_at` of the latest update, NULL when there is none) for every complaint whose current status is not `'resolved'`. Sort by `complaint_id`.",
+  "schema_sql": "CREATE TABLE complaints (\n  complaint_id INTEGER PRIMARY KEY,\n  room_no INTEGER NOT NULL,\n  category TEXT NOT NULL,\n  raised_on TEXT NOT NULL\n);\nCREATE TABLE updates (\n  update_id INTEGER PRIMARY KEY,\n  complaint_id INTEGER NOT NULL REFERENCES complaints(complaint_id),\n  status TEXT NOT NULL,\n  updated_at TEXT NOT NULL\n);",
+  "datasets": [
+    {
+      "id": "sample-1",
+      "hidden": false,
+      "purpose": "sample",
+      "rows_sql": "INSERT INTO complaints VALUES (1, 214, 'water', '2026-11-10'), (2, 108, 'electrical', '2026-11-11'), (3, 305, 'wifi', '2026-11-12'), (4, 214, 'furniture', '2026-11-14');\nINSERT INTO updates VALUES (10, 1, 'assigned', '2026-11-10 10:00'), (11, 1, 'resolved', '2026-11-11 16:30'), (12, 2, 'assigned', '2026-11-11 09:00'), (13, 2, 'in-progress', '2026-11-12 12:00'), (14, 3, 'resolved', '2026-11-13 18:00'), (15, 3, 'reopened', '2026-11-13 18:00');",
+      "expected": "2\t108\tin-progress\t2026-11-12 12:00\n3\t305\treopened\t2026-11-13 18:00\n4\t214\tnew\tNULL\n",
+      "explanation": "Complaint 1 is resolved. Complaint 3's two updates share 18:00, so the larger id (15, reopened) is the latest. Complaint 4 has no update, so it is new and its last_update is NULL."
+    },
+    { "id": "empty", "hidden": true, "purpose": "empty", "rows_sql": "" },
+    {
+      "id": "no-updates-yet",
+      "hidden": true,
+      "purpose": "null",
+      "rows_sql": "INSERT INTO complaints VALUES (1, 101, 'water', '2026-11-16'), (2, 102, 'wifi', '2026-11-16'), (3, 103, 'cleaning', '2026-11-17');"
+    },
+    {
+      "id": "same-minute",
+      "hidden": true,
+      "purpose": "ties",
+      "rows_sql": "INSERT INTO complaints VALUES (5, 220, 'water', '2026-11-05'), (6, 221, 'wifi', '2026-11-05'), (7, 222, 'electrical', '2026-11-06');\nINSERT INTO updates VALUES (21, 5, 'in-progress', '2026-11-08 12:00'), (22, 5, 'resolved', '2026-11-08 12:00'), (23, 6, 'assigned', '2026-11-08 09:00'), (24, 6, 'in-progress', '2026-11-08 09:00'), (25, 7, 'resolved', '2026-11-09 18:00'), (26, 7, 'reopened', '2026-11-09 18:00'), (27, 7, 'assigned', '2026-11-09 18:00');"
+    },
+    {
+      "id": "entered-late",
+      "hidden": true,
+      "purpose": "edge",
+      "rows_sql": "INSERT INTO complaints VALUES (8, 330, 'furniture', '2026-11-12'), (9, 331, 'water', '2026-11-12');\nINSERT INTO updates VALUES (31, 8, 'resolved', '2026-11-15 09:00'), (32, 8, 'assigned', '2026-11-14 08:00'), (33, 9, 'in-progress', '2026-11-16 12:00'), (34, 9, 'assigned', '2026-11-13 09:00');"
+    },
+    {
+      "id": "all-resolved",
+      "hidden": true,
+      "purpose": "fewer-rows",
+      "rows_sql": "INSERT INTO complaints VALUES (1, 111, 'water', '2026-11-01'), (2, 112, 'wifi', '2026-11-02');\nINSERT INTO updates VALUES (1, 1, 'resolved', '2026-11-02 09:00'), (2, 2, 'assigned', '2026-11-02 12:00'), (3, 2, 'resolved', '2026-11-03 18:00');"
+    },
+    { "id": "whole-term", "hidden": true, "purpose": "many-rows", "gen": { "src": { "$file": "gen.py" }, "args": "17 400 2000" } }
+  ],
+  "order_matters": true,
+  "reference": { "$file": "reference.sql" },
+  "alternatives": [{ "$file": "alt-latest-id.sql" }, { "$file": "alt-not-exists-later.sql" }],
+  "wrong": [
+    { "src": { "$file": "wrong-max-time-join.sql" }, "why": "Joins back on MAX(updated_at): two updates at the same latest minute both match, so a resolved complaint can still show its other row." },
+    { "src": { "$file": "wrong-inner-join.sql" }, "why": "An inner join drops complaints with no update, which are open ('new')." },
+    { "src": { "$file": "wrong-latest-by-id.sql" }, "why": "Takes the largest update_id as the latest, which is wrong for updates entered late." }
+  ],
+  "starter": "-- complaint_id, room_no, current_status, last_update for open complaints.\n-- Sorted by complaint_id.\nSELECT complaint_id, room_no, 'new' AS current_status, NULL AS last_update\nFROM complaints\nORDER BY complaint_id;",
+  "hints": [
+    "For one complaint, sort its updates so the current one is first. What is the full sort order, including ties?",
+    "ROW_NUMBER() OVER (PARTITION BY complaint_id ORDER BY updated_at DESC, update_id DESC) marks the latest update with 1. How do complaints with no update stay in the result?",
+    "LEFT JOIN complaints to the ranked updates with rn = 1 in the ON clause, print COALESCE(status, 'new'), and filter on that same COALESCE <> 'resolved'."
+  ],
+  "approaches": [
+    { "name": "ROW_NUMBER + LEFT JOIN", "summary": "Number each complaint's updates newest first with a full tie-break, join complaints to row 1, fill 'new' with COALESCE, drop resolved." },
+    { "name": "Correlated LIMIT 1", "summary": "For each complaint, pick the update_id of its newest update with ORDER BY ... LIMIT 1 and join to it." },
+    { "name": "NOT EXISTS a later update", "summary": "Join each complaint to the update for which no later update (by time, then id) exists." }
+  ],
+  "editorial": { "$file": "editorial.md" },
+  "editorial_length": { "form": "standard", "target_words": 900 },
+  "revision_card": {
+    "front": "Latest row per group, with tied timestamps and groups that have no rows yet. Pattern and traps?",
+    "back": "ROW_NUMBER() OVER (PARTITION BY g ORDER BY ts DESC, id DESC) = 1, LEFT JOINed with rn = 1 in ON; COALESCE the missing value. Joining on MAX(ts) duplicates ties; MAX(id) is not the latest time."
+  },
+  "related": ["sql-branch-top-two-scores", "sql-hostel-room-headcount"]
+}

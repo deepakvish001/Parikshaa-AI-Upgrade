@@ -1,0 +1,84 @@
+{
+  "schema": "parikshaa.content/sql-problem@1",
+  "slug": "sql-cab-running-fare",
+  "version": 1,
+  "title": "A cab driver's running total for the day",
+  "tier": "premium",
+  "text_language": "en",
+  "difficulty": "medium",
+  "level": "L2",
+  "tags": { "topics": ["window-functions"], "patterns": ["running-total", "window-frame"], "extra": ["ties", "null-handling", "dates"] },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own cab story, datasets, queries and editorial; no text from any problem site.",
+    "review": { "state": "self-checked" }
+  },
+  "placement": [{ "track": "samples-sql", "module": "Medium", "position": 2 }],
+  "dialect": "sqlite",
+  "stem": "A city cab company shows each driver a live earnings strip: after every completed trip, the trip's earning and the **total so far that day**.\n\n**Table** `trips`\n\n| Column | Type | Meaning |\n|---|---|---|\n| `trip_id` | INTEGER, primary key | |\n| `driver` | TEXT, not null | |\n| `ended_at` | TEXT, not null | `'YYYY-MM-DD HH:MM'`, 24-hour |\n| `fare` | INTEGER, not null | Rupees |\n| `tip` | INTEGER | Rupees; **NULL when the rider gave no tip** |\n| `status` | TEXT, not null | `'done'` or `'cancelled'` |\n\nA trip's **earning** is `fare` plus `tip` (no tip counts as 0). Only completed trips (`status = 'done'`) are shown and counted; a cancelled trip's fee goes to the company.\n\n**Task:** for every completed trip return `driver`, `trip_id`, `ended_at`, `earning` and `day_total`: the sum of that driver's earnings on the same calendar day, over the trips up to and including this one. Trips are taken in order of `ended_at`; trips of one driver ending at the same minute go in order of `trip_id`. Sort the output by `driver`, then `ended_at`, then `trip_id`.",
+  "schema_sql": "CREATE TABLE trips (\n  trip_id INTEGER PRIMARY KEY,\n  driver TEXT NOT NULL,\n  ended_at TEXT NOT NULL,\n  fare INTEGER NOT NULL,\n  tip INTEGER,\n  status TEXT NOT NULL\n);",
+  "datasets": [
+    {
+      "id": "sample-1",
+      "hidden": false,
+      "purpose": "sample",
+      "rows_sql": "INSERT INTO trips VALUES (1, 'Ravi', '2026-11-16 08:10', 180, NULL, 'done'), (2, 'Salma', '2026-11-16 08:25', 240, 10, 'done'), (3, 'Ravi', '2026-11-16 09:40', 220, 20, 'done'), (4, 'Ravi', '2026-11-16 10:30', 50, NULL, 'cancelled'), (5, 'Salma', '2026-11-16 11:05', 160, NULL, 'done'), (6, 'Ravi', '2026-11-16 09:40', 150, NULL, 'done'), (7, 'Ravi', '2026-11-17 07:55', 300, 30, 'done');",
+      "expected": "Ravi\t1\t2026-11-16 08:10\t180\t180\nRavi\t3\t2026-11-16 09:40\t240\t420\nRavi\t6\t2026-11-16 09:40\t150\t570\nRavi\t7\t2026-11-17 07:55\t330\t330\nSalma\t2\t2026-11-16 08:25\t250\t250\nSalma\t5\t2026-11-16 11:05\t160\t410\n",
+      "explanation": "Ravi's trips 3 and 6 both end at 09:40, so trip 3 (smaller id) comes first: 180, 420, 570. His cancelled trip 4 is not shown or counted, and trip 7 is on the next day, so its total starts again at 330."
+    },
+    { "id": "empty", "hidden": true, "purpose": "empty", "rows_sql": "" },
+    {
+      "id": "no-tips",
+      "hidden": true,
+      "purpose": "null",
+      "rows_sql": "INSERT INTO trips VALUES (1, 'Arjun', '2026-11-16 06:00', 120, NULL, 'done'), (2, 'Arjun', '2026-11-16 06:45', 90, NULL, 'done'), (3, 'Bhumi', '2026-11-16 07:15', 300, NULL, 'done'), (4, 'Arjun', '2026-11-16 08:00', 60, NULL, 'done');"
+    },
+    {
+      "id": "same-minute",
+      "hidden": true,
+      "purpose": "ties",
+      "rows_sql": "INSERT INTO trips VALUES (12, 'Chetan', '2026-11-16 18:30', 100, 10, 'done'), (9, 'Chetan', '2026-11-16 18:30', 200, NULL, 'done'), (15, 'Chetan', '2026-11-16 18:30', 50, 5, 'done'), (3, 'Chetan', '2026-11-16 18:29', 70, NULL, 'done'), (20, 'Chetan', '2026-11-16 18:31', 40, NULL, 'done');"
+    },
+    {
+      "id": "around-midnight",
+      "hidden": true,
+      "purpose": "edge",
+      "rows_sql": "INSERT INTO trips VALUES (1, 'Deepak', '2026-11-16 23:59', 400, 50, 'done'), (2, 'Deepak', '2026-11-17 00:00', 350, NULL, 'done'), (3, 'Deepak', '2026-11-17 00:20', 50, NULL, 'cancelled'), (4, 'Deepak', '2026-11-17 00:40', 200, 20, 'done'), (5, 'Deepak', '2026-11-16 22:10', 500, NULL, 'done');"
+    },
+    {
+      "id": "cancelled-only",
+      "hidden": true,
+      "purpose": "fewer-rows",
+      "rows_sql": "INSERT INTO trips VALUES (1, 'Esha', '2026-11-16 10:00', 50, NULL, 'cancelled'), (2, 'Esha', '2026-11-16 11:00', 50, NULL, 'cancelled'), (3, 'Farooq', '2026-11-16 09:00', 50, NULL, 'cancelled'), (4, 'Farooq', '2026-11-16 09:30', 260, 0, 'done'), (5, 'Farooq', '2026-11-16 12:00', 140, 20, 'done');"
+    },
+    { "id": "three-busy-days", "hidden": true, "purpose": "many-rows", "gen": { "src": { "$file": "gen.py" }, "args": "4 25 2500" } }
+  ],
+  "order_matters": true,
+  "reference": { "$file": "reference.sql" },
+  "alternatives": [{ "$file": "alt-correlated.sql" }, { "$file": "alt-self-join.sql" }],
+  "wrong": [
+    { "src": { "$file": "wrong-range-frame.sql" }, "why": "ORDER BY ended_at alone with the default RANGE frame: trips ending at the same minute are peers and all get the same total." },
+    { "src": { "$file": "wrong-no-day.sql" }, "why": "Partitions by driver only, so the total carries over past midnight into the next day." },
+    { "src": { "$file": "wrong-null-tip.sql" }, "why": "fare + tip is NULL when there is no tip, so the earning prints NULL and the sum skips the trip." },
+    { "src": { "$file": "wrong-counts-cancelled.sql" }, "why": "Filters cancelled trips after the window, so their fees are still inside the running totals." }
+  ],
+  "starter": "-- driver, trip_id, ended_at, earning, day_total for completed trips.\n-- Sorted by driver, ended_at, trip_id.\nSELECT driver, trip_id, ended_at, fare AS earning, fare AS day_total\nFROM trips\nORDER BY driver, ended_at, trip_id;",
+  "hints": [
+    "Name the three parts of the window: whose total (partition), in what sequence (order), and which rows count so far (frame).",
+    "Partition by driver and date(ended_at); order by ended_at and then trip_id. What does the default frame do with two trips at the same minute? And what is 220 + NULL?",
+    "SUM(fare + COALESCE(tip, 0)) OVER (PARTITION BY driver, date(ended_at) ORDER BY ended_at, trip_id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW), with WHERE status = 'done'."
+  ],
+  "approaches": [
+    { "name": "Window SUM with a ROWS frame", "summary": "One pass per driver-day in (ended_at, trip_id) order, summing earnings with an explicit ROWS frame. O(N log N)." },
+    { "name": "Correlated sum", "summary": "For each trip, sum the same driver's completed trips that day at or before it. Clear, but O(K^2) per driver-day." },
+    { "name": "Self-join + GROUP BY", "summary": "Join each trip to its earlier-or-same trips of that driver and day, then sum per trip. Same cost as the correlated sum." }
+  ],
+  "editorial": { "$file": "editorial.md" },
+  "editorial_length": { "form": "standard", "target_words": 1170 },
+  "revision_card": {
+    "front": "Running total per person per day, with tied timestamps and nullable parts. What do you write in OVER(...), and what else?",
+    "back": "PARTITION BY person, date(ts) ORDER BY ts, id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW. The default RANGE frame lumps peers. COALESCE nullable parts before adding. Filter rows in WHERE (before the window)."
+  },
+  "related": ["sql-branch-top-two-scores", "sql-monthly-growth-with-gaps"]
+}
