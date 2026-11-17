@@ -248,6 +248,14 @@ par ja sakta hai.
   me; aakhri item par upload `done`), `standing` (upload ke waqt version niyam ki jaanch), `item`, `markPublished` (sirf
   wahi version + hash). `versionDecision` = Faisle wala niyam. Starter pack/console wala slug → refuse. Tests:
   `content-store.test.ts` (10, pglite, `parikshaa_app`, doosri org aur learner kuch nahi padhte) + `migrate.test.ts`.
+- [x] **Kadam 2** (`262dd93`): `packages/api/src/content-bundle.ts` (JSON ya ZIP, fflate stream me gin kar: 20 MiB file,
+  60 MiB khula, 2,000 files, 600 items; `..`/absolute path par poori file refuse; root = sabse upar ka `manifest.json`;
+  `$file` item ke paas se, bundle ke andar hi; hash = canonical JSON ka SHA-256; gate 1 = ajv 2020 (`ajv` ab
+  `packages/api` ki dependency) generated `packages/api/src/content/schemas.ts` se; generator
+  `scripts/content-schemas.mjs` (`--check` bhi), test docs se barabari jaanchta: **part A schema badle to
+  `node scripts/content-schemas.mjs` chalao**). `content-rules.ts` = gate 2 (validator ke niyam) + gate 11 ka text index
+  (word 3-gram Jaccard). `content/types.ts`. Test fixtures `testing/content-fixtures.ts` (DSA, SQL, MCQ variants ke saath,
+  lesson + hands-on; asli programs + unhe jaanne wala fake runner). Test `content-bundle.test.ts` (12).
 
 **Design (code padh kar tay; agla session yahi banaye, isi kram me):**
 1. **[x] (`ac64b33`) Migration `0075_content_uploads.sql`** (sirf jodna; RLS 0046 jaisa: `tenant_isolation` RESTRICTIVE + `<t>_staff`;
@@ -268,7 +276,7 @@ par ja sakta hai.
    alag hash: **draft abhi publish nahi hua to draft badlo** (owner ka "re-upload updates the draft"), publish ho chuka to
    refuse "version badhao"; chhota version refuse. (CONTENT-FORMAT §2a same-version ko hamesha refuse kehta hai: part A ko
    bata diya, report me.) Slug kisi aise problem/lesson ka jo upload se nahi aaya (starter pack, haath se) → refuse.
-4. **Parse** (`packages/api/src/content-bundle.ts`): JSON (single file) ya ZIP (`fflate` pehle se dependency; `resume-worker.ts`
+4. **[x] (`262dd93`) Parse** (`packages/api/src/content-bundle.ts`): JSON (single file) ya ZIP (`fflate` pehle se dependency; `resume-worker.ts`
    ki tarah stream me inflate gin kar: file ≤ 20 MiB, khula ≤ 60 MiB, ≤ 2,000 entries, ≤ 600 items, path me `..` nahi);
    `$file` resolve (item ki JSON file ke relative, folder ke bahar nahi); hash = SHA-256 of canonical JSON (keys sorted).
    Schema: `ajv` 8.20 (lockfile me pehle se fastify ke saath; `ajv/dist/2020`, MIT) ko `packages/api` ki dependency banao;
@@ -689,7 +697,7 @@ par ja sakta hai.
 ## 7. Log (naya upar)
 
 - 17 Nov 2026 (row 141 part A agent): content kit: format + schemas (`2062822`), 6 prompts, INSTRUCTIONS, validator + test, aptitude ke 10 samples (PASS). 5 ghante ki limit (0.74, 0.85 ke paas) par ruka; baaki 60 samples aur kram §5 "Row 141 content kit, part A" me.
-- 17 Nov 2026 (row 141 part B, doosra agent, worktree): kadam 1 push (`ac64b33`: migration 0075 + `ContentStore` + tests); agla kadam 2 (parse + schema), §5 "Row 141, part B".
+- 17 Nov 2026 (row 141 part B, doosra agent, worktree): kadam 1 (`ac64b33`: migration 0075 + `ContentStore`) aur kadam 2 (`262dd93`: bundle padhna, schema, niyam) push, tests ke saath; agla kadam 3–4, §5 "Row 141, part B".
 - 17 Nov 2026 (row 141 part B agent): bulk upload ka design §5 "Row 141" me; runner ka `fullOutput` (tests ke saath) push. 5 ghante ki limit (part A saath) par ruka; agla session §5 ke kram 1–11 se.
 - 10 Nov 2026 (session 4 aage, K2-8 agent): owner "K2-8 shuru karo". Draft #93 par: owner ke staging wale dono sandesh theek (band/na-maujood site par sign-in/up aur page ab saaf kehte "band hai ya maujood nahi"), tests ke saath. Aptitude ka code nahi: 5 ghante ki limit 0.85 ke paas; poora plan §5 K2-8 me.
 - 10 Nov 2026 (session 4 aage): #87 (K2-7 SQL, #85 ke baad ka CI fix, private repo se deploy) `main` me merge (`94eea54`); `main` par deploy-api aur deploy-web hare, staging par SQL bhi. Staging DB me abhi koi practice site nahi: owner ko admin-cli + console se site + starter packs ka tareeka diya. Agla: K2-8 (owner ki haan par).
