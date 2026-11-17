@@ -269,6 +269,13 @@ projects (pehle par `bundleFiles` debug) → system design. `hostel-water-meter`
   Tests ke expected outputs validator ke hi `bundleFiles` se jode solution ko local chala kar bane; validator ne runner
   par dobara jaanche.
 
+- [ ] **System design: 4/10 PASS ab tak** (`content/samples/system-design/<slug>/item.json` + `reference.md`): HLD
+  `hld-exam-results-portal`, `hld-canteen-preorder`, `hld-notice-short-links` (teeno public); LLD `lld-rate-limiter`
+  (premium; kata Python + Java, change request "VIP users": validator ka LLD raasta asli kata par jaancha, sahi chala:
+  solution pass, starter fail, change_files purane + naye tests pass, purana solution naye test par fail). Reference
+  solution ki lambai INSTRUCTIONS §4 se kam: 1,147 / 1,268 / 798 (public, lakshya 1,200–2,500) aur LLD 615 (premium,
+  lakshya 2,000–3,500); validator ise nahi jaanchta. Baaki: HLD 2 (premium), LLD 4.
+
 **Baaki (agla session, isi kram me):**
 1. **DSA ke 9 bache: ruke hue** jab tak owner editorial ki lambai par jawab na de (coordinator 17 Nov). Uske baad
    (kul 5 public, 5 premium; 1 public easy ho gaya; editorial INSTRUCTIONS §4 ki lambai: public easy
