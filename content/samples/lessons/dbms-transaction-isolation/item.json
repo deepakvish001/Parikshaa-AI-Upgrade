@@ -1,0 +1,175 @@
+{
+  "schema": "parikshaa.content/lesson@1",
+  "slug": "dbms-transaction-isolation",
+  "version": 1,
+  "title": "Isolation levels and the anomalies they allow",
+  "tier": "premium",
+  "text_language": "en",
+  "course": "dbms",
+  "difficulty": "hard",
+  "tags": {
+    "topics": [
+      "transactions",
+      "concurrency-control"
+    ],
+    "patterns": [
+      "isolation-levels",
+      "atomic-update"
+    ],
+    "extra": [
+      "acid",
+      "lost-update"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own explanations of transaction isolation, examples, code, quiz and explanations; no text from any site, book or course.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-cs-core",
+      "module": "DBMS",
+      "position": 1
+    }
+  ],
+  "est_minutes": 14,
+  "prerequisites": [
+    "dbms-normal-forms"
+  ],
+  "outcomes": [
+    "can describe dirty reads, non-repeatable reads, phantoms and lost updates with a two-transaction timeline",
+    "can say which isolation level prevents which anomaly",
+    "can fix a read-then-write race with an atomic conditional update or a row lock"
+  ],
+  "sections": [
+    {
+      "kind": "why",
+      "heading": "Why this matters",
+      "body": "Two students book the last seat on the college bus at the same second. Both see \"1 seat left\", both pay, and one of them stands for three hours. Nothing crashed; the code was simply written as if it ran alone. **Isolation** is the I in ACID: how much one transaction may see of others running at the same time. Backend interviews probe it because these bugs only appear under real load, long after tests pass."
+    },
+    {
+      "kind": "concept",
+      "heading": "Four anomalies, each a timeline",
+      "body": "Write two transactions, T1 and T2, as a timeline. Each anomaly is a particular interleaving:\n\n- **Dirty read:** T2 changes a row; T1 reads the change; T2 rolls back. T1 acted on data that **never officially existed**.\n- **Non-repeatable read:** T1 reads a row; T2 updates it and commits; T1 reads the same row again and gets a **different value** inside one transaction.\n- **Phantom:** T1 counts rows matching a condition (\"bookings for bus 7\"); T2 inserts a new matching row and commits; T1 counts again and a **new row appears**.\n- **Lost update:** T1 and T2 both read a value, both compute a new value from what they read, and both write. **The second write silently overwrites the first.** Our bus seat is this one.\n\n> **Note:** Draw the timeline in an interview: two vertical lines, reads and writes as dots, commits marked. Interviewers want to see that you can locate the exact moment the anomaly happens."
+    },
+    {
+      "kind": "concept",
+      "heading": "Isolation levels",
+      "body": "The SQL standard names four levels by the anomalies they forbid:\n\n| Level | Dirty read | Non-repeatable read | Phantom |\n|---|---|---|---|\n| Read uncommitted | possible | possible | possible |\n| Read committed | prevented | possible | possible |\n| Repeatable read | prevented | prevented | possible (standard) |\n| Serializable | prevented | prevented | prevented |\n\n**Serializable** means the result equals *some* one-at-a-time order of the transactions. It is the only level where you can reason as if your code ran alone.\n\nReal databases differ in the details. PostgreSQL's and Oracle's default is **read committed**; MySQL InnoDB's is **repeatable read**, which uses snapshots and also blocks most phantoms. Many engines implement repeatable read with **MVCC snapshots**: each transaction reads a consistent snapshot as of its start, so readers never block writers.\n\nThe lost update is the sneaky one: **read committed does not stop it**, because each read sees committed data; the problem is that the decision was made on data that changed before the write. Snapshot-based repeatable read in some databases detects it and aborts one transaction; others do not."
+    },
+    {
+      "kind": "example",
+      "heading": "The last seat, in code",
+      "body": "This program uses SQLite to replay the bus booking. Version 1 reads the seat count, then writes `count − 1`, with two bookings interleaved exactly as in a busy server. Version 2 does each booking as **one conditional statement** and checks how many rows it changed.",
+      "code": [
+        {
+          "lang": "python",
+          "src": "import sqlite3\n\ndb = sqlite3.connect(\":memory:\", isolation_level=None)\ndb.execute(\"CREATE TABLE bus (route TEXT PRIMARY KEY, seats INTEGER NOT NULL)\")\ndb.execute(\"INSERT INTO bus VALUES ('Pune-Nashik', 1)\")\n\n# Version 1: read, then write. Two bookings interleave.\na_sees = db.execute(\"SELECT seats FROM bus\").fetchone()[0]   # A reads 1\nb_sees = db.execute(\"SELECT seats FROM bus\").fetchone()[0]   # B reads 1 too\ndb.execute(\"UPDATE bus SET seats = ?\", (a_sees - 1,))         # A writes 0\ndb.execute(\"UPDATE bus SET seats = ?\", (b_sees - 1,))         # B writes 0 as well\nprint(\"read-then-write: both booked, seats left =\", db.execute(\"SELECT seats FROM bus\").fetchone()[0])\n\n# Version 2: one atomic, conditional statement per booking.\ndb.execute(\"UPDATE bus SET seats = 1\")\nfor who in (\"A\", \"B\"):\n    cur = db.execute(\"UPDATE bus SET seats = seats - 1 WHERE route = 'Pune-Nashik' AND seats > 0\")\n    print(f\"atomic update: {who} {'booked' if cur.rowcount == 1 else 'refused: sold out'}\")\nprint(\"seats left =\", db.execute(\"SELECT seats FROM bus\").fetchone()[0])\n",
+          "runnable": true,
+          "expected_output": "read-then-write: both booked, seats left = 0\natomic update: A booked\natomic update: B refused: sold out\nseats left = 0\n",
+          "caption": "A lost update, and the atomic update that prevents it"
+        }
+      ]
+    },
+    {
+      "kind": "example",
+      "heading": "Why the fix works",
+      "body": "In version 1 both bookings read `1`, both decide \"a seat is free\", and both write `0`. Two tickets were sold for one seat, and the table even looks fine afterwards: that is what makes lost updates dangerous.\n\nIn version 2 the check and the change are **one statement**: `UPDATE ... SET seats = seats - 1 WHERE seats > 0`. The database runs each statement atomically on the row, so the second booking finds `seats = 0`, its `WHERE` matches nothing, and `rowcount` is 0. The application reads that as \"sold out\".\n\nThere are three standard ways to stop a lost update:\n\n1. **Atomic conditional update**, as above. Simplest when the logic fits in one statement.\n2. **Lock the row while deciding**: `SELECT ... FOR UPDATE` (PostgreSQL, MySQL) makes the second transaction wait until the first commits, then it reads the new value.\n3. **Optimistic concurrency**: keep a `version` column; write with `WHERE id = ? AND version = ?`; if 0 rows change, someone else won, so reload and retry.\n\n> **Note:** Pick by contention. Hot rows (the last seats of a popular bus) suit locking or atomic updates; rows that rarely conflict (editing your own profile) suit optimistic versions."
+    },
+    {
+      "kind": "note",
+      "heading": "Reading a timeline question",
+      "body": "Exam questions often show a schedule such as `R1(A) R2(A) W1(A) W2(A) C1 C2` and ask what goes wrong. Read it like this:\n\n- `R1(A)` is \"T1 reads A\", `W2(A)` is \"T2 writes A\", `C1` is \"T1 commits\".\n- Find each pair of operations on the **same item by different transactions** where at least one is a write. Those are the conflicts.\n- For the schedule above: both transactions read A before either writes, then both write. Whatever T1 wrote is overwritten by T2, which never saw it. That is the **lost update**, the same pattern as our bus seat.\n- A schedule `W1(A) R2(A) A1` (T1 writes, T2 reads, T1 aborts) is a **dirty read**: T2 read a value that was rolled back.\n\nA schedule is **conflict serializable** if you can swap neighbouring non-conflicting operations until the transactions run one after the other. Draw a graph with an edge `Ti → Tj` for every conflict where `Ti` comes first: no cycle means serializable. In `R1(A) R2(A) W1(A) W2(A)` there are edges both ways between T1 and T2, a cycle, so no serial order gives the same result."
+    },
+    {
+      "kind": "misconception",
+      "heading": "Common mix-ups",
+      "body": "**Many students think wrapping code in a transaction makes it safe.** Actually, at the default read committed level, a transaction that reads, decides in application code and then writes can still lose updates. The transaction gives atomicity on failure, not protection from a concurrent read-then-write.\n\n**Many students think serializable is always the answer.** It is the safest, but it costs throughput: transactions wait or are aborted and must be **retried** by your code. Use it where correctness needs it, and write the retry loop.\n\n**Many students think a phantom is the same as a non-repeatable read.** A non-repeatable read changes a row you already read; a phantom is a **new row** that starts matching your condition."
+    },
+    {
+      "kind": "interview",
+      "heading": "Interview questions",
+      "body": "Answers as a strong candidate would say them.",
+      "qa": [
+        {
+          "q": "Explain non-repeatable read versus phantom read.",
+          "a": "Both happen when another transaction commits while mine is running. In a non-repeatable read, a row I already read now has a different value. In a phantom, re-running a range query returns a new row that was inserted and now matches my condition."
+        },
+        {
+          "q": "Two users book the last seat at the same time and both succeed. What went wrong and how do you fix it?",
+          "a": "A lost update: both read one free seat, both wrote zero. Fix it by making check and change atomic, for example UPDATE seats = seats − 1 WHERE seats > 0 and checking the affected row count, or by locking the row with SELECT FOR UPDATE, or with a version column and retry."
+        },
+        {
+          "q": "What is MVCC?",
+          "a": "Multi-version concurrency control keeps several versions of a row, so each transaction reads a consistent snapshot without blocking writers. Writers create new versions; old ones are cleaned up once no snapshot needs them. It is how PostgreSQL and InnoDB give repeatable reads cheaply."
+        },
+        {
+          "q": "What does the application need to do at serializable isolation?",
+          "a": "Be ready for the database to abort a transaction with a serialization failure, and retry the whole transaction from the start, re-reading its data. Without a retry loop, serializable just turns races into errors for the user."
+        }
+      ]
+    },
+    {
+      "kind": "summary",
+      "heading": "Summary",
+      "body": "- Anomalies: dirty read, non-repeatable read, phantom, lost update; each is a two-transaction timeline.\n- Read committed stops dirty reads only; serializable stops them all.\n- A lost update survives read committed: read-then-write in app code is the bug.\n- Fix it with an atomic conditional update, `SELECT ... FOR UPDATE`, or a version column and retry.\n- Stronger isolation means more waiting or aborts; write retry loops."
+    }
+  ],
+  "quiz": [
+    {
+      "stem": "T1 reads a balance of 500. T2 updates it to 300 and commits. T1 reads it again and sees 300. Which anomaly?",
+      "options": [
+        "Dirty read",
+        "Non-repeatable read",
+        "Phantom",
+        "Lost update"
+      ],
+      "correct": 1,
+      "explanation": "The same row changed value between two reads in one transaction, after T2's commit."
+    },
+    {
+      "stem": "Which is the lowest standard isolation level that prevents dirty reads?",
+      "options": [
+        "Read uncommitted",
+        "Read committed",
+        "Repeatable read",
+        "Serializable"
+      ],
+      "correct": 1,
+      "explanation": "Read committed only lets a transaction see committed data."
+    },
+    {
+      "stem": "Which statement makes 'book a seat if one is free' safe against a lost update?",
+      "options": [
+        "SELECT seats; then UPDATE seats = old − 1",
+        "UPDATE bus SET seats = seats − 1 WHERE seats > 0, then check the row count",
+        "BEGIN; SELECT; UPDATE; COMMIT at read committed",
+        "Caching the seat count in the app"
+      ],
+      "correct": 1,
+      "explanation": "Check and change in one atomic statement; zero affected rows means sold out."
+    },
+    {
+      "stem": "A report counts today's bookings twice in one transaction and gets 41, then 42, because a booking was inserted and committed in between. What is this?",
+      "options": [
+        "Phantom",
+        "Dirty read",
+        "Lost update",
+        "Deadlock"
+      ],
+      "correct": 0,
+      "explanation": "A new row began to match the condition: a phantom."
+    }
+  ],
+  "revision_card": {
+    "front": "Four concurrency anomalies, which levels stop which, and three fixes for a lost update?",
+    "back": "Dirty read (stopped by read committed), non-repeatable read (repeatable read), phantom (serializable), lost update (not stopped by read committed). Fixes: atomic UPDATE ... WHERE + row count; SELECT ... FOR UPDATE; version column + retry."
+  },
+  "next": [
+    "lld-single-responsibility"
+  ]
+}
