@@ -1,0 +1,353 @@
+{
+  "schema": "parikshaa.content/system-design@1",
+  "slug": "lld-rate-limiter",
+  "version": 1,
+  "title": "A per-user rate limiter (token bucket)",
+  "tier": "premium",
+  "text_language": "en",
+  "mode": "lld",
+  "difficulty": "medium",
+  "tags": {
+    "topics": [
+      "rate-limiting",
+      "class-design"
+    ],
+    "patterns": [
+      "token-bucket",
+      "lazy-refill"
+    ],
+    "extra": [
+      "api-protection"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own rate limiter design case and kata, examples, code, quiz and explanations; no text from any site, book or course.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-system-design",
+      "module": "LLD",
+      "position": 0
+    }
+  ],
+  "time_minutes": 45,
+  "scenario": "The placement portal's mock-test API is being hammered by a few students' scripts that submit answers in loops, slowing it for everyone. Design and code a per-user **rate limiter**: each student may make short bursts of requests, but over time no more than a fixed rate. Requests arrive with a timestamp in whole seconds.",
+  "clarifying_questions": [
+    {
+      "q": "Per user or global?",
+      "a": "Per user: one noisy student must not affect others."
+    },
+    {
+      "q": "Should short bursts be allowed?",
+      "a": "Yes, up to a capacity, after which requests are refused until tokens refill."
+    },
+    {
+      "q": "What happens to a refused request?",
+      "a": "It is denied immediately (HTTP 429 in the real API); it is not queued."
+    },
+    {
+      "q": "Is time given to us?",
+      "a": "Yes, every request carries the current time in whole seconds, never going backwards."
+    },
+    {
+      "q": "Does a brand-new user start full?",
+      "a": "Yes, with a full bucket."
+    }
+  ],
+  "requirements": {
+    "functional": [
+      "Configure capacity and refill rate once",
+      "Allow or deny each request per user, reporting tokens left",
+      "Refill lazily from timestamps, never above capacity"
+    ],
+    "non_functional": [
+      {
+        "name": "Cost per request",
+        "target": "O(1) time, no background threads"
+      },
+      {
+        "name": "Memory",
+        "target": "one small record per active user"
+      }
+    ]
+  },
+  "entities": [
+    {
+      "name": "TokenBucket",
+      "responsibility": "Holds tokens, capacity, refill rate and the last refill time for one user; refills lazily and takes a token."
+    },
+    {
+      "name": "RateLimiter",
+      "responsibility": "Maps users to buckets, creating a full bucket for a new user, and answers allow/deny."
+    },
+    {
+      "name": "Driver (Main)",
+      "responsibility": "Parses commands and prints results; holds no limiting logic."
+    }
+  ],
+  "patterns": [
+    {
+      "name": "Lazy evaluation (refill on demand)",
+      "why": "Instead of a timer adding tokens every second for every user, compute the refill from the time gap when a request arrives: O(1) and no background work."
+    },
+    {
+      "name": "Factory on first use",
+      "why": "The limiter creates a bucket the first time a user appears, so configuration lives in one place."
+    }
+  ],
+  "diagram": {
+    "id": "limiter-classes",
+    "kind": "mermaid",
+    "alt": "Class diagram: RateLimiter has a map from user to TokenBucket; TokenBucket has capacity, refill, tokens and last, with a tryTake method.",
+    "data": {
+      "source": "classDiagram\n  class RateLimiter {\n    capacity\n    refill\n    buckets: Map~user, TokenBucket~\n    allow(user, now)\n  }\n  class TokenBucket {\n    capacity\n    refill\n    tokens\n    last\n    tryTake(now) bool\n  }\n  RateLimiter o-- TokenBucket"
+    }
+  },
+  "kata": {
+    "io_protocol": "| Command | Prints |\n|---|---|\n| `LIMIT <capacity> <refill per second>` | `limit <c> per user, refill <r>/s` (once) |\n| `REQ <user> <t>` | `allow <user> (<tokens left> left)` or `deny <user>` |\n\nBefore LIMIT: `error: no limit set`. A second LIMIT or anything else: `error: bad command <line>`. Timestamps are whole seconds and never decrease for a user.",
+    "implementations": [
+      {
+        "language": "python",
+        "files": [
+          {
+            "path": "limiter.py",
+            "content": "class TokenBucket:\n    def __init__(self, capacity, refill_per_sec, now):\n        self.capacity = capacity\n        self.refill = refill_per_sec\n        self.tokens = capacity\n        self.last = now\n\n    def try_take(self, now):\n        # TODO: add refill for the seconds since self.last (never above capacity), then take 1 token if any.\n        return True\n\n\nclass RateLimiter:\n    def __init__(self, capacity, refill_per_sec):\n        self.capacity = capacity\n        self.refill = refill_per_sec\n        self.buckets = {}\n\n    def allow(self, user, now):\n        if user not in self.buckets:\n            self.buckets[user] = TokenBucket(self.capacity, self.refill, now)\n        bucket = self.buckets[user]\n        return bucket.try_take(now), bucket.tokens\n",
+            "role": "source"
+          },
+          {
+            "path": "main.py",
+            "content": "import sys\n\nfrom limiter import RateLimiter\n\n\ndef main():\n    limiter = None\n    for raw in sys.stdin:\n        p = raw.split()\n        if not p:\n            continue\n        if p[0] == \"LIMIT\" and len(p) == 3 and limiter is None:\n            limiter = RateLimiter(int(p[1]), int(p[2]))\n            print(f\"limit {p[1]} per user, refill {p[2]}/s\")\n        elif limiter is None:\n            print(\"error: no limit set\")\n        elif p[0] == \"REQ\" and len(p) == 3:\n            ok, left = limiter.allow(p[1], int(p[2]))\n            print(f\"allow {p[1]} ({left} left)\" if ok else f\"deny {p[1]}\")\n        else:\n            print(f\"error: bad command {raw.strip()}\")\n\n\nmain()\n",
+            "role": "driver",
+            "editable": false
+          }
+        ],
+        "solution_files": [
+          {
+            "path": "limiter.py",
+            "content": "class TokenBucket:\n    def __init__(self, capacity, refill_per_sec, now):\n        self.capacity = capacity\n        self.refill = refill_per_sec\n        self.tokens = capacity\n        self.last = now\n\n    def try_take(self, now):\n        self.tokens = min(self.capacity, self.tokens + (now - self.last) * self.refill)\n        self.last = now\n        if self.tokens == 0:\n            return False\n        self.tokens -= 1\n        return True\n\n\nclass RateLimiter:\n    def __init__(self, capacity, refill_per_sec):\n        self.capacity = capacity\n        self.refill = refill_per_sec\n        self.buckets = {}\n\n    def allow(self, user, now):\n        if user not in self.buckets:\n            self.buckets[user] = TokenBucket(self.capacity, self.refill, now)\n        bucket = self.buckets[user]\n        return bucket.try_take(now), bucket.tokens\n",
+            "role": "source"
+          }
+        ],
+        "change_files": [
+          {
+            "path": "limiter.py",
+            "content": "class TokenBucket:\n    def __init__(self, capacity, refill_per_sec, now):\n        self.capacity = capacity\n        self.refill = refill_per_sec\n        self.tokens = capacity\n        self.last = now\n\n    def try_take(self, now):\n        self.tokens = min(self.capacity, self.tokens + (now - self.last) * self.refill)\n        self.last = now\n        if self.tokens == 0:\n            return False\n        self.tokens -= 1\n        return True\n\n\nclass RateLimiter:\n    def __init__(self, capacity, refill_per_sec):\n        self.capacity = capacity\n        self.refill = refill_per_sec\n        self.buckets = {}\n        self.vips = set()\n\n    def make_vip(self, user):\n        self.vips.add(user)\n\n    def allow(self, user, now):\n        if user not in self.buckets:\n            factor = 2 if user in self.vips else 1\n            self.buckets[user] = TokenBucket(self.capacity * factor, self.refill * factor, now)\n        bucket = self.buckets[user]\n        return bucket.try_take(now), bucket.tokens\n",
+            "role": "source"
+          },
+          {
+            "path": "main.py",
+            "content": "import sys\n\nfrom limiter import RateLimiter\n\n\ndef main():\n    limiter = None\n    for raw in sys.stdin:\n        p = raw.split()\n        if not p:\n            continue\n        if p[0] == \"LIMIT\" and len(p) == 3 and limiter is None:\n            limiter = RateLimiter(int(p[1]), int(p[2]))\n            print(f\"limit {p[1]} per user, refill {p[2]}/s\")\n        elif limiter is None:\n            print(\"error: no limit set\")\n        elif p[0] == \"VIP\" and len(p) == 2:\n            limiter.make_vip(p[1])\n            print(f\"{p[1]} is VIP\")\n        elif p[0] == \"REQ\" and len(p) == 3:\n            ok, left = limiter.allow(p[1], int(p[2]))\n            print(f\"allow {p[1]} ({left} left)\" if ok else f\"deny {p[1]}\")\n        else:\n            print(f\"error: bad command {raw.strip()}\")\n\n\nmain()\n",
+            "role": "driver",
+            "editable": false
+          }
+        ],
+        "bundle_order": [
+          "limiter.py",
+          "main.py"
+        ]
+      },
+      {
+        "language": "java",
+        "files": [
+          {
+            "path": "Limiter.java",
+            "content": "import java.util.*;\n\nclass TokenBucket {\n    final long capacity, refill;\n    long tokens, last;\n\n    TokenBucket(long capacity, long refill, long now) {\n        this.capacity = capacity;\n        this.refill = refill;\n        this.tokens = capacity;\n        this.last = now;\n    }\n\n    boolean tryTake(long now) {\n        // TODO: add refill for the seconds since last (never above capacity), then take 1 token if any.\n        return true;\n    }\n}\n\nclass RateLimiter {\n    final long capacity, refill;\n    final Map<String, TokenBucket> buckets = new HashMap<>();\n\n    RateLimiter(long capacity, long refill) {\n        this.capacity = capacity;\n        this.refill = refill;\n    }\n\n    TokenBucket bucket(String user, long now) {\n        return buckets.computeIfAbsent(user, u -> new TokenBucket(capacity, refill, now));\n    }\n}\n",
+            "role": "source"
+          },
+          {
+            "path": "Main.java",
+            "content": "import java.io.*;\n\npublic class Main {\n    public static void main(String[] args) throws IOException {\n        BufferedReader in = new BufferedReader(new InputStreamReader(System.in));\n        StringBuilder out = new StringBuilder();\n        RateLimiter limiter = null;\n        for (String raw; (raw = in.readLine()) != null; ) {\n            String[] p = raw.trim().split(\"\\\\s+\");\n            if (p[0].isEmpty()) continue;\n            if (p[0].equals(\"LIMIT\") && p.length == 3 && limiter == null) {\n                limiter = new RateLimiter(Long.parseLong(p[1]), Long.parseLong(p[2]));\n                out.append(\"limit \").append(p[1]).append(\" per user, refill \").append(p[2]).append(\"/s\\n\");\n            } else if (limiter == null) out.append(\"error: no limit set\\n\");\n            else if (p[0].equals(\"REQ\") && p.length == 3) {\n                TokenBucket b = limiter.bucket(p[1], Long.parseLong(p[2]));\n                if (b.tryTake(Long.parseLong(p[2]))) out.append(\"allow \").append(p[1]).append(\" (\").append(b.tokens).append(\" left)\\n\");\n                else out.append(\"deny \").append(p[1]).append(\"\\n\");\n            } else out.append(\"error: bad command \").append(raw.trim()).append(\"\\n\");\n        }\n        System.out.print(out);\n    }\n}\n",
+            "role": "driver",
+            "editable": false
+          }
+        ],
+        "solution_files": [
+          {
+            "path": "Limiter.java",
+            "content": "import java.util.*;\n\nclass TokenBucket {\n    final long capacity, refill;\n    long tokens, last;\n\n    TokenBucket(long capacity, long refill, long now) {\n        this.capacity = capacity;\n        this.refill = refill;\n        this.tokens = capacity;\n        this.last = now;\n    }\n\n    boolean tryTake(long now) {\n        tokens = Math.min(capacity, tokens + (now - last) * refill);\n        last = now;\n        if (tokens == 0) return false;\n        tokens--;\n        return true;\n    }\n}\n\nclass RateLimiter {\n    final long capacity, refill;\n    final Map<String, TokenBucket> buckets = new HashMap<>();\n\n    RateLimiter(long capacity, long refill) {\n        this.capacity = capacity;\n        this.refill = refill;\n    }\n\n    TokenBucket bucket(String user, long now) {\n        return buckets.computeIfAbsent(user, u -> new TokenBucket(capacity, refill, now));\n    }\n}\n",
+            "role": "source"
+          }
+        ],
+        "change_files": [
+          {
+            "path": "Limiter.java",
+            "content": "import java.util.*;\n\nclass TokenBucket {\n    final long capacity, refill;\n    long tokens, last;\n\n    TokenBucket(long capacity, long refill, long now) {\n        this.capacity = capacity;\n        this.refill = refill;\n        this.tokens = capacity;\n        this.last = now;\n    }\n\n    boolean tryTake(long now) {\n        tokens = Math.min(capacity, tokens + (now - last) * refill);\n        last = now;\n        if (tokens == 0) return false;\n        tokens--;\n        return true;\n    }\n}\n\nclass RateLimiter {\n    final long capacity, refill;\n    final Map<String, TokenBucket> buckets = new HashMap<>();\n    final Set<String> vips = new HashSet<>();\n\n    void makeVip(String user) { vips.add(user); }\n\n    RateLimiter(long capacity, long refill) {\n        this.capacity = capacity;\n        this.refill = refill;\n    }\n\n    TokenBucket bucket(String user, long now) {\n        long factor = vips.contains(user) ? 2 : 1;\n        return buckets.computeIfAbsent(user, u -> new TokenBucket(capacity * factor, refill * factor, now));\n    }\n}\n",
+            "role": "source"
+          },
+          {
+            "path": "Main.java",
+            "content": "import java.io.*;\n\npublic class Main {\n    public static void main(String[] args) throws IOException {\n        BufferedReader in = new BufferedReader(new InputStreamReader(System.in));\n        StringBuilder out = new StringBuilder();\n        RateLimiter limiter = null;\n        for (String raw; (raw = in.readLine()) != null; ) {\n            String[] p = raw.trim().split(\"\\\\s+\");\n            if (p[0].isEmpty()) continue;\n            if (p[0].equals(\"LIMIT\") && p.length == 3 && limiter == null) {\n                limiter = new RateLimiter(Long.parseLong(p[1]), Long.parseLong(p[2]));\n                out.append(\"limit \").append(p[1]).append(\" per user, refill \").append(p[2]).append(\"/s\\n\");\n            } else if (limiter == null) out.append(\"error: no limit set\\n\");\n            else if (p[0].equals(\"VIP\") && p.length == 2) {\n                limiter.makeVip(p[1]);\n                out.append(p[1]).append(\" is VIP\\n\");\n            } else if (p[0].equals(\"REQ\") && p.length == 3) {\n                TokenBucket b = limiter.bucket(p[1], Long.parseLong(p[2]));\n                if (b.tryTake(Long.parseLong(p[2]))) out.append(\"allow \").append(p[1]).append(\" (\").append(b.tokens).append(\" left)\\n\");\n                else out.append(\"deny \").append(p[1]).append(\"\\n\");\n            } else out.append(\"error: bad command \").append(raw.trim()).append(\"\\n\");\n        }\n        System.out.print(out);\n    }\n}\n",
+            "role": "driver",
+            "editable": false
+          }
+        ],
+        "bundle_order": [
+          "Limiter.java",
+          "Main.java"
+        ]
+      }
+    ],
+    "tests": [
+      {
+        "id": "burst-then-deny",
+        "input": "LIMIT 3 1\nREQ asha 0\nREQ asha 0\nREQ asha 0\nREQ asha 0\n",
+        "expected": "limit 3 per user, refill 1/s\nallow asha (2 left)\nallow asha (1 left)\nallow asha (0 left)\ndeny asha\n",
+        "hidden": false
+      },
+      {
+        "id": "refill",
+        "input": "LIMIT 2 1\nREQ om 10\nREQ om 10\nREQ om 10\nREQ om 11\nREQ om 11\n",
+        "expected": "limit 2 per user, refill 1/s\nallow om (1 left)\nallow om (0 left)\ndeny om\nallow om (0 left)\ndeny om\n",
+        "hidden": false
+      },
+      {
+        "id": "per-user",
+        "input": "LIMIT 1 1\nREQ a 5\nREQ b 5\nREQ a 5\nREQ b 6\n",
+        "expected": "limit 1 per user, refill 1/s\nallow a (0 left)\nallow b (0 left)\ndeny a\nallow b (0 left)\n",
+        "hidden": true
+      },
+      {
+        "id": "cap-on-refill",
+        "input": "LIMIT 3 2\nREQ x 0\nREQ x 100\nREQ x 100\nREQ x 100\nREQ x 100\n",
+        "expected": "limit 3 per user, refill 2/s\nallow x (2 left)\nallow x (2 left)\nallow x (1 left)\nallow x (0 left)\ndeny x\n",
+        "hidden": true
+      },
+      {
+        "id": "fast-refill",
+        "input": "LIMIT 2 5\nREQ y 0\nREQ y 0\nREQ y 0\nREQ y 1\nREQ y 1\n",
+        "expected": "limit 2 per user, refill 5/s\nallow y (1 left)\nallow y (0 left)\ndeny y\nallow y (1 left)\nallow y (0 left)\n",
+        "hidden": true
+      },
+      {
+        "id": "before-limit",
+        "input": "REQ z 1\nLIMIT 1 1\nLIMIT 5 5\nREQ z 1\nPING\n",
+        "expected": "error: no limit set\nlimit 1 per user, refill 1/s\nerror: bad command LIMIT 5 5\nallow z (0 left)\nerror: bad command PING\n",
+        "hidden": true
+      },
+      {
+        "id": "first-request-full",
+        "input": "LIMIT 4 1\nREQ late 50\nREQ late 50\n",
+        "expected": "limit 4 per user, refill 1/s\nallow late (3 left)\nallow late (2 left)\n",
+        "hidden": true
+      },
+      {
+        "id": "many-users",
+        "input": "LIMIT 2 1\nREQ u1 0\nREQ u2 0\nREQ u1 0\nREQ u2 0\nREQ u1 0\nREQ u2 1\nREQ u1 2\n",
+        "expected": "limit 2 per user, refill 1/s\nallow u1 (1 left)\nallow u2 (1 left)\nallow u1 (0 left)\nallow u2 (0 left)\ndeny u1\nallow u2 (0 left)\nallow u1 (1 left)\n",
+        "hidden": true
+      }
+    ],
+    "change_request": {
+      "description": "Some students are teaching assistants who run demos. Add a command `VIP <user>` that prints `<user> is VIP`; a VIP user's bucket (created on their first request after that) has **double the capacity and double the refill rate**.",
+      "tests": [
+        {
+          "id": "vip-double",
+          "input": "LIMIT 2 1\nVIP neha\nREQ neha 0\nREQ neha 0\nREQ neha 0\nREQ neha 0\nREQ neha 0\nREQ ravi 0\n",
+          "expected": "limit 2 per user, refill 1/s\nneha is VIP\nallow neha (3 left)\nallow neha (2 left)\nallow neha (1 left)\nallow neha (0 left)\ndeny neha\nallow ravi (1 left)\n",
+          "hidden": false
+        },
+        {
+          "id": "vip-refill",
+          "input": "LIMIT 1 1\nVIP kiran\nREQ kiran 0\nREQ kiran 0\nREQ kiran 0\nREQ kiran 1\nREQ kiran 1\nREQ kiran 1\n",
+          "expected": "limit 1 per user, refill 1/s\nkiran is VIP\nallow kiran (1 left)\nallow kiran (0 left)\ndeny kiran\nallow kiran (1 left)\nallow kiran (0 left)\ndeny kiran\n",
+          "hidden": true
+        }
+      ]
+    }
+  },
+  "rubric": [
+    {
+      "id": "tests",
+      "criterion": "Kata tests pass in the chosen language, including the change request.",
+      "weight": 40,
+      "checked_by": "tests"
+    },
+    {
+      "id": "model",
+      "criterion": "Entities are separated: bucket logic in TokenBucket, user mapping in RateLimiter, parsing in the driver.",
+      "weight": 20,
+      "checked_by": "review"
+    },
+    {
+      "id": "lazy",
+      "criterion": "Refill is computed from timestamps on demand, capped at capacity; no timers.",
+      "weight": 20,
+      "checked_by": "review"
+    },
+    {
+      "id": "change",
+      "criterion": "The VIP change touches the limiter's bucket creation and the driver, not the bucket algorithm.",
+      "weight": 10,
+      "checked_by": "review"
+    },
+    {
+      "id": "feedback",
+      "criterion": "Naming, small methods and explanation (AI feedback, advice only).",
+      "weight": 10,
+      "checked_by": "ai-feedback"
+    }
+  ],
+  "concept_checks": [
+    {
+      "stem": "Capacity 3, refill 1 per second. A user makes 3 requests at t = 0 and 1 at t = 0. What happens to the 4th?",
+      "options": [
+        "Allowed",
+        "Denied",
+        "Queued",
+        "Error"
+      ],
+      "correct": 1,
+      "explanation": "The bucket started with 3 tokens; the 4th request at the same second finds 0."
+    },
+    {
+      "stem": "Capacity 3, refill 2 per second. The bucket is empty at t = 0. How many tokens at t = 5?",
+      "options": [
+        "10",
+        "3",
+        "5",
+        "2"
+      ],
+      "correct": 1,
+      "explanation": "5 × 2 = 10 would be added, but the bucket is capped at 3."
+    },
+    {
+      "stem": "Why compute refill from timestamps instead of a timer that adds tokens every second?",
+      "options": [
+        "Timers are illegal",
+        "It is O(1) per request with no background work for idle users",
+        "It gives more tokens",
+        "It avoids using memory"
+      ],
+      "correct": 1,
+      "explanation": "Lazy refill does work only when a request arrives."
+    },
+    {
+      "stem": "Which algorithm allows short bursts while keeping a long-run average rate?",
+      "options": [
+        "Fixed window counter",
+        "Token bucket",
+        "Round robin",
+        "LRU cache"
+      ],
+      "correct": 1,
+      "explanation": "Tokens accumulate up to the capacity, which is the allowed burst."
+    }
+  ],
+  "follow_ups": [
+    "How would you share limits across several API servers (a shared store, atomic scripts)?",
+    "How would you compare token bucket with a sliding window log?",
+    "How would you return a Retry-After header?"
+  ],
+  "revision_card": {
+    "front": "Token bucket in four lines?",
+    "back": "tokens = min(capacity, tokens + (now - last) × refill); last = now; if tokens == 0 deny; else tokens -= 1 and allow. Bursts up to capacity, long-run rate = refill. O(1), no timers."
+  },
+  "reference_solution": {
+    "$file": "reference.md"
+  }
+}
