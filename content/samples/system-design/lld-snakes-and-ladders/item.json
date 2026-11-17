@@ -1,0 +1,337 @@
+{
+  "schema": "parikshaa.content/system-design@1",
+  "slug": "lld-snakes-and-ladders",
+  "version": 1,
+  "title": "Snakes and ladders: a small game engine",
+  "tier": "public",
+  "text_language": "en",
+  "mode": "lld",
+  "difficulty": "easy",
+  "tags": {
+    "topics": [
+      "class-design",
+      "games"
+    ],
+    "patterns": [
+      "turn-loop",
+      "rule-in-one-place"
+    ],
+    "extra": [
+      "simulation"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own snakes-and-ladders design case and kata, examples, code, quiz and explanations; no text from any site, book or course.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-system-design",
+      "module": "LLD",
+      "position": 2
+    }
+  ],
+  "time_minutes": 40,
+  "scenario": "The hostel's gaming club wants a snakes-and-ladders engine for its app. Dice rolls come from the app; the engine owns the board and the rules. Design the classes and write the engine so the club can later add house rules without rewriting it.",
+  "clarifying_questions": [
+    {
+      "q": "Board size and jumps?",
+      "a": "Configurable size; snakes go down, ladders go up; a square has at most one jump."
+    },
+    {
+      "q": "What if a roll overshoots the last square?",
+      "a": "The player stays where they are (exact finish)."
+    },
+    {
+      "q": "Can a jump chain into another jump?",
+      "a": "No: one jump per move."
+    },
+    {
+      "q": "What after someone wins?",
+      "a": "The game is over; further rolls are refused."
+    }
+  ],
+  "requirements": {
+    "functional": [
+      "Configure a board with snakes and ladders, validating them",
+      "Take turns among 1 or more players with given dice rolls",
+      "Apply jumps, the exact-finish rule and the win"
+    ],
+    "non_functional": [
+      {
+        "name": "Extensibility",
+        "target": "house rules (extra turns, bounce-back) change one method"
+      },
+      {
+        "name": "Determinism",
+        "target": "the same rolls always give the same game"
+      }
+    ]
+  },
+  "entities": [
+    {
+      "name": "Board",
+      "responsibility": "Size and the jump table; answers where a player lands from a square."
+    },
+    {
+      "name": "Game",
+      "responsibility": "Players, positions, whose turn it is, the move rules and the winner."
+    },
+    {
+      "name": "Driver (Main)",
+      "responsibility": "Reads commands, validates jumps, prints results."
+    }
+  ],
+  "patterns": [
+    {
+      "name": "Separate board data from game rules",
+      "why": "The board only maps squares; rules about turns and winning live in Game, so a different board never touches rules."
+    },
+    {
+      "name": "Turn policy in one method",
+      "why": "Who plays next is decided in one place, so house rules like 'a six gives another turn' change only that method."
+    }
+  ],
+  "diagram": {
+    "id": "snl-classes",
+    "kind": "mermaid",
+    "alt": "Class diagram: Game has a Board, a list of players, a map of positions, the current turn and a winner; Board has a size and a map of jumps.",
+    "data": {
+      "source": "classDiagram\n  class Board {\n    size\n    jumps: Map~int,int~\n    land(square) int\n  }\n  class Game {\n    players: List\n    pos: Map~player,int~\n    turn\n    winner\n    move(roll)\n    nextTurn(roll)\n  }\n  Game o-- Board"
+    }
+  },
+  "kata": {
+    "io_protocol": "| Command | Prints |\n|---|---|\n| `BOARD <size>` | `board of <size>` |\n| `SNAKE <head> <tail>` / `LADDER <foot> <top>` | `snake a -> b` / `ladder a -> b`, or `error: bad snake a b` |\n| `PLAYERS <p1> <p2> ...` | `players: ...` |\n| `ROLL <1-6>` | `<p> rolls <r>, <from> -> <to>` (with ` (ladder)` or ` (snake)`), or `<p> rolls <r>, stays at <from>`; on reaching the last square a second line `<p> wins`; after that `game over: <p> won` |\n\nA snake needs 0 < tail < head < size; a ladder 0 < foot < top ≤ size. Anything else: `error: bad command <line>`.",
+    "implementations": [
+      {
+        "language": "python",
+        "files": [
+          {
+            "path": "game.py",
+            "content": "class Board:\n    def __init__(self, size):\n        self.size = size\n        self.jumps = {}               # square -> where you end up (snake head or ladder foot)\n\n    def add_jump(self, start, end):\n        self.jumps[start] = end\n\n    def land(self, square):\n        return self.jumps.get(square, square)\n\n\nclass Game:\n    def __init__(self, board, players):\n        self.board = board\n        self.players = list(players)\n        self.pos = {p: 0 for p in players}\n        self.turn = 0\n        self.winner = None\n\n    def current(self):\n        return self.players[self.turn]\n\n    def move(self, roll):\n        # TODO: move the current player, apply snakes and ladders, the exact-finish rule and the win.\n        player = self.current()\n        self._next_turn(roll)\n        return f\"{player} rolls {roll}\"\n\n    def _next_turn(self, roll):\n        self.turn = (self.turn + 1) % len(self.players)\n",
+            "role": "source"
+          },
+          {
+            "path": "main.py",
+            "content": "import sys\n\nfrom game import Board, Game\n\n\ndef main():\n    board, game = None, None\n    for raw in sys.stdin:\n        p = raw.split()\n        if not p:\n            continue\n        if p[0] == \"BOARD\" and len(p) == 2 and board is None:\n            board = Board(int(p[1]))\n            print(f\"board of {p[1]}\")\n        elif p[0] in (\"SNAKE\", \"LADDER\") and len(p) == 3 and board is not None and game is None:\n            a, b = int(p[1]), int(p[2])\n            ok = 0 < b < a < board.size if p[0] == \"SNAKE\" else 0 < a < b <= board.size\n            if ok:\n                board.add_jump(a, b)\n                print(f\"{p[0].lower()} {a} -> {b}\")\n            else:\n                print(f\"error: bad {p[0].lower()} {a} {b}\")\n        elif p[0] == \"PLAYERS\" and len(p) >= 2 and board is not None and game is None:\n            game = Game(board, p[1:])\n            print(\"players: \" + \" \".join(p[1:]))\n        elif p[0] == \"ROLL\" and len(p) == 2 and game is not None and p[1] in \"123456\" and len(p[1]) == 1:\n            print(f\"game over: {game.winner} won\" if game.winner else game.move(int(p[1])))\n        else:\n            print(f\"error: bad command {raw.strip()}\")\n\n\nmain()\n",
+            "role": "driver",
+            "editable": false
+          }
+        ],
+        "solution_files": [
+          {
+            "path": "game.py",
+            "content": "class Board:\n    def __init__(self, size):\n        self.size = size\n        self.jumps = {}               # square -> where you end up (snake head or ladder foot)\n\n    def add_jump(self, start, end):\n        self.jumps[start] = end\n\n    def land(self, square):\n        return self.jumps.get(square, square)\n\n\nclass Game:\n    def __init__(self, board, players):\n        self.board = board\n        self.players = list(players)\n        self.pos = {p: 0 for p in players}\n        self.turn = 0\n        self.winner = None\n\n    def current(self):\n        return self.players[self.turn]\n\n    def move(self, roll):\n        player = self.current()\n        start = self.pos[player]\n        target = start + roll\n        if target > self.board.size:\n            note = f\"{player} rolls {roll}, stays at {start}\"\n        else:\n            end = self.board.land(target)\n            kind = \"\" if end == target else (\" (ladder)\" if end > target else \" (snake)\")\n            self.pos[player] = end\n            note = f\"{player} rolls {roll}, {start} -> {end}{kind}\"\n            if end == self.board.size:\n                self.winner = player\n                return note + f\"\\n{player} wins\"\n        self._next_turn(roll)\n        return note\n\n    def _next_turn(self, roll):\n        self.turn = (self.turn + 1) % len(self.players)\n",
+            "role": "source"
+          }
+        ],
+        "change_files": [
+          {
+            "path": "game.py",
+            "content": "class Board:\n    def __init__(self, size):\n        self.size = size\n        self.jumps = {}               # square -> where you end up (snake head or ladder foot)\n\n    def add_jump(self, start, end):\n        self.jumps[start] = end\n\n    def land(self, square):\n        return self.jumps.get(square, square)\n\n\nclass Game:\n    def __init__(self, board, players):\n        self.board = board\n        self.players = list(players)\n        self.pos = {p: 0 for p in players}\n        self.turn = 0\n        self.winner = None\n\n    def current(self):\n        return self.players[self.turn]\n\n    def move(self, roll):\n        player = self.current()\n        start = self.pos[player]\n        target = start + roll\n        if target > self.board.size:\n            note = f\"{player} rolls {roll}, stays at {start}\"\n        else:\n            end = self.board.land(target)\n            kind = \"\" if end == target else (\" (ladder)\" if end > target else \" (snake)\")\n            self.pos[player] = end\n            note = f\"{player} rolls {roll}, {start} -> {end}{kind}\"\n            if end == self.board.size:\n                self.winner = player\n                return note + f\"\\n{player} wins\"\n        self._next_turn(roll)\n        return note\n\n    def _next_turn(self, roll):\n        if roll == 6:                 # a six earns another turn\n            return\n        self.turn = (self.turn + 1) % len(self.players)\n",
+            "role": "source"
+          }
+        ],
+        "bundle_order": [
+          "game.py",
+          "main.py"
+        ]
+      },
+      {
+        "language": "java",
+        "files": [
+          {
+            "path": "Game.java",
+            "content": "import java.util.*;\n\nclass Board {\n    final int size;\n    final Map<Integer, Integer> jumps = new HashMap<>();\n    Board(int size) { this.size = size; }\n    void addJump(int start, int end) { jumps.put(start, end); }\n    int land(int square) { return jumps.getOrDefault(square, square); }\n}\n\nclass Game {\n    final Board board;\n    final List<String> players;\n    final Map<String, Integer> pos = new HashMap<>();\n    int turn = 0;\n    String winner = null;\n\n    Game(Board board, List<String> players) {\n        this.board = board;\n        this.players = players;\n        for (String p : players) pos.put(p, 0);\n    }\n\n    String move(int roll) {\n        // TODO: move the current player, apply snakes and ladders, the exact-finish rule and the win.\n        String player = players.get(turn);\n        nextTurn(roll);\n        return player + \" rolls \" + roll;\n    }\n\n    void nextTurn(int roll) {\n        turn = (turn + 1) % players.size();\n    }\n}\n",
+            "role": "source"
+          },
+          {
+            "path": "Main.java",
+            "content": "import java.io.*;\nimport java.util.*;\n\npublic class Main {\n    public static void main(String[] args) throws IOException {\n        BufferedReader in = new BufferedReader(new InputStreamReader(System.in));\n        StringBuilder out = new StringBuilder();\n        Board board = null;\n        Game game = null;\n        for (String raw; (raw = in.readLine()) != null; ) {\n            String[] p = raw.trim().split(\"\\\\s+\");\n            if (p[0].isEmpty()) continue;\n            String reply;\n            if (p[0].equals(\"BOARD\") && p.length == 2 && board == null) {\n                board = new Board(Integer.parseInt(p[1]));\n                reply = \"board of \" + p[1];\n            } else if ((p[0].equals(\"SNAKE\") || p[0].equals(\"LADDER\")) && p.length == 3 && board != null && game == null) {\n                int a = Integer.parseInt(p[1]), b = Integer.parseInt(p[2]);\n                boolean ok = p[0].equals(\"SNAKE\") ? (0 < b && b < a && a < board.size) : (0 < a && a < b && b <= board.size);\n                String kind = p[0].toLowerCase();\n                if (ok) { board.addJump(a, b); reply = kind + \" \" + a + \" -> \" + b; }\n                else reply = \"error: bad \" + kind + \" \" + a + \" \" + b;\n            } else if (p[0].equals(\"PLAYERS\") && p.length >= 2 && board != null && game == null) {\n                game = new Game(board, Arrays.asList(p).subList(1, p.length));\n                reply = \"players: \" + String.join(\" \", Arrays.asList(p).subList(1, p.length));\n            } else if (p[0].equals(\"ROLL\") && p.length == 2 && game != null && p[1].matches(\"[1-6]\")) {\n                reply = game.winner != null ? \"game over: \" + game.winner + \" won\" : game.move(Integer.parseInt(p[1]));\n            } else reply = \"error: bad command \" + raw.trim();\n            out.append(reply).append('\\n');\n        }\n        System.out.print(out);\n    }\n}\n",
+            "role": "driver",
+            "editable": false
+          }
+        ],
+        "solution_files": [
+          {
+            "path": "Game.java",
+            "content": "import java.util.*;\n\nclass Board {\n    final int size;\n    final Map<Integer, Integer> jumps = new HashMap<>();\n    Board(int size) { this.size = size; }\n    void addJump(int start, int end) { jumps.put(start, end); }\n    int land(int square) { return jumps.getOrDefault(square, square); }\n}\n\nclass Game {\n    final Board board;\n    final List<String> players;\n    final Map<String, Integer> pos = new HashMap<>();\n    int turn = 0;\n    String winner = null;\n\n    Game(Board board, List<String> players) {\n        this.board = board;\n        this.players = players;\n        for (String p : players) pos.put(p, 0);\n    }\n\n    String move(int roll) {\n        String player = players.get(turn);\n        int start = pos.get(player), target = start + roll;\n        String note;\n        if (target > board.size) {\n            note = player + \" rolls \" + roll + \", stays at \" + start;\n        } else {\n            int end = board.land(target);\n            String kind = end == target ? \"\" : (end > target ? \" (ladder)\" : \" (snake)\");\n            pos.put(player, end);\n            note = player + \" rolls \" + roll + \", \" + start + \" -> \" + end + kind;\n            if (end == board.size) {\n                winner = player;\n                return note + \"\\n\" + player + \" wins\";\n            }\n        }\n        nextTurn(roll);\n        return note;\n    }\n\n    void nextTurn(int roll) {\n        turn = (turn + 1) % players.size();\n    }\n}\n",
+            "role": "source"
+          }
+        ],
+        "change_files": [
+          {
+            "path": "Game.java",
+            "content": "import java.util.*;\n\nclass Board {\n    final int size;\n    final Map<Integer, Integer> jumps = new HashMap<>();\n    Board(int size) { this.size = size; }\n    void addJump(int start, int end) { jumps.put(start, end); }\n    int land(int square) { return jumps.getOrDefault(square, square); }\n}\n\nclass Game {\n    final Board board;\n    final List<String> players;\n    final Map<String, Integer> pos = new HashMap<>();\n    int turn = 0;\n    String winner = null;\n\n    Game(Board board, List<String> players) {\n        this.board = board;\n        this.players = players;\n        for (String p : players) pos.put(p, 0);\n    }\n\n    String move(int roll) {\n        String player = players.get(turn);\n        int start = pos.get(player), target = start + roll;\n        String note;\n        if (target > board.size) {\n            note = player + \" rolls \" + roll + \", stays at \" + start;\n        } else {\n            int end = board.land(target);\n            String kind = end == target ? \"\" : (end > target ? \" (ladder)\" : \" (snake)\");\n            pos.put(player, end);\n            note = player + \" rolls \" + roll + \", \" + start + \" -> \" + end + kind;\n            if (end == board.size) {\n                winner = player;\n                return note + \"\\n\" + player + \" wins\";\n            }\n        }\n        nextTurn(roll);\n        return note;\n    }\n\n    void nextTurn(int roll) {\n        if (roll == 6) return;   // a six earns another turn\n        turn = (turn + 1) % players.size();\n    }\n}\n",
+            "role": "source"
+          }
+        ],
+        "bundle_order": [
+          "Game.java",
+          "Main.java"
+        ]
+      }
+    ],
+    "tests": [
+      {
+        "id": "ladder-and-snake",
+        "input": "BOARD 20\nLADDER 3 11\nSNAKE 17 4\nLADDER 8 15\nPLAYERS asha bunty\nROLL 3\nROLL 5\nROLL 6\nROLL 2\n",
+        "expected": "board of 20\nladder 3 -> 11\nsnake 17 -> 4\nladder 8 -> 15\nplayers: asha bunty\nasha rolls 3, 0 -> 11 (ladder)\nbunty rolls 5, 0 -> 5\nasha rolls 6, 11 -> 4 (snake)\nbunty rolls 2, 5 -> 7\n",
+        "hidden": false
+      },
+      {
+        "id": "exact-finish",
+        "input": "BOARD 20\nLADDER 3 11\nSNAKE 17 4\nLADDER 8 15\nPLAYERS asha bunty\nROLL 3\nROLL 1\nROLL 6\nROLL 1\nROLL 3\nROLL 2\n",
+        "expected": "board of 20\nladder 3 -> 11\nsnake 17 -> 4\nladder 8 -> 15\nplayers: asha bunty\nasha rolls 3, 0 -> 11 (ladder)\nbunty rolls 1, 0 -> 1\nasha rolls 6, 11 -> 4 (snake)\nbunty rolls 1, 1 -> 2\nasha rolls 3, 4 -> 7\nbunty rolls 2, 2 -> 4\n",
+        "hidden": false
+      },
+      {
+        "id": "win-and-over",
+        "input": "BOARD 10\nPLAYERS a b\nROLL 6\nROLL 1\nROLL 4\nROLL 2\n",
+        "expected": "board of 10\nplayers: a b\na rolls 6, 0 -> 6\nb rolls 1, 0 -> 1\na rolls 4, 6 -> 10\na wins\ngame over: a won\n",
+        "hidden": true
+      },
+      {
+        "id": "three-players",
+        "input": "BOARD 12\nLADDER 2 9\nPLAYERS p q r\nROLL 2\nROLL 1\nROLL 1\nROLL 3\nROLL 6\n",
+        "expected": "board of 12\nladder 2 -> 9\nplayers: p q r\np rolls 2, 0 -> 9 (ladder)\nq rolls 1, 0 -> 1\nr rolls 1, 0 -> 1\np rolls 3, 9 -> 12\np wins\ngame over: p won\n",
+        "hidden": true
+      },
+      {
+        "id": "bad-jumps",
+        "input": "BOARD 20\nSNAKE 5 9\nLADDER 9 5\nSNAKE 20 1\nLADDER 3 21\nLADDER 3 20\nPLAYERS x\nROLL 3\n",
+        "expected": "board of 20\nerror: bad snake 5 9\nerror: bad ladder 9 5\nerror: bad snake 20 1\nerror: bad ladder 3 21\nladder 3 -> 20\nplayers: x\nx rolls 3, 0 -> 20 (ladder)\nx wins\n",
+        "hidden": true
+      },
+      {
+        "id": "bad-commands",
+        "input": "ROLL 3\nBOARD 15\nPLAYERS\nROLL 3\nPLAYERS a\nROLL 7\nROLL x\nLADDER 2 5\n",
+        "expected": "error: bad command ROLL 3\nboard of 15\nerror: bad command PLAYERS\nerror: bad command ROLL 3\nplayers: a\nerror: bad command ROLL 7\nerror: bad command ROLL x\nerror: bad command LADDER 2 5\n",
+        "hidden": true
+      },
+      {
+        "id": "snake-to-start-area",
+        "input": "BOARD 30\nSNAKE 6 1\nPLAYERS m n\nROLL 6\nROLL 6\nROLL 5\n",
+        "expected": "board of 30\nsnake 6 -> 1\nplayers: m n\nm rolls 6, 0 -> 1 (snake)\nn rolls 6, 0 -> 1 (snake)\nm rolls 5, 1 -> 1 (snake)\n",
+        "hidden": true
+      },
+      {
+        "id": "solo",
+        "input": "BOARD 8\nPLAYERS solo\nROLL 5\nROLL 5\nROLL 3\nROLL 1\n",
+        "expected": "board of 8\nplayers: solo\nsolo rolls 5, 0 -> 5\nsolo rolls 5, stays at 5\nsolo rolls 3, 5 -> 8\nsolo wins\ngame over: solo won\n",
+        "hidden": true
+      }
+    ],
+    "change_request": {
+      "description": "House rule: **a roll of 6 gives the same player another turn** (unless that roll won the game). Nothing else changes.",
+      "tests": [
+        {
+          "id": "six-again",
+          "input": "BOARD 30\nPLAYERS a b\nROLL 6\nROLL 2\nROLL 3\n",
+          "expected": "board of 30\nplayers: a b\na rolls 6, 0 -> 6\na rolls 2, 6 -> 8\nb rolls 3, 0 -> 3\n",
+          "hidden": false
+        },
+        {
+          "id": "double-six",
+          "input": "BOARD 30\nLADDER 12 20\nPLAYERS a b\nROLL 6\nROLL 6\nROLL 1\nROLL 4\n",
+          "expected": "board of 30\nladder 12 -> 20\nplayers: a b\na rolls 6, 0 -> 6\na rolls 6, 6 -> 20 (ladder)\na rolls 1, 20 -> 21\nb rolls 4, 0 -> 4\n",
+          "hidden": true
+        }
+      ]
+    }
+  },
+  "rubric": [
+    {
+      "id": "tests",
+      "criterion": "Kata tests pass, including the house rule.",
+      "weight": 45,
+      "checked_by": "tests"
+    },
+    {
+      "id": "model",
+      "criterion": "Board holds only squares and jumps; Game holds turns, positions and rules.",
+      "weight": 20,
+      "checked_by": "review"
+    },
+    {
+      "id": "rules",
+      "criterion": "Exact finish, single jump per move and game-over are each handled once, clearly.",
+      "weight": 15,
+      "checked_by": "review"
+    },
+    {
+      "id": "change",
+      "criterion": "The extra-turn rule touches only the turn policy.",
+      "weight": 10,
+      "checked_by": "review"
+    },
+    {
+      "id": "feedback",
+      "criterion": "Readable names and small methods (AI feedback, advice only).",
+      "weight": 10,
+      "checked_by": "ai-feedback"
+    }
+  ],
+  "concept_checks": [
+    {
+      "stem": "Board of 20, a player on 17 rolls 5. What happens?",
+      "options": [
+        "Moves to 22",
+        "Wins",
+        "Stays on 17",
+        "Moves to 2"
+      ],
+      "correct": 2,
+      "explanation": "17 + 5 overshoots 20, so the exact-finish rule keeps the player in place."
+    },
+    {
+      "stem": "Where should 'a six gives another turn' be implemented?",
+      "options": [
+        "In Board.land",
+        "In the method that decides the next turn",
+        "In the driver",
+        "In every move branch"
+      ],
+      "correct": 1,
+      "explanation": "Turn policy lives in one method."
+    },
+    {
+      "stem": "Why keep jumps in a map from square to destination?",
+      "options": [
+        "Maps are sorted",
+        "Landing becomes one O(1) lookup, and snakes and ladders are the same idea",
+        "It saves memory",
+        "It is required by Java"
+      ],
+      "correct": 1,
+      "explanation": "A jump is just 'from here, go there'."
+    },
+    {
+      "stem": "Why validate that a snake's head is above its tail when configuring?",
+      "options": [
+        "Speed",
+        "So an invalid board is refused at setup instead of producing strange games later",
+        "To allow chains",
+        "It is optional"
+      ],
+      "correct": 1,
+      "explanation": "Reject bad configuration early."
+    }
+  ],
+  "follow_ups": [
+    "Add a 'bounce back' rule: overshooting moves you back from the last square by the excess.",
+    "Support saving and loading a game in progress.",
+    "Make the dice pluggable so tests can use fixed rolls and the app random ones."
+  ],
+  "revision_card": {
+    "front": "Snakes and ladders LLD: classes, the one-lookup trick, and where house rules go?",
+    "back": "Board (size, jumps map) and Game (players, positions, turn, winner). Landing = jumps.get(square, square). Exact finish: overshoot means stay. House rules (extra turn on 6) live in the single nextTurn method."
+  },
+  "reference_solution": {
+    "$file": "reference.md"
+  }
+}
