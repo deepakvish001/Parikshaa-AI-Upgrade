@@ -196,9 +196,10 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
 
 ## 5. Abhi chal raha / agla kadam
 
-### Row 141 content kit, part A (17 Nov 2026, `session_01CxKYSJpaMfGb259ZWTqTDB`, part A agent)
+### Row 141 content kit, part A (17 Nov 2026, `session_01CxKYSJpaMfGb259ZWTqTDB`, part A agents)
 
-**Kyun ruka:** 5 ghante ki limit (06:37 UTC par 0.74, 0.85 ke paas; part B saath chal raha tha). Jo bana wo push.
+**Kyun ruka (doosra part A agent, 10:20 UTC):** 5 ghante ki limit tezi se badh rahi thi (10:13 par 0.65, parent + part B
+saath); 0.85 se pehle jo PASS tha wo commit + push kiya. Pehla part A agent bhi limit par ruka tha (06:37, 0.74).
 
 **Ho gaya (push):**
 - [x] Format: [content/CONTENT-FORMAT.md](content/CONTENT-FORMAT.md) + `docs/content/schema/*.schema.json` (common, dsa-problem,
@@ -209,21 +210,39 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
   editorial lambai ke targets (owner badal sakte), review niyam (premium poora, public 10 me 1).
 - [x] Validator `scripts/content-validate.mjs` (Node, koi nayi dependency nahi; apna chhota JSON Schema checker):
   schema → niyam (headings, shabd, Notes, test groups, bahar ke links, mana shabd, rubric) → runner par gates
-  (`packages/runner/dist/main.js`, `RUNNER_ISOLATION=unsafe-none`). Producing (generators, Python reference ka expected,
-  SQL rows, MCQ solver) local `python3` se, kyunki runner 4 KB ke baad output kaatta hai; part B ka `fullOutput` aane par
-  ye runner par ja sakta hai. Test: `packages/api/src/content-kit.test.ts` (4).
-- [x] Samples: `content/samples/manifest.json` (tracks), `content/samples/aptitude/` 10 (quant 5 jisme 3 variants ke saath,
-  logical 3, verbal 2; 1 Hinglish): **10/10 PASS**. Validator ne likhte waqt 2 galat key pakdi (seating, ages).
+  (`packages/runner/dist/main.js`, `RUNNER_ISOLATION=unsafe-none`). Test: `packages/api/src/content-kit.test.ts` (4).
+- [x] **Producing ab runner par** (`9205728`): generators ke inputs, DSA ka input validator, Python reference ka expected,
+  SQL ke generator datasets aur reference ke rows: sab `Runner.produce()` se, `RunRequest.fullOutput: true` (poora output,
+  1 MiB tak). Local `python3` sirf MCQ aur HLD estimate ke solver ke liye (ek chhoti line; MCQ-only bundle ko runner
+  nahi chahiye). SQL ka raasta asli samples par jaancha (generator ~80 KB input). DSA ka raasta abhi bhi kisi asli sample
+  par nahi chala: pehle DSA sample par `buildDsaTests` (async, runner) aur wrong verdicts debug karna.
+- [x] CONTENT-FORMAT §2a + `common.schema.json` ka version description + INSTRUCTIONS kadam 9: owner ka faisla (same
+  version + alag hash: draft kabhi publish nahi hua to badlo, publish ho chuka to "raise the version"; same hash skip;
+  chhota version mana).
+- [x] Samples: `content/samples/manifest.json` (tracks), `content/samples/aptitude/` 10: **10/10 PASS**.
+- [x] **SQL 8/10 PASS** (`content/samples/sql/<slug>/`: `item.json` + `editorial.md`, `reference.sql`, `alt-*.sql`,
+  `wrong-*.sql`, `gen.py` `$file` se): canteen anti-join (`NOT IN` + NULL jaal), hostel `LEFT JOIN` + `COUNT(col)`,
+  metro `WHERE` vs `HAVING` (premium, 3 variant sets), library fines (dates, `COALESCE`, clip), branch `DENSE_RANK`,
+  cab running total (`ROWS` frame, premium), latest status per complaint (`ROW_NUMBER` + ties), chai stall gaps and
+  islands (hard). 6 public, 2 premium; easy 3, medium 4, hard 1.
 
 **Baaki (agla session, isi kram me):**
-1. Samples, har type ke baad `node scripts/content-validate.mjs content/samples` sab PASS, phir push: SQL 10 → DSA 10
-   (long editorial ~7,000 shabd, 5 bhasha ke reference, brute, 2 galat, generators, validator; `$file` se alag files
-   `content/samples/dsa/<slug>/`) → lessons 10 (CN, OS, DBMS, LLD, OOD × 2) → language lessons 10 (C, C++, Python, Java,
-   JS × 2) → projects 10 (har bhasha 2) → system design 10 (5 HLD, 5 LLD).
-2. **Dhyaan:** validator ke MCQ aur lesson raaste asli inputs par chale (lesson test fixture par). DSA, SQL, project aur
-   LLD raaste abhi sirf runner smoke tak jaanche; pehle sample par inhe debug karna (khaaskar `bundleFiles` aur
-   wrong-solution verdicts).
-3. Phir tracker row 141 ka part A ✅ (samples poore hone par) aur owner se F6 manzoori.
+1. **SQL ke 2 bache** (dono hard, premium, `target_words` 1,560, `content/samples/sql/` jaisa dhaancha):
+   `sql-club-mentor-chain` (recursive CTE: coding club `members(member_id, name, mentor_id NULL)`, har member ki
+   `depth` aur `juniors` (seedhe + aage ke); galat: sirf seedhe juniors, khud ko ginna, roots chhootna; many-rows ~600
+   members, correlated subquery waale alternative ki speed dekho) aur `sql-monthly-growth-with-gaps` (print shop ki
+   monthly revenue, khaali mahine 0 ke saath recursive calendar CTE se, `LAG` se growth % `ROUND(...,1)`, pehla mahina
+   aur 0 se growth NULL; galat: calendar nahi bharna, integer division, sirf `%m` se group (saal mil jaate)). Manifest
+   me 3 premium + 1 hard aur ho jaayega.
+2. Phir: DSA 10 (5 public, 5 premium; easy/medium/hard; editorial INSTRUCTIONS §4 ki lambai; 5 bhasha ke reference,
+   brute, 2+ galat `expect` ke saath, generators, validator; `$file` se `content/samples/dsa/<slug>/`; har 2 ke baad push)
+   → lessons 10 (CN, OS, DBMS, LLD, OOD × 2) → language lessons 10 (C, C++, Python, Java, JS × 2) → projects 10 (har
+   bhasha 2) → system design 10 (5 HLD, 5 LLD). Har type ke baad `node scripts/content-validate.mjs content/samples`
+   sab PASS, phir push.
+3. **Dhyaan:** DSA, project aur LLD raaste abhi sirf smoke tak jaanche; pehle sample par `bundleFiles` aur wrong-solution
+   verdicts debug karo. `content-kit.test.ts` do jagah (repo + kisi worktree) ek saath chale to runner kabhi-kabhi
+   `unshare: sigprocmask unblock failed` (RE) deta; akela chalane par 3/3 hara.
+4. Phir tracker row 141 ka part A ✅ (70 samples poore hone par) aur owner se F6 manzoori.
 
 **Kaise chalayein:** `npm run build` (runner ka dist), phir `node scripts/content-validate.mjs content/samples`
 (`--no-run` sirf schema + niyam, `--only mcq,sql-problem`, `--mutate`, `--pack bundle.json`). Machine par gcc, g++, javac,
@@ -680,6 +699,7 @@ par ja sakta hai.
 
 ## 7. Log (naya upar)
 
+- 17 Nov 2026 (row 141 part A, doosra agent): validator ke producing kadam runner par (`fullOutput`), SQL ke 8 samples (sab PASS), CONTENT-FORMAT §2a owner ke version faisle ke hisaab se. 5 ghante ki limit (10:13 par 0.65, tez) se pehle push; agla: SQL ke 2 bache, phir DSA (§5 "Row 141 content kit, part A").
 - 17 Nov 2026 (row 141 part A agent): content kit: format + schemas (`2062822`), 6 prompts, INSTRUCTIONS, validator + test, aptitude ke 10 samples (PASS). 5 ghante ki limit (0.74, 0.85 ke paas) par ruka; baaki 60 samples aur kram §5 "Row 141 content kit, part A" me.
 - 17 Nov 2026 (row 141 part B agent): bulk upload ka design §5 "Row 141" me; runner ka `fullOutput` (tests ke saath) push. 5 ghante ki limit (part A saath) par ruka; agla session §5 ke kram 1–11 se.
 - 10 Nov 2026 (session 4 aage, K2-8 agent): owner "K2-8 shuru karo". Draft #93 par: owner ke staging wale dono sandesh theek (band/na-maujood site par sign-in/up aur page ab saaf kehte "band hai ya maujood nahi"), tests ke saath. Aptitude ka code nahi: 5 ghante ki limit 0.85 ke paas; poora plan §5 K2-8 me.

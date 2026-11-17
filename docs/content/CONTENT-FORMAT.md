@@ -38,10 +38,16 @@ Shared pieces (slug, tier, tags, authoring, variants, tests, files, visuals) are
   (`^[a-z0-9][a-z0-9-]{0,78}[a-z0-9]$`, the DB's own check). It never changes after the first upload. Problems
   (DSA, SQL, MCQ, project, system design) share one namespace; lessons have their own. Use a prefix per type so slugs
   never collide: `sql-`, `apt-` (aptitude), `cs-` (CS quiz), `proj-`, `hld-`, `lld-`; DSA and lessons need none.
-- **`version`** starts at 1 and goes up by one on every change. On upload: a new slug is created; the same slug with
-  a higher version updates it (a new draft version; the published one stays live until the new one is published);
-  the same slug and version with the same content is skipped; the same slug and version with different content is
-  refused ("raise the version"). A lower version is refused.
+- **`version`** starts at 1 and goes up by one on every change. On upload (owner's decision, PREP-TRACKER "Faisle"):
+  - a new slug is created as a draft;
+  - the same slug with a **higher** version becomes the new draft (the published version stays live until the new
+    one is published);
+  - the same slug, the **same version and the same hash** is skipped;
+  - the same slug, the **same version and a different hash**: if that version was **never published**, the draft is
+    replaced (a re-upload fixes a draft without a version bump); once that version **is published**, the upload is
+    refused with "raise the version";
+  - a **lower** version is refused.
+  A slug that belongs to a problem or lesson not made by an upload (the starter pack, one made by hand) is refused.
 - **Content hash:** the importer hashes the item after `$file` references are resolved (SHA-256 of the canonical
   JSON: keys sorted, no spaces) and keeps it with the version.
 

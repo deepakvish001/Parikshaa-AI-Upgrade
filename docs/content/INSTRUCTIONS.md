@@ -30,8 +30,10 @@ Gold samples: [content/samples/](../../content/samples/). Tracker: plan row 141.
 7. **Khud padho** (§5 ka review niyam), `authoring.review.state` ko `self-checked` karo.
 8. **Upload:** console → bulk upload → ZIP (folder) ya `--pack` wala JSON. Har item draft me jaata hai; reviewer
    padh kar **Publish** karta hai.
-9. **Badlaav:** kisi item ko badlo to uska `version` +1 karo, manifest ka `version` bhi; dobara upload karo. Slug kabhi
-   mat badlo.
+9. **Badlaav:** published item badlo to uska `version` +1 karo, manifest ka `version` bhi; dobara upload karo. Jo draft
+   abhi publish nahi hua, use usi version par dobara upload kar sakte ho (draft badal jaata hai). Same version + same
+   content: skip. Published version ko bina version badhaye badla to refuse ("raise the version"); chhota version bhi
+   refuse (CONTENT-FORMAT §2a). Slug kabhi mat badlo.
 
 ## 2. Originality ke niyam (zaroori)
 

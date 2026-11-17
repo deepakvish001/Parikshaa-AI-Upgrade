@@ -10,7 +10,7 @@
       "pattern": "^[a-z0-9][a-z0-9-]{0,78}[a-z0-9]$"
     },
     "version": {
-      "description": "Starts at 1. Raise by 1 on every change; the same slug and version with different content is refused.",
+      "description": "Starts at 1. Raise by 1 on every change. The same slug and version with different content replaces a draft that was never published, and is refused once that version is published (CONTENT-FORMAT.md section 2a).",
       "type": "integer",
       "minimum": 1
     },
