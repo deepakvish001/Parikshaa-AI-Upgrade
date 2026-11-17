@@ -1,0 +1,201 @@
+{
+  "schema": "parikshaa.content/project@1",
+  "slug": "proj-python-canteen-cart",
+  "version": 1,
+  "title": "Canteen cart with a combo discount",
+  "tier": "public",
+  "text_language": "en",
+  "difficulty": "easy",
+  "tags": {
+    "topics": [
+      "python",
+      "classes",
+      "dictionaries"
+    ],
+    "patterns": [
+      "command-driver",
+      "validation"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own project brief, code, tests and rubric for canteen cart with a combo discount, examples, code, quiz and explanations; no text from any site, book or course.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-projects",
+      "module": "Python",
+      "position": 0
+    }
+  ],
+  "language": "python",
+  "est_hours": 2,
+  "brief": "Build the cart behind the canteen's pre-order app: students add and remove items, see their cart, and get 10% off big orders. You write the `Cart` class; a driver reads commands from standard input so every test is a short script you can also type by hand.",
+  "requirements": [
+    "Items come from the menu in menu.py; anything else is refused with an error.",
+    "Quantities are 1-20 per command, and at most 20 of any one item in the cart.",
+    "LIST prints items sorted by name with their line amount, or 'cart is empty'.",
+    "TOTAL takes 10% off (rounded down) when the subtotal is 200 or more, and says how much was saved."
+  ],
+  "io_protocol": "One command per line:\n\n| Command | Prints |\n|---|---|\n| `ADD <item> <qty>` | `added <qty> <item>`, or an `error: ...` line |\n| `REMOVE <item> <qty>` | `removed <qty> <item>`, `removed all <item>` (when qty ≥ what is in the cart), or `error: <item> not in cart` |\n| `LIST` | one line `<item> x<qty> = <amount>` per item, sorted by item name, or `cart is empty` |\n| `TOTAL` | `total <n>`, or `total <n> (saved <s>)` when the discount applies |\n\nAnything else prints `error: bad command <the line>`. Errors: `error: unknown item <item>`, `error: quantity must be 1-20`, `error: at most 20 <item> per order`.",
+  "milestones": [
+    {
+      "id": "m1",
+      "title": "Add and list",
+      "instructions": "Make `add` store quantities in `self._items` and `lines` return the sorted lines. Run the first visible test.",
+      "hints": [
+        "Use dict.get(item, 0) to add to a quantity that may not exist yet.",
+        "sorted(self._items.items()) sorts by item name."
+      ]
+    },
+    {
+      "id": "m2",
+      "title": "Remove and refuse",
+      "instructions": "Add the three add errors and the remove command. A remove of more than is in the cart removes the item completely.",
+      "hints": [
+        "Check the menu first, then the quantity range, then the 20-per-item limit.",
+        "del self._items[item] removes the key so LIST no longer shows it."
+      ]
+    },
+    {
+      "id": "m3",
+      "title": "Total with the combo discount",
+      "instructions": "Return (total, saved) from `total`. 10% off, rounded down, when the subtotal is 200 or more.",
+      "hints": [
+        "subtotal // 10 is 10% rounded down for whole rupees.",
+        "A subtotal of exactly 200 gets the discount."
+      ]
+    }
+  ],
+  "files": [
+    {
+      "path": "menu.py",
+      "content": "MENU = {\"chai\": 10, \"coffee\": 20, \"poha\": 30, \"samosa\": 15, \"thali\": 90, \"upma\": 25}\n\n\ndef price_of(item):\n    \"\"\"Price in rupees, or None for an item that is not on the menu.\"\"\"\n    return MENU.get(item)\n",
+      "role": "data",
+      "editable": false
+    },
+    {
+      "path": "cart.py",
+      "content": "from menu import price_of\n\n\nclass Cart:\n    MAX_QTY = 20\n\n    def __init__(self):\n        self._items = {}          # item -> quantity\n\n    def add(self, item, qty):\n        # Milestone 1: add qty of item; return \"added <qty> <item>\".\n        # Milestone 2: errors for unknown items, qty outside 1-20, more than 20 of one item.\n        return \"TODO\"\n\n    def remove(self, item, qty):\n        # Milestone 2: \"removed <qty> <item>\", \"removed all <item>\", or \"error: <item> not in cart\".\n        return \"TODO\"\n\n    def lines(self):\n        # Milestone 1: \"<item> x<qty> = <amount>\" for each item, sorted by item name.\n        return []\n\n    def total(self):\n        # Milestone 3: (total, saved). 10% off (rounded down) when the subtotal is 200 or more.\n        return 0, 0\n",
+      "role": "source"
+    },
+    {
+      "path": "main.py",
+      "content": "import sys\n\nfrom cart import Cart\n\n\ndef main():\n    cart = Cart()\n    for raw in sys.stdin:\n        parts = raw.split()\n        if not parts:\n            continue\n        cmd = parts[0].upper()\n        if cmd == \"ADD\" and len(parts) == 3 and parts[2].lstrip(\"-\").isdigit():\n            print(cart.add(parts[1], int(parts[2])))\n        elif cmd == \"REMOVE\" and len(parts) == 3 and parts[2].isdigit():\n            print(cart.remove(parts[1], int(parts[2])))\n        elif cmd == \"LIST\" and len(parts) == 1:\n            lines = cart.lines()\n            print(\"\\n\".join(lines) if lines else \"cart is empty\")\n        elif cmd == \"TOTAL\" and len(parts) == 1:\n            total, saved = cart.total()\n            print(f\"total {total}\" + (f\" (saved {saved})\" if saved else \"\"))\n        else:\n            print(f\"error: bad command {raw.strip()}\")\n\n\nmain()\n",
+      "role": "driver",
+      "editable": false
+    }
+  ],
+  "solution_files": [
+    {
+      "path": "cart.py",
+      "content": "from menu import price_of\n\n\nclass Cart:\n    MAX_QTY = 20\n\n    def __init__(self):\n        self._items = {}          # item -> quantity\n\n    def add(self, item, qty):\n        if price_of(item) is None:\n            return f\"error: unknown item {item}\"\n        if not 1 <= qty <= self.MAX_QTY:\n            return \"error: quantity must be 1-20\"\n        if self._items.get(item, 0) + qty > self.MAX_QTY:\n            return f\"error: at most 20 {item} per order\"\n        self._items[item] = self._items.get(item, 0) + qty\n        return f\"added {qty} {item}\"\n\n    def remove(self, item, qty):\n        have = self._items.get(item, 0)\n        if have == 0:\n            return f\"error: {item} not in cart\"\n        if qty >= have:\n            del self._items[item]\n            return f\"removed all {item}\"\n        self._items[item] = have - qty\n        return f\"removed {qty} {item}\"\n\n    def lines(self):\n        return [f\"{item} x{qty} = {qty * price_of(item)}\" for item, qty in sorted(self._items.items())]\n\n    def total(self):\n        subtotal = sum(qty * price_of(item) for item, qty in self._items.items())\n        saved = subtotal // 10 if subtotal >= 200 else 0\n        return subtotal - saved, saved\n",
+      "role": "source"
+    }
+  ],
+  "bundle_order": [
+    "menu.py",
+    "cart.py",
+    "main.py"
+  ],
+  "tests": [
+    {
+      "id": "add-and-list",
+      "input": "ADD chai 2\nADD poha 1\nLIST\n",
+      "expected": "added 2 chai\nadded 1 poha\nchai x2 = 20\npoha x1 = 30\n",
+      "hidden": false,
+      "milestone": "m1"
+    },
+    {
+      "id": "total-small",
+      "input": "ADD chai 2\nADD samosa 3\nTOTAL\n",
+      "expected": "added 2 chai\nadded 3 samosa\ntotal 65\n",
+      "hidden": false,
+      "milestone": "m3"
+    },
+    {
+      "id": "empty-cart",
+      "input": "LIST\nTOTAL\n",
+      "expected": "cart is empty\ntotal 0\n",
+      "hidden": true,
+      "milestone": "m1"
+    },
+    {
+      "id": "add-twice",
+      "input": "ADD coffee 2\nADD coffee 3\nLIST\n",
+      "expected": "added 2 coffee\nadded 3 coffee\ncoffee x5 = 100\n",
+      "hidden": true,
+      "milestone": "m1"
+    },
+    {
+      "id": "unknown-item",
+      "input": "ADD pizza 1\nADD chai 0\nADD chai 21\nLIST\n",
+      "expected": "error: unknown item pizza\nerror: quantity must be 1-20\nerror: quantity must be 1-20\ncart is empty\n",
+      "hidden": true,
+      "milestone": "m2"
+    },
+    {
+      "id": "too-many",
+      "input": "ADD samosa 15\nADD samosa 6\nADD samosa 5\nLIST\n",
+      "expected": "added 15 samosa\nerror: at most 20 samosa per order\nadded 5 samosa\nsamosa x20 = 300\n",
+      "hidden": true,
+      "milestone": "m2"
+    },
+    {
+      "id": "remove-some-all",
+      "input": "ADD upma 4\nREMOVE upma 1\nLIST\nREMOVE upma 9\nLIST\nREMOVE upma 1\n",
+      "expected": "added 4 upma\nremoved 1 upma\nupma x3 = 75\nremoved all upma\ncart is empty\nerror: upma not in cart\n",
+      "hidden": true,
+      "milestone": "m2"
+    },
+    {
+      "id": "discount-edge",
+      "input": "ADD thali 2\nADD coffee 1\nTOTAL\nREMOVE coffee 1\nADD chai 1\nTOTAL\n",
+      "expected": "added 2 thali\nadded 1 coffee\ntotal 180 (saved 20)\nremoved all coffee\nadded 1 chai\ntotal 190\n",
+      "hidden": true,
+      "milestone": "m3"
+    },
+    {
+      "id": "big-order",
+      "input": "ADD thali 3\nADD coffee 5\nADD poha 2\nLIST\nTOTAL\n",
+      "expected": "added 3 thali\nadded 5 coffee\nadded 2 poha\ncoffee x5 = 100\npoha x2 = 60\nthali x3 = 270\ntotal 387 (saved 43)\n",
+      "hidden": true,
+      "milestone": "m3"
+    },
+    {
+      "id": "bad-commands",
+      "input": "ADD chai\nPAY 100\nLIST all\nadd chai 1\nTOTAL\n",
+      "expected": "error: bad command ADD chai\nerror: bad command PAY 100\nerror: bad command LIST all\nadded 1 chai\ntotal 10\n",
+      "hidden": true,
+      "milestone": "m1"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "tests",
+      "criterion": "Hidden tests pass: every command prints exactly the expected output.",
+      "weight": 65,
+      "checked_by": "tests"
+    },
+    {
+      "id": "structure",
+      "criterion": "The Cart keeps its own rules: quantities validated in add, no other code edits _items, and money kept as whole rupees.",
+      "weight": 20,
+      "checked_by": "review"
+    },
+    {
+      "id": "feedback",
+      "criterion": "Readable names, small functions and clear error handling (AI feedback, advice only).",
+      "weight": 15,
+      "checked_by": "ai-feedback"
+    }
+  ],
+  "extensions": [
+    "Add a coupon command that takes a code and a flat amount off.",
+    "Keep an order history and print the most ordered item."
+  ]
+}
