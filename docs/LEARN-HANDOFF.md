@@ -269,12 +269,19 @@ projects (pehle par `bundleFiles` debug) → system design. `hostel-water-meter`
   Tests ke expected outputs validator ke hi `bundleFiles` se jode solution ko local chala kar bane; validator ne runner
   par dobara jaanche.
 
-- [ ] **System design: 4/10 PASS ab tak** (`content/samples/system-design/<slug>/item.json` + `reference.md`): HLD
-  `hld-exam-results-portal`, `hld-canteen-preorder`, `hld-notice-short-links` (teeno public); LLD `lld-rate-limiter`
-  (premium; kata Python + Java, change request "VIP users": validator ka LLD raasta asli kata par jaancha, sahi chala:
-  solution pass, starter fail, change_files purane + naye tests pass, purana solution naye test par fail). Reference
-  solution ki lambai INSTRUCTIONS §4 se kam: 1,147 / 1,268 / 798 (public, lakshya 1,200–2,500) aur LLD 615 (premium,
-  lakshya 2,000–3,500); validator ise nahi jaanchta. Baaki: HLD 2 (premium), LLD 4.
+- [x] **System design 10/10 PASS** (`content/samples/system-design/<slug>/item.json` + `reference.md`): HLD
+  `hld-exam-results-portal`, `hld-canteen-preorder`, `hld-notice-short-links` (public), `hld-tatkal-seat-booking`,
+  `hld-campus-notifications` (premium); LLD `lld-library-hold-queue`, `lld-snakes-and-ladders` (public),
+  `lld-rate-limiter`, `lld-vending-machine`, `lld-meeting-room-booker` (premium). HLD: 3–4 estimates (solver ke saath),
+  6–9 components, API, data model, Mermaid diagram, 2–3 deep dives, trade-offs, failure modes, rubric. LLD: kata Python +
+  Java, 8 tests, change request (2 tests) jo **opt-in naya command** hai, taaki purane tests change ke baad bhi pass hon
+  (snakes-and-ladders me pehle "6 par ek aur turn" sabke liye tha, purane tests toote; ab `RULE SIX-AGAIN`). **Validator
+  ka LLD raasta asli katas par jaancha**: solution pass, starter fail, change_files purane + naye pass, purana solution
+  naye par fail. **Kami:** reference solution ki lambai INSTRUCTIONS §4 se kam (validator nahi jaanchta): HLD public
+  798–1,268 (lakshya 1,200–2,500), HLD premium 659 / 834 (lakshya 2,000–3,500), LLD 327–615 (code aur kata alag). Owner
+  chahein to isi dhaanche me deep dives aur trade-offs badhaye ja sakte.
+- **Ab tak: 61/70 PASS** (`node scripts/content-validate.mjs content/samples`: mcq 10, sql 10, dsa 1, lesson 20, project
+  10, system-design 10). Bache sirf DSA 2–10, owner ke editorial lambai ke jawab par ruke.
 
 **Baaki (agla session, isi kram me):**
 1. **DSA ke 9 bache: ruke hue** jab tak owner editorial ki lambai par jawab na de (coordinator 17 Nov). Uske baad
@@ -286,8 +293,8 @@ projects (pehle par `bundleFiles` debug) → system design. `hostel-water-meter`
    → lessons 10 (CN, OS, DBMS, LLD, OOD × 2) → language lessons 10 (C, C++, Python, Java, JS × 2) → projects 10 (har
    bhasha 2) → system design 10 (5 HLD, 5 LLD). Har type ke baad `node scripts/content-validate.mjs content/samples`
    sab PASS, phir push.
-2. **Dhyaan:** project aur LLD raaste (`bundleFiles`, kata ke change request) abhi sirf smoke tak jaanche; pehle project
-   sample par debug karo (DSA ka raasta ab asli sample par jaancha hua). `content-kit.test.ts` do jagah (repo + kisi worktree) ek saath chale to runner kabhi-kabhi
+2. **Dhyaan:** validator ke saare raaste (DSA, SQL, MCQ, lesson, project `bundleFiles` 5 bhasha, LLD kata + change
+   request) ab asli samples par jaanche hue hain. `content-kit.test.ts` do jagah (repo + kisi worktree) ek saath chale to runner kabhi-kabhi
    `unshare: sigprocmask unblock failed` (RE) deta; akela chalane par 3/3 hara.
 3. Phir tracker row 141 ka part A ✅ (70 samples poore hone par) aur owner se F6 manzoori.
 
@@ -783,6 +790,7 @@ par ja sakta hai.
 
 ## 7. Log (naya upar)
 
+- 17 Nov 2026 (row 141 part A): system design 10/10 PASS (5 HLD, 5 LLD kata Python + Java); kul 61/70 PASS. Bache: DSA 2–10 (owner ke lambai ke jawab tak ruke). Phir row 141 part A ✅ aur owner ki F6 manzoori.
 - 17 Nov 2026 (row 141 part A): projects 10/10 PASS (har bhasha 2); `bundleFiles` paanchon bhasha me sahi. Agla: system design (5 HLD, 5 LLD).
 - 17 Nov 2026 (row 141 part A): language lessons 10/10 PASS (C, C++, Python, Java, JS × 2, har ek me hands-on). Agla: projects (pehle par `bundleFiles` debug).
 - 17 Nov 2026 (row 141 part A, limit reset ke baad): CS lessons 10/10 PASS (CN, OS, DBMS, LLD, OOD × 2; ek Hinglish); `hostel-water-meter` ka `related` maujood slugs par. DSA 2–10 owner ke jawab tak ruke. Agla: language lessons.
