@@ -1,0 +1,185 @@
+{
+  "schema": "parikshaa.content/project@1",
+  "slug": "proj-javascript-expense-split",
+  "version": 1,
+  "title": "Trip expense splitter",
+  "tier": "premium",
+  "text_language": "en",
+  "difficulty": "medium",
+  "tags": {
+    "topics": [
+      "javascript",
+      "money",
+      "greedy"
+    ],
+    "patterns": [
+      "integer-money",
+      "greedy-settlement"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own project brief, code, tests and rubric for trip expense splitter, examples, code, quiz and explanations; no text from any site, book or course.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-projects",
+      "module": "JavaScript",
+      "position": 1
+    }
+  ],
+  "language": "javascript",
+  "est_hours": 4,
+  "brief": "Five friends go on a college trip to Lonavala and pay for things in turns. Build the splitter that tracks who owes whom and suggests a short list of payments to settle up. Money is handled in paise so no rupee is ever lost to floating point.",
+  "requirements": [
+    "Each PAY splits the amount equally among the listed members; the payer may or may not be among them.",
+    "Leftover paise from an uneven split go one each to the first members in the list.",
+    "BALANCE shows everyone who has appeared, sorted by name, positive when they are owed money.",
+    "SETTLE repeatedly makes the biggest debtor pay the biggest creditor (ties by name) until everyone is at zero."
+  ],
+  "io_protocol": "| Command | Prints |\n|---|---|\n| `PAY <payer> <amount> <a,b,c>` | `<payer> paid <amount> for <n>`, `error: bad amount <amount>` or `error: bad member list` |\n| `BALANCE` | `<name> <+x.xx / -x.xx / 0.00>` per person by name, or `no expenses` |\n| `SETTLE` | `<from> pays <to> <x.xx>` lines, or `all settled` |\n\nAmounts are rupees with at most two decimals (`450`, `99.5`, `12.05`). SETTLE only suggests payments: it does not change the balances.",
+  "milestones": [
+    {
+      "id": "m1",
+      "title": "Splitting and balances",
+      "instructions": "Fill in `pay` and `lines`. Work in paise; give leftover paise to the first members in order.",
+      "hints": [
+        "share = Math.floor(paise / n); the leftover is paise - share * n, at most n - 1 paise.",
+        "The payer gains the whole amount, then loses their own share if they are a member."
+      ]
+    },
+    {
+      "id": "m2",
+      "title": "Settling up",
+      "instructions": "Fill in `settle` on a copy of the balances: biggest debtor pays biggest creditor the smaller amount, until one side runs out.",
+      "hints": [
+        "Each step zeroes at least one person, so there are at most n - 1 payments.",
+        "Break ties by name so the output is always the same."
+      ]
+    }
+  ],
+  "files": [
+    {
+      "path": "money.js",
+      "content": "// Money is kept in paise (integers) so 0.1 + 0.2 never becomes 0.30000000000000004.\nfunction toPaise(text) {\n  if (!/^\\d+(\\.\\d{1,2})?$/.test(text)) return null;\n  const [rupees, frac = \"\"] = text.split(\".\");\n  return Number(rupees) * 100 + Number((frac + \"00\").slice(0, 2));\n}\n\nfunction format(paise) {\n  const sign = paise < 0 ? \"-\" : paise > 0 ? \"+\" : \"\";\n  const abs = Math.abs(paise);\n  return `${sign}${Math.floor(abs / 100)}.${String(abs % 100).padStart(2, \"0\")}`;\n}\n\nmodule.exports = { toPaise, format };\n",
+      "role": "source",
+      "editable": false
+    },
+    {
+      "path": "split.js",
+      "content": "const { format } = require(\"./money\");\n\nclass Group {\n  constructor() {\n    this.balance = new Map(); // name -> paise; positive = is owed money, negative = owes\n  }\n\n  pay(payer, paise, members) {\n    // Milestone 1: the payer is owed paise; each member owes an equal share.\n    // Leftover paise (when paise does not divide evenly) go to the first members in the list, one each.\n  }\n\n  lines() {\n    // Milestone 1: \"<name> <+x.xx|-x.xx|0.00>\" sorted by name; skip nobody who ever appeared.\n    return [];\n  }\n\n  settle() {\n    // Milestone 2: repeatedly the person who owes the most pays the person owed the most\n    // (ties broken by name), the smaller of the two amounts. Lines \"<from> pays <to> <x.xx>\".\n    return [];\n  }\n}\n\nmodule.exports = { Group };\n",
+      "role": "source"
+    },
+    {
+      "path": "main.js",
+      "content": "const { toPaise } = require(\"./money\");\nconst { Group } = require(\"./split\");\n\nconst group = new Group();\nconst out = [];\nfor (const raw of require(\"fs\").readFileSync(0, \"utf8\").split(\"\\n\")) {\n  const p = raw.trim().split(/\\s+/).filter(Boolean);\n  if (p.length === 0) continue;\n  if (p[0] === \"PAY\" && p.length === 4) {\n    const paise = toPaise(p[2]);\n    const members = p[3].split(\",\").filter(Boolean);\n    if (paise === null || paise === 0) out.push(`error: bad amount ${p[2]}`);\n    else if (members.length === 0 || new Set(members).size !== members.length) out.push(\"error: bad member list\");\n    else {\n      group.pay(p[1], paise, members);\n      out.push(`${p[1]} paid ${p[2]} for ${members.length}`);\n    }\n  } else if (p[0] === \"BALANCE\" && p.length === 1) {\n    const rows = group.lines();\n    out.push(rows.length ? rows.join(\"\\n\") : \"no expenses\");\n  } else if (p[0] === \"SETTLE\" && p.length === 1) {\n    const rows = group.settle();\n    out.push(rows.length ? rows.join(\"\\n\") : \"all settled\");\n  } else out.push(`error: bad command ${raw.trim()}`);\n}\nconsole.log(out.join(\"\\n\"));\n",
+      "role": "driver",
+      "editable": false
+    }
+  ],
+  "solution_files": [
+    {
+      "path": "split.js",
+      "content": "const { format } = require(\"./money\");\n\nclass Group {\n  constructor() {\n    this.balance = new Map(); // name -> paise; positive = is owed money, negative = owes\n  }\n\n  #add(name, paise) {\n    this.balance.set(name, (this.balance.get(name) ?? 0) + paise);\n  }\n\n  pay(payer, paise, members) {\n    const share = Math.floor(paise / members.length);\n    let left = paise - share * members.length;\n    this.#add(payer, paise);\n    for (const m of members) {\n      const extra = left > 0 ? 1 : 0;\n      left -= extra;\n      this.#add(m, -(share + extra));\n    }\n  }\n\n  lines() {\n    return [...this.balance.keys()].sort().map((name) => `${name} ${format(this.balance.get(name))}`);\n  }\n\n  settle() {\n    const owed = new Map(this.balance);\n    const pick = (sign) =>\n      [...owed.entries()]\n        .filter(([, v]) => Math.sign(v) === sign)\n        .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]) || (a[0] < b[0] ? -1 : 1))[0];\n    const out = [];\n    for (;;) {\n      const debtor = pick(-1);\n      const creditor = pick(1);\n      if (!debtor || !creditor) break;\n      const amount = Math.min(-debtor[1], creditor[1]);\n      out.push(`${debtor[0]} pays ${creditor[0]} ${format(amount).replace(\"+\", \"\")}`);\n      owed.set(debtor[0], debtor[1] + amount);\n      owed.set(creditor[0], creditor[1] - amount);\n    }\n    return out;\n  }\n}\n\nmodule.exports = { Group };\n",
+      "role": "source"
+    }
+  ],
+  "bundle_order": [
+    "money.js",
+    "split.js",
+    "main.js"
+  ],
+  "tests": [
+    {
+      "id": "even-split",
+      "input": "PAY aditi 300 aditi,bilal,charu\nBALANCE\n",
+      "expected": "aditi paid 300 for 3\naditi +200.00\nbilal -100.00\ncharu -100.00\n",
+      "hidden": false,
+      "milestone": "m1"
+    },
+    {
+      "id": "settle-simple",
+      "input": "PAY aditi 300 aditi,bilal,charu\nSETTLE\n",
+      "expected": "aditi paid 300 for 3\nbilal pays aditi 100.00\ncharu pays aditi 100.00\n",
+      "hidden": false,
+      "milestone": "m2"
+    },
+    {
+      "id": "uneven-paise",
+      "input": "PAY om 100 om,pia,raj\nBALANCE\n",
+      "expected": "om paid 100 for 3\nom +66.66\npia -33.33\nraj -33.33\n",
+      "hidden": true,
+      "milestone": "m1"
+    },
+    {
+      "id": "payer-not-member",
+      "input": "PAY dad 1000 tina,uma\nBALANCE\nSETTLE\n",
+      "expected": "dad paid 1000 for 2\ndad +1000.00\ntina -500.00\numa -500.00\ntina pays dad 500.00\numa pays dad 500.00\n",
+      "hidden": true,
+      "milestone": "m1"
+    },
+    {
+      "id": "two-payers",
+      "input": "PAY aditi 600 aditi,bilal,charu\nPAY bilal 300 aditi,bilal,charu\nBALANCE\nSETTLE\n",
+      "expected": "aditi paid 600 for 3\nbilal paid 300 for 3\naditi +300.00\nbilal 0.00\ncharu -300.00\ncharu pays aditi 300.00\n",
+      "hidden": true,
+      "milestone": "m2"
+    },
+    {
+      "id": "trip",
+      "input": "PAY a 1250.50 a,b,c,d,e\nPAY c 400 b,c,d\nPAY e 99.99 a,e\nBALANCE\nSETTLE\n",
+      "expected": "a paid 1250.50 for 5\nc paid 400 for 3\ne paid 99.99 for 2\na +950.40\nb -383.44\nc +16.57\nd -383.43\ne -200.10\nb pays a 383.44\nd pays a 383.43\ne pays a 183.53\ne pays c 16.57\n",
+      "hidden": true,
+      "milestone": "m2"
+    },
+    {
+      "id": "all-even",
+      "input": "PAY x 100 x,y\nPAY y 100 x,y\nBALANCE\nSETTLE\n",
+      "expected": "x paid 100 for 2\ny paid 100 for 2\nx 0.00\ny 0.00\nall settled\n",
+      "hidden": true,
+      "milestone": "m2"
+    },
+    {
+      "id": "empty",
+      "input": "BALANCE\nSETTLE\n",
+      "expected": "no expenses\nall settled\n",
+      "hidden": true,
+      "milestone": "m1"
+    },
+    {
+      "id": "bad-input",
+      "input": "PAY a 12.345 a,b\nPAY a -5 a,b\nPAY a 0 a,b\nPAY a 50 a,a\nPAY a 50\nSPLIT a 50 a,b\nBALANCE\n",
+      "expected": "error: bad amount 12.345\nerror: bad amount -5\nerror: bad amount 0\nerror: bad member list\nerror: bad command PAY a 50\nerror: bad command SPLIT a 50 a,b\nno expenses\n",
+      "hidden": true,
+      "milestone": "m1"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "tests",
+      "criterion": "Hidden tests pass: every command prints exactly the expected output.",
+      "weight": 65,
+      "checked_by": "tests"
+    },
+    {
+      "id": "structure",
+      "criterion": "All money stays in integer paise until it is printed; Group never mutates balances while settling.",
+      "weight": 20,
+      "checked_by": "review"
+    },
+    {
+      "id": "feedback",
+      "criterion": "Readable names, small functions and clear error handling (AI feedback, advice only).",
+      "weight": 15,
+      "checked_by": "ai-feedback"
+    }
+  ],
+  "extensions": [
+    "Support unequal shares such as 'a:2,b:1'.",
+    "Find the minimum number of payments with a smarter search, and compare with the greedy answer."
+  ]
+}
