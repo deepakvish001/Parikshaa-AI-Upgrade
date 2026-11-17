@@ -198,8 +198,11 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
 
 ### Row 141 content kit, part A (17 Nov 2026, `session_01CxKYSJpaMfGb259ZWTqTDB`, part A agents)
 
-**Kyun ruka (doosra part A agent, 10:20 UTC):** 5 ghante ki limit tezi se badh rahi thi (10:13 par 0.65, parent + part B
-saath); 0.85 se pehle jo PASS tha wo commit + push kiya. Pehla part A agent bhi limit par ruka tha (06:37, 0.74).
+**Kyun ruka (doosra part A agent, 10:24 UTC):** 5 ghante ki limit 0.86 par pahunchi (10:23; parent + part B saath chal rahe
+the). Jo PASS tha wo commit + push. Pehla part A agent bhi limit par ruka tha (06:37, 0.74).
+
+**Theek kahan ruka:** DSA ka pehla sample `hostel-water-meter` (public, easy L1, prefix sums, 2,505 shabd) PASS aur push;
+DSA ka doosra abhi shuru nahi hua. Agla kaam: DSA sample 2 se (neeche "Baaki" 1).
 
 **Ho gaya (push):**
 - [x] Format: [content/CONTENT-FORMAT.md](content/CONTENT-FORMAT.md) + `docs/content/schema/*.schema.json` (common, dsa-problem,
@@ -228,14 +231,27 @@ saath); 0.85 se pehle jo PASS tha wo commit + push kiya. Pehla part A agent bhi 
   monthly growth with calendar fill (`LAG`, premium). 6 public, 4 premium; easy 3, medium 4, hard 3. 2 par "under the
   target" warning (85% se upar, isliye PASS): mentor-chain 1,494/1,560, monthly-growth 1,368/1,560.
 
+- [x] **DSA 1/10 PASS**: `content/samples/dsa/hostel-water-meter/` (`item.json` + `editorial.md`, `solutions/` 5 reference +
+  brute + 3 galat (Python TLE, C++ int overflow WA, Java off-by-one WA), `starters/` 5, `gen.py` (modes random/full/single/
+  zeros/max), `validator.py`; 28 tests, 8 groups). **Validator ka DSA raasta asli sample par jaancha:** generators aur
+  reference runner par (`fullOutput`, ~700 KB inputs), validator gate, brute groups, wrong verdicts. Ulte test bhi chalaye
+  (scratchpad me copy): `expect` galat ho to "fails, but not with WA", galat solution pass kare to "tests are too weak",
+  starter pass kare to "already passes the samples": teeno pakde gaye.
+- [x] Validator: runner ka sandbox bhari load par kabhi `unshare: sigprocmask unblock failed` deta (content ka dosh nahi);
+  ab aisi batch 3 baar tak dobara chalti (`sandboxFailed` in `scripts/content-validate.mjs`). Phir bhi poore samples ka
+  run jab doosre test suites saath chal rahe hon, timing ki wajah se flaky ho sakta; akela chalao.
+
 **Baaki (agla session, isi kram me):**
-1. **DSA 10** (5 public, 5 premium; easy/medium/hard; editorial INSTRUCTIONS §4 ki lambai; 5 bhasha ke reference,
-   brute, 2+ galat `expect` ke saath, generators, validator; `$file` se `content/samples/dsa/<slug>/`; har 2 ke baad push)
+1. **DSA ke 9 bache** (kul 5 public, 5 premium; 1 public easy ho gaya; editorial INSTRUCTIONS §4 ki lambai: public easy
+   2,500, medium 3,500, hard 5,000; premium 7,000 / 7,500 / 8,000; 5 bhasha ke reference, brute, 2+ galat `expect` ke
+   saath, generators, validator; `hostel-water-meter` jaisa dhaancha; har 2 ke baad push). `hostel-water-meter` ke
+   `related` me `metro-turnstile-window` (sliding window) aur `canteen-bill-split-subarray` (prefix sum + hash map) ke
+   naam hain: inhi naam se bana sakte ho, warna `related` badlo
    → lessons 10 (CN, OS, DBMS, LLD, OOD × 2) → language lessons 10 (C, C++, Python, Java, JS × 2) → projects 10 (har
    bhasha 2) → system design 10 (5 HLD, 5 LLD). Har type ke baad `node scripts/content-validate.mjs content/samples`
    sab PASS, phir push.
-2. **Dhyaan:** DSA, project aur LLD raaste abhi sirf smoke tak jaanche; pehle sample par `bundleFiles` aur wrong-solution
-   verdicts debug karo. `content-kit.test.ts` do jagah (repo + kisi worktree) ek saath chale to runner kabhi-kabhi
+2. **Dhyaan:** project aur LLD raaste (`bundleFiles`, kata ke change request) abhi sirf smoke tak jaanche; pehle project
+   sample par debug karo (DSA ka raasta ab asli sample par jaancha hua). `content-kit.test.ts` do jagah (repo + kisi worktree) ek saath chale to runner kabhi-kabhi
    `unshare: sigprocmask unblock failed` (RE) deta; akela chalane par 3/3 hara.
 3. Phir tracker row 141 ka part A ✅ (70 samples poore hone par) aur owner se F6 manzoori.
 
@@ -694,7 +710,7 @@ par ja sakta hai.
 
 ## 7. Log (naya upar)
 
-- 17 Nov 2026 (row 141 part A, doosra agent): validator ke producing kadam runner par (`fullOutput`), SQL ke 10 samples (sab PASS), CONTENT-FORMAT §2a owner ke version faisle ke hisaab se. Agla: DSA (§5 "Row 141 content kit, part A").
+- 17 Nov 2026 (row 141 part A, doosra agent): validator ke producing kadam runner par (`fullOutput`) + sandbox ki gadbad par retry, SQL ke 10 samples aur DSA ka pehla (`hostel-water-meter`), sab PASS; CONTENT-FORMAT §2a owner ke version faisle ke hisaab se. 5 ghante ki limit 0.86 (10:23) par ruka; agla: DSA sample 2 (§5 "Row 141 content kit, part A").
 - 17 Nov 2026 (row 141 part A agent): content kit: format + schemas (`2062822`), 6 prompts, INSTRUCTIONS, validator + test, aptitude ke 10 samples (PASS). 5 ghante ki limit (0.74, 0.85 ke paas) par ruka; baaki 60 samples aur kram §5 "Row 141 content kit, part A" me.
 - 17 Nov 2026 (row 141 part B agent): bulk upload ka design §5 "Row 141" me; runner ka `fullOutput` (tests ke saath) push. 5 ghante ki limit (part A saath) par ruka; agla session §5 ke kram 1–11 se.
 - 10 Nov 2026 (session 4 aage, K2-8 agent): owner "K2-8 shuru karo". Draft #93 par: owner ke staging wale dono sandesh theek (band/na-maujood site par sign-in/up aur page ab saaf kehte "band hai ya maujood nahi"), tests ke saath. Aptitude ka code nahi: 5 ghante ki limit 0.85 ke paas; poora plan §5 K2-8 me.

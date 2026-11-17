@@ -561,7 +561,13 @@ export class Runner {
       const body = { language, source, tests: b, limits: { timeMs: Math.min(10_000, Math.max(100, Math.round(timeMs))), memoryMb: Math.min(1024, Math.max(32, memoryMb)) } };
       if (checker !== undefined && checker.kind !== "exact") body.checker = checker;
       if (fullOutput) body.fullOutput = true;
-      const r = await this.#slot(() => this.#post(body));
+      let r = await this.#slot(() => this.#post(body));
+      // The sandbox itself can fail to start under heavy load ("unshare: sigprocmask unblock failed"): that says
+      // nothing about the content, so the batch is run again (at most 3 more times).
+      for (let retry = 0; retry < 3 && sandboxFailed(r); retry++) {
+        await new Promise((ok) => setTimeout(ok, 500 * (retry + 1)));
+        r = await this.#slot(() => this.#post(body));
+      }
       if (!r.compiled) return { compiled: false, compileOutput: r.compileOutput, tests: [] };
       results.push(...r.tests);
     }
@@ -581,6 +587,8 @@ export class Runner {
   }
 }
 
+const SANDBOX_FAILURE = /^unshare: /m;
+const sandboxFailed = (r) => (r.compiled ? r.tests.some((t) => t.status === "runtime_error" && SANDBOX_FAILURE.test(t.stderr ?? "")) : SANDBOX_FAILURE.test(String(r.compileOutput)));
 const verdict = { passed: "OK", wrong_answer: "WA", time_limit: "TLE", memory_limit: "MLE", runtime_error: "RE", output_limit: "OLE", checker_error: "CHECKER" };
 const summarise = (r) => {
   if (!r.compiled) return `does not compile: ${String(r.compileOutput).split("\n").slice(0, 4).join(" | ")}`;
