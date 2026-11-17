@@ -1,0 +1,213 @@
+{
+  "schema": "parikshaa.content/lesson@1",
+  "slug": "lang-cpp-references-vs-pointers",
+  "version": 1,
+  "title": "C++: references, pointers and copies",
+  "tier": "public",
+  "text_language": "en",
+  "course": "lang-cpp",
+  "difficulty": "easy",
+  "tags": {
+    "topics": [
+      "references",
+      "pointers",
+      "functions"
+    ],
+    "patterns": [
+      "pass-by-reference",
+      "const-reference"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own lesson text and examples on c++: references, pointers and copies, examples, code, quiz and explanations; no text from any site, book or course.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-languages",
+      "module": "C++",
+      "position": 0
+    }
+  ],
+  "est_minutes": 12,
+  "prerequisites": [
+    "lang-c-pointers-and-arrays"
+  ],
+  "outcomes": [
+    "can predict whether a function changes its caller's variable",
+    "can choose between value, reference, const reference and pointer parameters",
+    "can explain why large objects are passed by const reference"
+  ],
+  "sections": [
+    {
+      "kind": "why",
+      "heading": "Why this matters",
+      "body": "In C++ the way you write a parameter decides two things at once: whether the function can change the caller's data, and whether the data gets copied. Getting it wrong gives either a bug (a change that silently does nothing) or a slow program (a vector of a million names copied on every call). Placement tests ask \"what does this print?\" about exactly this, and code reviewers flag it on sight."
+    },
+    {
+      "kind": "concept",
+      "heading": "Three ways to pass",
+      "body": "- **By value** (`int marks`): the function gets its **own copy**. Changes stay inside the function.\n- **By reference** (`int& marks`): the parameter is **another name for the caller's variable**. Changes are the caller's changes. The call looks like a normal call: `addBonus(b)`.\n- **By pointer** (`int* marks`): the function gets the **address** and must dereference it (`*marks += 5`). The caller writes `&c`, so the possible change is visible at the call site, and the pointer may be `nullptr`, which the function must check.\n\nA reference must be bound when it is created and **can never be re-seated** to refer to something else; `alias = 100` assigns to `b`, it does not make `alias` refer to 100. A pointer can be changed to point elsewhere, or to nothing.\n\n> **Note:** A useful default: **references for \"must be there\", pointers for \"may be absent\".** If a function cannot work without the object, take a reference; if `nullptr` is a meaningful input, take a pointer."
+    },
+    {
+      "kind": "example",
+      "heading": "Which ones change the caller?",
+      "body": "All three functions add a bonus of 5. Only two of them reach the caller's variable.",
+      "code": [
+        {
+          "lang": "cpp",
+          "src": "#include <iostream>\nusing namespace std;\n\nvoid addBonusByValue(int marks) { marks += 5; }          // changes a copy\nvoid addBonusByRef(int& marks) { marks += 5; }           // changes the caller's variable\nvoid addBonusByPtr(int* marks) { if (marks) *marks += 5; }  // same, through an address\n\nint main() {\n    int a = 70, b = 70, c = 70;\n    addBonusByValue(a);\n    addBonusByRef(b);\n    addBonusByPtr(&c);\n    cout << \"value: \" << a << \", reference: \" << b << \", pointer: \" << c << \"\\n\";\n    int& alias = b;      // alias is another name for b, forever\n    alias = 100;\n    cout << \"b after alias = 100: \" << b << \"\\n\";\n    return 0;\n}\n",
+          "runnable": true,
+          "expected_output": "value: 70, reference: 75, pointer: 75\nb after alias = 100: 100\n",
+          "caption": "Value, reference and pointer parameters"
+        }
+      ]
+    },
+    {
+      "kind": "concept",
+      "heading": "const references: no copy, no change",
+      "body": "Passing a `vector<string>` or a big struct **by value** copies every element on every call. For a read-only function that is pure waste. The fix is a **const reference**: `const Roster& r`. The function sees the caller's object directly (no copy), and the `const` means the compiler rejects any attempt to modify it.\n\nThe rule of thumb used in most C++ codebases:\n\n| Parameter type | Read only | Will modify |\n|---|---|---|\n| small (int, double, char, pointer) | by value | by reference |\n| large (string, vector, struct) | by **const reference** | by reference |\n\nSmall types are cheaper to copy than to reach through an address, so they stay by value."
+    },
+    {
+      "kind": "example",
+      "heading": "Counting the copies",
+      "body": "`Roster` counts how many times it is copied. Two calls by value copy it twice; two calls by const reference copy nothing.",
+      "code": [
+        {
+          "lang": "cpp",
+          "src": "#include <iostream>\n#include <string>\n#include <vector>\nusing namespace std;\n\nstruct Roster {\n    vector<string> names;\n    static inline int copies = 0;\n    Roster() = default;\n    Roster(const Roster& other) : names(other.names) { copies++; }   // count every copy\n};\n\nsize_t countByValue(Roster r) { return r.names.size(); }\nsize_t countByConstRef(const Roster& r) { return r.names.size(); }\n\nint main() {\n    Roster hostel;\n    hostel.names = {\"Aditi\", \"Bilal\", \"Charu\"};\n    countByValue(hostel);\n    countByValue(hostel);\n    countByConstRef(hostel);\n    countByConstRef(hostel);\n    cout << \"copies made: \" << Roster::copies << \"\\n\";\n    return 0;\n}\n",
+          "runnable": true,
+          "expected_output": "copies made: 2\n",
+          "caption": "Pass by value copies; pass by const reference does not"
+        }
+      ]
+    },
+    {
+      "kind": "note",
+      "heading": "The dangling reference",
+      "body": "A reference is only valid while the object it names is alive. This function compiles, with a warning:\n\n```cpp\nconst string& bestHostel() {\n    string name = \"Kaveri\";\n    return name;          // name dies here\n}\n```\n\nThe caller receives a reference to a destroyed string. Reading it is **undefined behaviour**: it may print \"Kaveri\" today and garbage tomorrow. The same applies to returning a pointer to a local variable. Return **by value** instead (`string bestHostel()`): modern C++ moves or elides the copy, so it costs almost nothing.\n\nReferences to elements of a `vector` have a related trap: if the vector grows past its capacity, it moves its elements to new memory, and every reference or pointer into the old memory dangles. The next lesson covers that in detail.\n\nIn the hands-on task you will write a function that must change both of the caller's variables. Try it by value first in your head: the swap would happen to copies and the caller would see nothing. That is exactly the bug a reference parameter fixes."
+    },
+    {
+      "kind": "misconception",
+      "heading": "Common mix-ups",
+      "body": "**Many students think a reference is a pointer with nicer syntax.** It is implemented with an address, but the rules differ: a reference cannot be null, cannot be re-seated, and needs no `*` to use. Treat it as a second name, not as a variable holding an address.\n\n**Many students think `const` slows code down.** It has no runtime cost. It is a promise the compiler checks, and it lets callers pass temporaries: `countByConstRef(Roster{})` works, but a non-const reference cannot bind to a temporary.\n\n**Many students think passing by value is always safer.** It is safer against accidental changes, but `const&` gives the same safety without the copy."
+    },
+    {
+      "kind": "interview",
+      "heading": "Interview questions",
+      "body": "Answers as a strong candidate would say them.",
+      "qa": [
+        {
+          "q": "Reference versus pointer in C++?",
+          "a": "A reference is an alias that must be initialised, cannot be null and cannot be re-seated; you use it like the object itself. A pointer holds an address, can be null, can be re-pointed, and needs dereferencing. I use references when the object must exist and pointers when absence is meaningful."
+        },
+        {
+          "q": "Why pass a vector by const reference?",
+          "a": "Passing by value copies every element on each call, which is O(n) time and memory for nothing if the function only reads. A const reference avoids the copy and the const stops the function from modifying the caller's vector."
+        },
+        {
+          "q": "What is wrong with returning a reference to a local variable?",
+          "a": "The local is destroyed when the function returns, so the reference dangles and using it is undefined behaviour. Return by value instead; the compiler moves or elides the copy."
+        }
+      ]
+    },
+    {
+      "kind": "summary",
+      "heading": "Summary",
+      "body": "- By value copies; by reference aliases; by pointer passes an address that may be null.\n- A reference can never be null or re-seated.\n- Large read-only arguments: `const T&`. Small ones: by value.\n- Never return a reference or pointer to a local.\n- References for \"must exist\", pointers for \"may be absent\"."
+    }
+  ],
+  "quiz": [
+    {
+      "stem": "`void f(int x) { x = 9; }` is called as `f(a)` with `a = 1`. What is `a` afterwards?",
+      "options": [
+        "9",
+        "1",
+        "0",
+        "undefined"
+      ],
+      "correct": 1,
+      "explanation": "x is a copy; the caller's a is untouched."
+    },
+    {
+      "stem": "`int a = 1, b = 2; int& r = a; r = b; r = 7;` What are a and b?",
+      "options": [
+        "a = 7, b = 2",
+        "a = 2, b = 7",
+        "a = 7, b = 7",
+        "a = 1, b = 7"
+      ],
+      "correct": 0,
+      "explanation": "r always names a; r = b copies 2 into a, then r = 7 sets a to 7. b is never touched."
+    },
+    {
+      "stem": "Best parameter for a function that only reads a `vector<string>` of 10^6 names?",
+      "options": [
+        "vector<string> v",
+        "vector<string>& v",
+        "const vector<string>& v",
+        "vector<string>* v"
+      ],
+      "correct": 2,
+      "explanation": "No copy, and const prevents accidental changes."
+    },
+    {
+      "stem": "Which can be null?",
+      "options": [
+        "int&",
+        "const int&",
+        "int*",
+        "none of them"
+      ],
+      "correct": 2,
+      "explanation": "Only a pointer can be null; references always refer to an object."
+    }
+  ],
+  "hands_on": [
+    {
+      "id": "order-pair",
+      "title": "Put a pair in order",
+      "task": "Read `t`, then `t` lines with two integers. Fill in `orderPair(int& lo, int& hi)` so that afterwards `lo` holds the smaller value and `hi` the larger. The program prints each pair after the call.",
+      "lang": "cpp",
+      "starter": "#include <iostream>\nusing namespace std;\n\n// After the call, lo must hold the smaller value and hi the larger one.\nvoid orderPair(int& lo, int& hi) {\n    // TODO: your code here\n}\n\nint main() {\n    int t;\n    if (!(cin >> t)) return 0;\n    while (t--) {\n        int a, b;\n        cin >> a >> b;\n        orderPair(a, b);\n        cout << a << \" \" << b << \"\\n\";\n    }\n    return 0;\n}\n",
+      "solution": "#include <iostream>\nusing namespace std;\n\nvoid orderPair(int& lo, int& hi) {\n    if (lo > hi) {\n        int t = lo;\n        lo = hi;\n        hi = t;\n    }\n}\n\nint main() {\n    int t;\n    if (!(cin >> t)) return 0;\n    while (t--) {\n        int a, b;\n        cin >> a >> b;\n        orderPair(a, b);\n        cout << a << \" \" << b << \"\\n\";\n    }\n    return 0;\n}\n",
+      "tests": [
+        {
+          "id": "t1",
+          "input": "3\n5 2\n1 9\n4 4\n",
+          "expected": "2 5\n1 9\n4 4\n",
+          "hidden": false
+        },
+        {
+          "id": "t2",
+          "input": "1\n-3 -10\n",
+          "expected": "-10 -3\n",
+          "hidden": true
+        },
+        {
+          "id": "t3",
+          "input": "2\n0 0\n100 -100\n",
+          "expected": "0 0\n-100 100\n",
+          "hidden": true
+        },
+        {
+          "id": "t4",
+          "input": "4\n7 8\n8 7\n-1 1\n1 -1\n",
+          "expected": "7 8\n7 8\n-1 1\n-1 1\n",
+          "hidden": true
+        }
+      ]
+    }
+  ],
+  "revision_card": {
+    "front": "C++ parameters: value vs reference vs pointer, and the default for big read-only objects?",
+    "back": "Value copies; reference is an alias (never null, never re-seated); pointer is an address that may be null. Big read-only args: const T&. Never return a reference to a local."
+  },
+  "next": [
+    "lang-cpp-vector-and-iterators"
+  ]
+}

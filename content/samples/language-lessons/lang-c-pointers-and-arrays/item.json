@@ -1,0 +1,227 @@
+{
+  "schema": "parikshaa.content/lesson@1",
+  "slug": "lang-c-pointers-and-arrays",
+  "version": 1,
+  "title": "C: arrays, pointers and pointer arithmetic",
+  "tier": "public",
+  "text_language": "en",
+  "course": "lang-c",
+  "difficulty": "easy",
+  "tags": {
+    "topics": [
+      "pointers",
+      "arrays"
+    ],
+    "patterns": [
+      "pointer-arithmetic",
+      "array-decay"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own lesson text and examples on c: arrays, pointers and pointer arithmetic, examples, code, quiz and explanations; no text from any site, book or course.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-languages",
+      "module": "C",
+      "position": 0
+    }
+  ],
+  "est_minutes": 12,
+  "prerequisites": [],
+  "outcomes": [
+    "can explain why a[i] and *(a + i) are the same thing",
+    "can walk an array with a pointer and stop at the right place",
+    "can pass an array and its length to a function correctly"
+  ],
+  "sections": [
+    {
+      "kind": "why",
+      "heading": "Why this matters",
+      "body": "Pointers are the reason C is fast and the reason C programs crash. Almost every C question in a placement test, from \"what does this print?\" to \"why does this segfault?\", comes down to how arrays and pointers relate. Once the rule `a[i] == *(a + i)` clicks, most of those questions become arithmetic."
+    },
+    {
+      "kind": "concept",
+      "heading": "An array name becomes a pointer",
+      "body": "When you write `int marks[5];`, C sets aside five `int`s **next to each other** in memory. In almost every expression, the name `marks` turns into (\"decays to\") a pointer to the first element, `&marks[0]`. That is why `int *p = marks;` needs no `&`.\n\nIndexing is defined through pointers: **`a[i]` means `*(a + i)`**. So `marks[2]`, `*(p + 2)` and even `p[2]` all read the same `int`.\n\n**Pointer arithmetic counts elements, not bytes.** `p + 1` points to the *next int*, which is `sizeof(int)` bytes further on (4 bytes with gcc on a 64-bit machine). For a `double *`, `+ 1` moves 8 bytes. The compiler does the multiplication for you.\n\n> **Note:** There are two places where an array does **not** decay: in `sizeof marks` (you get the whole array's size) and in `&marks` (you get a pointer to the whole array). Everywhere else, think \"pointer to the first element\"."
+    },
+    {
+      "kind": "example",
+      "heading": "Seeing it in numbers",
+      "body": "Here are the three ways to read the third mark, how far `p + 1` is from `p`, and how `sizeof` reports the whole array.",
+      "code": [
+        {
+          "lang": "c",
+          "src": "#include <stdio.h>\n\nint main(void) {\n    int marks[5] = {72, 85, 90, 64, 88};\n    int *p = marks;                       /* the array name decays to &marks[0] */\n    printf(\"marks[2] = %d, *(p + 2) = %d, p[2] = %d\\n\", marks[2], *(p + 2), p[2]);\n    printf(\"p + 1 is %td bytes after p\\n\", (char *)(p + 1) - (char *)p);\n    printf(\"sizeof marks = %zu bytes, %zu elements\\n\", sizeof marks, sizeof marks / sizeof marks[0]);\n    return 0;\n}\n",
+          "runnable": true,
+          "expected_output": "marks[2] = 90, *(p + 2) = 90, p[2] = 90\np + 1 is 4 bytes after p\nsizeof marks = 20 bytes, 5 elements\n",
+          "caption": "An array, a pointer to it, and pointer arithmetic"
+        }
+      ]
+    },
+    {
+      "kind": "concept",
+      "heading": "Arrays passed to functions are pointers",
+      "body": "A function parameter written `int a[]` or `int a[5]` is **exactly** `int *a`. The array is never copied; the function receives the address of its first element and nothing else. In particular, **the length does not travel with it**.\n\nSo inside a function, `sizeof a` is the size of a pointer (8 bytes on a 64-bit machine), not the size of the array. The usual C pattern is to pass the length as a second parameter, computed with `sizeof arr / sizeof arr[0]` **where the array is declared**.\n\nWalking with a pointer is common in C code: start at `a`, stop at `a + n` (one past the last element, which you may compute but never read), and move with `q++`. The loop condition `q < a + n` is the pointer version of `i < n`."
+    },
+    {
+      "kind": "example",
+      "heading": "A function that needs the length",
+      "body": "`average` walks the array with a pointer. `looks_like_length` shows the classic mistake: it tries to compute the length inside the function and gets `sizeof(pointer) / sizeof(int) = 8 / 4 = 2`. gcc even warns about it.\n\nCheck the average by hand: 72 + 85 + 90 + 64 + 88 = 399, and 399 / 5 = 79.8. Notice that `average` takes `const int *a`: the `const` promises the function will only read the marks, and the compiler will refuse any line that tries to write through `a`. It costs nothing and documents intent.",
+      "code": [
+        {
+          "lang": "c",
+          "src": "#include <stdio.h>\n\nstatic double average(const int *a, size_t n) {   /* a is just a pointer here */\n    long sum = 0;\n    for (const int *q = a; q < a + n; q++) sum += *q;\n    return (double)sum / (double)n;\n}\n\nstatic size_t looks_like_length(const int *a) {\n    return sizeof a / sizeof a[0];                 /* size of a POINTER divided by size of an int */\n}\n\nint main(void) {\n    int marks[5] = {72, 85, 90, 64, 88};\n    size_t n = sizeof marks / sizeof marks[0];     /* correct: computed where the array is declared */\n    printf(\"average = %.1f\\n\", average(marks, n));\n    printf(\"wrong length inside a function = %zu\\n\", looks_like_length(marks));\n    return 0;\n}\n",
+          "runnable": true,
+          "expected_output": "average = 79.8\nwrong length inside a function = 2\n",
+          "caption": "Passing an array to a function: pass the length too"
+        }
+      ]
+    },
+    {
+      "kind": "note",
+      "heading": "Three pointer bugs you will meet",
+      "body": "Most pointer crashes in student code are one of these three. Learn to spot them by name.\n\n**1. Walking one step too far.** The end pointer `a + n` is allowed to *exist*, so loops can stop at it, but reading `*(a + n)` reads past the array. The loop `for (q = a; q <= a + n; q++)` (with `<=`) reads one element too many. Always pair a start pointer with an **exclusive** end: `q < a + n`.\n\n**2. Returning the address of a local array.** A function like `int *make(void) { int box[3] = {1, 2, 3}; return box; }` compiles, but `box` disappears when the function returns. The caller holds a **dangling pointer**: it may print the right numbers once and garbage the next time. Return data through an array the caller owns (passed in as a pointer), or allocate it with `malloc` and document who frees it.\n\n**3. Dereferencing NULL or an uninitialised pointer.** `int *p; *p = 5;` writes to a random address. `int *p = NULL; *p = 5;` crashes at once, which is actually kinder: the bug shows up where it is. Initialise every pointer, and check the result of `malloc` before using it.\n\n> **Note:** Compile your practice code with `gcc -Wall -Wextra -fsanitize=address -g`. The address sanitiser stops the program at the exact line that reads out of bounds or uses freed memory, and prints where the memory came from. It turns hours of guessing into one error message."
+    },
+    {
+      "kind": "example",
+      "heading": "Planning the hands-on task",
+      "body": "The task below asks you to reverse an array in place with two pointers. Trace it on `1 2 3 4 5` before you code:\n\n| step | left points at | right points at | array after swap |\n|---|---|---|---|\n| 1 | 1 (index 0) | 5 (index 4) | 5 2 3 4 1 |\n| 2 | 2 (index 1) | 4 (index 3) | 5 4 3 2 1 |\n| 3 | 3 (index 2) | 3 (index 2) | stop: `left < right` is false |\n\nTwo details decide whether your code is right. Start `right` at `a + n - 1`, the **last element**, not at `a + n`, which is one past the end. And stop when the pointers meet or cross (`left < right`), so the middle element of an odd-length array is left alone and an even-length array is not swapped back. With `n = 1`, `left` and `right` start equal and nothing happens, which is correct."
+    },
+    {
+      "kind": "misconception",
+      "heading": "Common mix-ups",
+      "body": "**Many students think arrays and pointers are the same thing.** An array is a block of elements with a fixed size; a pointer is one variable holding an address. You can do `p = p + 1`, but `marks = marks + 1` does not compile: an array name cannot be reassigned. They only *behave* alike in expressions because of decay.\n\n**Many students think `p + 1` adds one byte.** It adds one element. To move one byte you would cast to `char *` first, as the first example does when it measures the gap.\n\n**Many students think C checks array bounds.** It does not. `marks[5]` compiles and reads whatever happens to be after the array: garbage, another variable, or a crash. Keeping indexes in range is entirely your job."
+    },
+    {
+      "kind": "interview",
+      "heading": "Interview questions",
+      "body": "Answers as a strong candidate would say them.",
+      "qa": [
+        {
+          "q": "What does `int a[10]; printf(\"%zu\", sizeof a);` print inside main, and inside a function that receives `a`?",
+          "a": "Inside main it prints 40, the whole array of ten 4-byte ints. Inside a function the parameter is an int pointer, so sizeof gives the pointer size, 8 on a typical 64-bit system. That is why C functions take the length as a separate argument."
+        },
+        {
+          "q": "Why is `a[i]` equal to `i[a]` in C?",
+          "a": "Because a[i] is defined as *(a + i), and addition is commutative, so i[a] is *(i + a), the same address. It is a curiosity, not a style to use, but it proves that indexing is pointer arithmetic."
+        },
+        {
+          "q": "If `int *p` points to address 1000, where does `p + 3` point?",
+          "a": "To 1000 + 3 × sizeof(int), which is 1012 with 4-byte ints. Pointer arithmetic scales by the size of the pointed-to type."
+        }
+      ]
+    },
+    {
+      "kind": "summary",
+      "heading": "Summary",
+      "body": "- An array name decays to a pointer to its first element in most expressions.\n- `a[i]` is defined as `*(a + i)`.\n- Pointer arithmetic moves by whole elements.\n- Arrays passed to functions arrive as pointers: pass the length too.\n- C never checks bounds; staying in range is your job."
+    }
+  ],
+  "quiz": [
+    {
+      "stem": "With `int a[4] = {3, 6, 9, 12}; int *p = a + 1;`, what is `p[2]`?",
+      "options": [
+        "9",
+        "12",
+        "6",
+        "undefined"
+      ],
+      "correct": 1,
+      "explanation": "p points at a[1], so p[2] is a[3] = 12."
+    },
+    {
+      "stem": "A `double *d` holds address 2000. What address does `d + 2` hold?",
+      "options": [
+        "2002",
+        "2008",
+        "2016",
+        "2004"
+      ],
+      "correct": 2,
+      "explanation": "Each step moves sizeof(double) = 8 bytes: 2000 + 16 = 2016."
+    },
+    {
+      "stem": "Inside `void f(int a[20])`, what is `sizeof a` on a 64-bit system?",
+      "options": [
+        "80",
+        "20",
+        "8",
+        "4"
+      ],
+      "correct": 2,
+      "explanation": "The parameter is really an int pointer; a pointer is 8 bytes."
+    },
+    {
+      "stem": "Which line does NOT compile?",
+      "options": [
+        "int *p = a;",
+        "p = p + 1;",
+        "a = a + 1;",
+        "int x = *(a + 2);"
+      ],
+      "correct": 2,
+      "explanation": "An array name is not a variable that can be reassigned."
+    }
+  ],
+  "hands_on": [
+    {
+      "id": "reverse",
+      "title": "Reverse the marks in place",
+      "task": "Read `n` (1 ≤ n ≤ 1000) and then `n` integers. Fill in `reverse` so that it reverses the array **in place** using two pointers, one from each end, swapping and moving inwards until they meet. The program then prints the array, space-separated.",
+      "lang": "c",
+      "starter": "#include <stdio.h>\n\n/* Reverse a[0..n-1] in place using two pointers. */\nstatic void reverse(int *a, int n) {\n    (void)a; (void)n;\n    /* TODO: your code here */\n}\n\nint main(void) {\n    int n;\n    if (scanf(\"%d\", &n) != 1) return 0;\n    int a[1000];\n    for (int i = 0; i < n; i++)\n        if (scanf(\"%d\", &a[i]) != 1) return 0;\n    reverse(a, n);\n    for (int i = 0; i < n; i++) printf(\"%d%c\", a[i], i + 1 < n ? ' ' : '\\n');\n    return 0;\n}\n",
+      "solution": "#include <stdio.h>\n\nstatic void reverse(int *a, int n) {\n    int *left = a, *right = a + n - 1;\n    while (left < right) {\n        int t = *left;\n        *left++ = *right;\n        *right-- = t;\n    }\n}\n\nint main(void) {\n    int n;\n    if (scanf(\"%d\", &n) != 1) return 0;\n    int a[1000];\n    for (int i = 0; i < n; i++)\n        if (scanf(\"%d\", &a[i]) != 1) return 0;\n    reverse(a, n);\n    for (int i = 0; i < n; i++) printf(\"%d%c\", a[i], i + 1 < n ? ' ' : '\\n');\n    return 0;\n}\n",
+      "tests": [
+        {
+          "id": "t1",
+          "input": "5\n1 2 3 4 5\n",
+          "expected": "5 4 3 2 1\n",
+          "hidden": false
+        },
+        {
+          "id": "t2",
+          "input": "1\n7\n",
+          "expected": "7\n",
+          "hidden": true
+        },
+        {
+          "id": "t3",
+          "input": "4\n10 -2 33 0\n",
+          "expected": "0 33 -2 10\n",
+          "hidden": true
+        },
+        {
+          "id": "t4",
+          "input": "6\n5 5 1 1 5 5\n",
+          "expected": "5 5 1 1 5 5\n",
+          "hidden": true
+        },
+        {
+          "id": "t5",
+          "input": "2\n-1 1\n",
+          "expected": "1 -1\n",
+          "hidden": true
+        },
+        {
+          "id": "t6",
+          "input": "7\n9 8 7 6 5 4 3\n",
+          "expected": "3 4 5 6 7 8 9\n",
+          "hidden": true
+        }
+      ]
+    }
+  ],
+  "revision_card": {
+    "front": "Arrays and pointers in C: the indexing rule, the arithmetic rule, and the function rule?",
+    "back": "a[i] is *(a + i). p + 1 moves one element (sizeof(*p) bytes). Arrays passed to functions are pointers: sizeof gives the pointer size, so pass the length."
+  },
+  "next": [
+    "lang-c-strings-null-terminator"
+  ]
+}

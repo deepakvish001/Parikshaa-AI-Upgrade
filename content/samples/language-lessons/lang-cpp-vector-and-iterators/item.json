@@ -1,0 +1,225 @@
+{
+  "schema": "parikshaa.content/lesson@1",
+  "slug": "lang-cpp-vector-and-iterators",
+  "version": 1,
+  "title": "C++ vectors: growth, iterators and safe erasing",
+  "tier": "premium",
+  "text_language": "en",
+  "course": "lang-cpp",
+  "difficulty": "medium",
+  "tags": {
+    "topics": [
+      "stl",
+      "vector",
+      "iterators"
+    ],
+    "patterns": [
+      "erase-remove",
+      "iterator-invalidation"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own lesson text and examples on c++ vectors: growth, iterators and safe erasing, examples, code, quiz and explanations; no text from any site, book or course.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-languages",
+      "module": "C++",
+      "position": 1
+    }
+  ],
+  "est_minutes": 13,
+  "prerequisites": [
+    "lang-cpp-references-vs-pointers"
+  ],
+  "outcomes": [
+    "can explain size, capacity and why push_back is amortised O(1)",
+    "can say which vector operations invalidate iterators and references",
+    "can remove elements correctly with the erase-remove idiom"
+  ],
+  "sections": [
+    {
+      "kind": "why",
+      "heading": "Why this matters",
+      "body": "`std::vector` is the container you will use in nearly every C++ solution, in contests and in interviews. It is fast because its elements sit next to each other in memory, and that same fact causes its two famous traps: references that suddenly point to freed memory, and loops that skip elements while erasing. Both appear in \"find the bug\" rounds."
+    },
+    {
+      "kind": "concept",
+      "heading": "Size, capacity and reallocation",
+      "body": "A vector owns one block of memory. **`size()`** is how many elements are in use; **`capacity()`** is how many fit before the block is full.\n\nWhen `push_back` finds the block full, the vector **reallocates**: it gets a bigger block (libstdc++, the library with g++, doubles it), moves every element across, and frees the old block. One push can therefore cost `O(n)`. But because capacity doubles, a long run of pushes copies each element only a few times on average, so `push_back` is **amortised `O(1)`**.\n\nIf you know the final size, call **`reserve(n)`** first: one allocation, no reallocation during the loop.\n\n> **Note:** Doubling means the total copying for `n` pushes is at most about `1 + 2 + 4 + ... + n < 2n` element moves. That geometric sum is the whole proof of amortised `O(1)`, and interviewers like to hear it."
+    },
+    {
+      "kind": "example",
+      "heading": "Watching capacity grow",
+      "body": "The program prints each time the capacity changes while pushing 1 to 17, then the same with `reserve(17)`.",
+      "code": [
+        {
+          "lang": "cpp",
+          "src": "#include <iostream>\n#include <vector>\nusing namespace std;\n\nint main() {\n    vector<int> marks;\n    size_t last = marks.capacity();\n    for (int i = 1; i <= 17; i++) {\n        marks.push_back(i);\n        if (marks.capacity() != last) {\n            cout << \"size \" << marks.size() << \" -> capacity \" << marks.capacity() << \"\\n\";\n            last = marks.capacity();\n        }\n    }\n    vector<int> planned;\n    planned.reserve(17);                      // one allocation up front\n    for (int i = 1; i <= 17; i++) planned.push_back(i);\n    cout << \"with reserve(17): capacity \" << planned.capacity() << \"\\n\";\n    return 0;\n}\n",
+          "runnable": true,
+          "expected_output": "size 1 -> capacity 1\nsize 2 -> capacity 2\nsize 3 -> capacity 4\nsize 5 -> capacity 8\nsize 9 -> capacity 16\nsize 17 -> capacity 32\nwith reserve(17): capacity 17\n",
+          "caption": "A vector grows by reallocating; reserve avoids it"
+        }
+      ]
+    },
+    {
+      "kind": "concept",
+      "heading": "Iterator and reference invalidation",
+      "body": "An iterator, a pointer or a reference into a vector refers to a place in its memory block. Two kinds of operation break them:\n\n- **Reallocation** (a `push_back`, `insert` or `resize` that exceeds capacity): the whole block moves, so **every** iterator, pointer and reference into the vector becomes invalid.\n- **`erase` and `insert` without reallocation**: elements after the position shift, so iterators, pointers and references **at or after** that position are invalid; earlier ones stay valid.\n\nUsing an invalid iterator is undefined behaviour: often it seems to work, then crashes in a test you did not run.\n\nErasing inside a loop has a second, quieter problem. After `erase(begin() + i)` the next element **slides into position `i`**, and the loop's `i++` jumps over it. Two absent marks in a row means one survives."
+    },
+    {
+      "kind": "example",
+      "heading": "Erasing the wrong way and the right way",
+      "body": "Both versions try to remove every `-1` (an absent mark). The index loop leaves one behind; the **erase-remove idiom** removes all of them in one pass.",
+      "code": [
+        {
+          "lang": "cpp",
+          "src": "#include <algorithm>\n#include <iostream>\n#include <vector>\nusing namespace std;\n\nvoid print(const char* label, const vector<int>& v) {\n    cout << label;\n    for (int x : v) cout << \" \" << x;\n    cout << \"\\n\";\n}\n\nint main() {\n    vector<int> wrong = {70, -1, -1, 85, -1, 90};          // -1 means absent\n    for (size_t i = 0; i < wrong.size(); i++)\n        if (wrong[i] == -1) wrong.erase(wrong.begin() + i);  // skips the element that slides in\n    print(\"index loop:\", wrong);\n\n    vector<int> right = {70, -1, -1, 85, -1, 90};\n    right.erase(remove(right.begin(), right.end(), -1), right.end());\n    print(\"erase-remove:\", right);\n    return 0;\n}\n",
+          "runnable": true,
+          "expected_output": "index loop: 70 -1 85 90\nerase-remove: 70 85 90\n",
+          "caption": "Erasing inside an index loop skips elements; erase-remove does not"
+        }
+      ]
+    },
+    {
+      "kind": "note",
+      "heading": "How erase-remove works",
+      "body": "`std::remove(first, last, value)` does **not** remove anything from the container: it cannot, because it only has iterators. It walks the range once and **moves every element it keeps to the front**, in order, then returns an iterator to the new logical end. The elements after that point are left over and unspecified.\n\n`v.erase(newEnd, v.end())` then actually shrinks the vector. Together they take one linear pass, `O(n)`, compared with `O(n^2)` for erasing elements one by one (each `erase` shifts the rest).\n\nTrace it on `70 -1 -1 85 -1 90`: kept elements 70, 85, 90 are moved to the front, `remove` returns an iterator to position 3, and `erase` cuts the last three slots. Since C++20 there is `std::erase(v, value)` that does both steps, but many judges still compile as C++17, so learn the idiom.\n\nFor a condition instead of a value, use `remove_if` with a lambda: `v.erase(remove_if(v.begin(), v.end(), [](int m) { return m < 0; }), v.end());`.\n\nIf you really must erase inside a loop, use the iterator that `erase` returns: `it = v.erase(it);` and only `++it` when you did not erase. That keeps the iterator valid and does not skip, though it is still `O(n^2)` in the worst case."
+    },
+    {
+      "kind": "misconception",
+      "heading": "Common mix-ups",
+      "body": "**Many students think `remove` shrinks the vector.** It only reorders and returns the new end; `size()` is unchanged until you call `erase`.\n\n**Many students think `reserve(n)` creates n elements.** It only allocates capacity; `size()` is still 0, and `v[0]` is out of bounds. `resize(n)` creates elements.\n\n**Many students think a reference into a vector stays valid as long as the vector exists.** Any reallocation invalidates it, even if you only pushed at the end."
+    },
+    {
+      "kind": "interview",
+      "heading": "Interview questions",
+      "body": "Answers as a strong candidate would say them.",
+      "qa": [
+        {
+          "q": "Why is push_back amortised O(1) if it sometimes copies everything?",
+          "a": "Capacity grows geometrically, typically doubling, so after n pushes the total elements moved is bounded by about 2n. Spread over n operations that is constant time each, even though a single push can cost O(n)."
+        },
+        {
+          "q": "What invalidates vector iterators?",
+          "a": "Any reallocation invalidates all of them. Without reallocation, erase and insert invalidate iterators at or after the position. Reading through an invalid iterator is undefined behaviour."
+        },
+        {
+          "q": "How do you remove all elements equal to x from a vector?",
+          "a": "With the erase-remove idiom: v.erase(remove(v.begin(), v.end(), x), v.end()). remove compacts the kept elements to the front in one pass and returns the new end; erase drops the tail. It is O(n) and keeps the order."
+        }
+      ]
+    },
+    {
+      "kind": "summary",
+      "heading": "Summary",
+      "body": "- size is in use, capacity is allocated; growth doubles capacity.\n- push_back is amortised O(1); `reserve` avoids reallocations.\n- Reallocation invalidates all iterators, pointers and references.\n- Erasing in an index loop skips the next element.\n- Use `erase(remove(...), end())`, or `remove_if` for a condition."
+    }
+  ],
+  "quiz": [
+    {
+      "stem": "After `vector<int> v; v.reserve(10);` what are size() and capacity()?",
+      "options": [
+        "10 and 10",
+        "0 and at least 10",
+        "0 and 0",
+        "10 and 20"
+      ],
+      "correct": 1,
+      "explanation": "reserve allocates space but creates no elements."
+    },
+    {
+      "stem": "`auto& first = v[0]; v.push_back(5);` with size() == capacity() before the push. Is `first` safe to use?",
+      "options": [
+        "Yes, always",
+        "No: the push reallocated and first dangles",
+        "Only if v had one element",
+        "Only in C++20"
+      ],
+      "correct": 1,
+      "explanation": "A full vector reallocates on push_back, invalidating every reference into it."
+    },
+    {
+      "stem": "What does `v.size()` return right after `remove(v.begin(), v.end(), 0)` on {0, 1, 0, 2}?",
+      "options": [
+        "2",
+        "4",
+        "0",
+        "3"
+      ],
+      "correct": 1,
+      "explanation": "remove only reorders; size changes only after erase."
+    },
+    {
+      "stem": "Time to remove all occurrences of x from n elements with erase-remove?",
+      "options": [
+        "O(1)",
+        "O(log n)",
+        "O(n)",
+        "O(n^2)"
+      ],
+      "correct": 2,
+      "explanation": "One pass to compact, one erase of the tail."
+    }
+  ],
+  "hands_on": [
+    {
+      "id": "remove-all",
+      "title": "Remove every absent mark",
+      "task": "Read `n` and `x`, then `n` integers. Fill in `removeAll` so it removes **every** element equal to `x` and keeps the others in order. The program prints the rest, space-separated, or `empty` if nothing is left.",
+      "lang": "cpp",
+      "starter": "#include <algorithm>\n#include <iostream>\n#include <vector>\nusing namespace std;\n\n// Remove every element equal to x, keeping the order of the rest.\nvoid removeAll(vector<int>& v, int x) {\n    // TODO: your code here\n}\n\nint main() {\n    int n, x;\n    if (!(cin >> n >> x)) return 0;\n    vector<int> v(n);\n    for (int& e : v) cin >> e;\n    removeAll(v, x);\n    if (v.empty()) cout << \"empty\\n\";\n    for (size_t i = 0; i < v.size(); i++) cout << v[i] << (i + 1 < v.size() ? ' ' : '\\n');\n    return 0;\n}\n",
+      "solution": "#include <algorithm>\n#include <iostream>\n#include <vector>\nusing namespace std;\n\nvoid removeAll(vector<int>& v, int x) {\n    v.erase(remove(v.begin(), v.end(), x), v.end());\n}\n\nint main() {\n    int n, x;\n    if (!(cin >> n >> x)) return 0;\n    vector<int> v(n);\n    for (int& e : v) cin >> e;\n    removeAll(v, x);\n    if (v.empty()) cout << \"empty\\n\";\n    for (size_t i = 0; i < v.size(); i++) cout << v[i] << (i + 1 < v.size() ? ' ' : '\\n');\n    return 0;\n}\n",
+      "tests": [
+        {
+          "id": "t1",
+          "input": "6 -1\n70 -1 -1 85 -1 90\n",
+          "expected": "70 85 90\n",
+          "hidden": false
+        },
+        {
+          "id": "t2",
+          "input": "3 5\n5 5 5\n",
+          "expected": "empty\n",
+          "hidden": true
+        },
+        {
+          "id": "t3",
+          "input": "4 0\n1 2 3 4\n",
+          "expected": "1 2 3 4\n",
+          "hidden": true
+        },
+        {
+          "id": "t4",
+          "input": "5 2\n2 1 2 1 2\n",
+          "expected": "1 1\n",
+          "hidden": true
+        },
+        {
+          "id": "t5",
+          "input": "1 9\n9\n",
+          "expected": "empty\n",
+          "hidden": true
+        },
+        {
+          "id": "t6",
+          "input": "7 3\n3 3 1 3 3 2 3\n",
+          "expected": "1 2\n",
+          "hidden": true
+        }
+      ]
+    }
+  ],
+  "revision_card": {
+    "front": "std::vector traps: what invalidates iterators, and how to remove all x?",
+    "back": "Reallocation (push_back past capacity) invalidates everything; erase/insert invalidate at and after the position. Remove all x: v.erase(remove(v.begin(), v.end(), x), v.end()), O(n). reserve(n) allocates, resize(n) creates."
+  },
+  "next": [
+    "lang-python-mutable-defaults"
+  ]
+}
