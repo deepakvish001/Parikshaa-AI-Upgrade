@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mcq.schema.json",
+  "title": "Parikshaa content: MCQ or numeric question (aptitude, CS quiz, language output-predict, design concept)",
+  "description": "One question with options (or a number to type), and its worked explanation. See docs/content/CONTENT-FORMAT.md section 6.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "slug", "version", "title", "tier", "text_language", "difficulty", "section", "topic", "tags", "authoring", "kind", "stem", "explanation", "time_target_sec"],
+  "properties": {
+    "schema": { "const": "parikshaa.content/mcq@1" },
+    "slug": { "$ref": "common.schema.json#/$defs/slug", "x-db": "practice_problems.slug" },
+    "version": { "$ref": "common.schema.json#/$defs/version" },
+    "title": { "$ref": "common.schema.json#/$defs/title" },
+    "tier": { "$ref": "common.schema.json#/$defs/tier" },
+    "text_language": { "$ref": "common.schema.json#/$defs/text_language" },
+    "difficulty": { "$ref": "common.schema.json#/$defs/difficulty" },
+    "section": {
+      "enum": ["aptitude-quant", "aptitude-logical", "aptitude-verbal", "cs-cn", "cs-os", "cs-dbms", "cs-oop", "cs-lld", "sd-hld", "lang-c", "lang-cpp", "lang-python", "lang-java", "lang-javascript", "sql-concept", "dsa-concept"],
+      "x-db": "library_questions.section is coarser (aptitude, cs, programming, dsa, sql); the full value goes in tags."
+    },
+    "topic": { "$ref": "common.schema.json#/$defs/label", "description": "e.g. percentages, time-and-work, syllogism, seating, reading-comprehension, tcp, paging." },
+    "tags": { "$ref": "common.schema.json#/$defs/tags" },
+    "authoring": { "$ref": "common.schema.json#/$defs/authoring" },
+    "placement": { "$ref": "common.schema.json#/$defs/placement" },
+    "variants": { "$ref": "common.schema.json#/$defs/variants", "description": "With variants, a solver is required: it computes the answer and options for each set." },
+    "kind": { "enum": ["mcq", "numeric"], "x-db": "question.kind" },
+    "stem": { "$ref": "common.schema.json#/$defs/markdown", "x-db": "question.stem" },
+    "passage": {
+      "description": "Reading comprehension or a data set several questions share (same id).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "text"],
+      "properties": { "id": { "type": "string", "pattern": "^[a-z0-9-]{1,60}$" }, "title": { "type": "string" }, "text": { "$ref": "common.schema.json#/$defs/markdown" } },
+      "x-db": "question.passage"
+    },
+    "options": { "type": "array", "minItems": 4, "maxItems": 5, "uniqueItems": true, "items": { "type": "string", "minLength": 1, "maxLength": 400 }, "x-db": "question.options" },
+    "correct": { "type": "integer", "minimum": 0, "maximum": 4, "x-db": "question.correctIndex" },
+    "answer": { "type": "number", "description": "kind numeric: the right number.", "x-db": "question.expected" },
+    "tolerance": { "type": "number", "minimum": 0, "x-db": "question.tolerance" },
+    "unit": { "type": "string" },
+    "explanation": {
+      "$ref": "common.schema.json#/$defs/markdown",
+      "description": "EDITORIAL-STYLE section 5, aptitude: ### Understand, ### Plan, ### Solve, ### Check (why each wrong option is wrong).",
+      "x-db": "practice_problems.editorial (opens after a right answer or 3 wrong ones)"
+    },
+    "distractors": {
+      "description": "For each wrong option (by index): the mistake that leads to it.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["option", "mistake"],
+        "properties": { "option": { "type": "integer", "minimum": 0, "maximum": 4 }, "mistake": { "type": "string", "minLength": 5 } }
+      }
+    },
+    "shortcut": { "type": "string", "description": "A faster way, when one is honest (aptitude)." },
+    "time_target_sec": { "type": "integer", "minimum": 10, "maximum": 900 },
+    "solver": {
+      "description": "Python 3. Reads a JSON object of parameter values on stdin ({} when there are no variants). Prints one line of JSON: {\"answer\": <the right option's text or the number>, \"options\": [...] } (options only for an mcq with variants).",
+      "type": "string",
+      "minLength": 10
+    },
+    "images": {
+      "type": "array",
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["file", "alt"],
+        "properties": { "file": { "type": "string" }, "alt": { "type": "string", "minLength": 15 } }
+      },
+      "x-db": "question.images (uploaded to /api/media by hash)",
+      "x-needs-platform": "Image files inside a ZIP bundle, uploaded by the importer."
+    },
+    "revision_card": { "$ref": "common.schema.json#/$defs/revision_card" }
+  }
+}

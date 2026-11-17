@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "lesson.schema.json",
+  "title": "Parikshaa content: lesson (CS core, LLD/OOD concepts, language courses)",
+  "description": "One concept, read in 8-15 minutes, with code that runs, a quiz and a hands-on task. CONTENT-CATALOG.md 3b and EDITORIAL-STYLE.md section 5. See docs/content/CONTENT-FORMAT.md section 7.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "slug", "version", "title", "tier", "text_language", "course", "difficulty", "tags", "authoring", "est_minutes", "outcomes", "sections", "quiz", "revision_card"],
+  "properties": {
+    "schema": { "const": "parikshaa.content/lesson@1" },
+    "slug": { "$ref": "common.schema.json#/$defs/slug", "x-db": "prep_lessons.slug" },
+    "version": { "$ref": "common.schema.json#/$defs/version" },
+    "title": { "$ref": "common.schema.json#/$defs/title", "x-db": "prep_lessons.title" },
+    "tier": { "$ref": "common.schema.json#/$defs/tier" },
+    "text_language": { "$ref": "common.schema.json#/$defs/text_language" },
+    "course": {
+      "enum": ["cn", "os", "dbms", "lld", "ood", "lang-c", "lang-cpp", "lang-python", "lang-java", "lang-javascript", "sql", "hld"],
+      "description": "The course (track) family. The exact track and module go in placement."
+    },
+    "difficulty": { "$ref": "common.schema.json#/$defs/difficulty" },
+    "tags": { "$ref": "common.schema.json#/$defs/tags" },
+    "authoring": { "$ref": "common.schema.json#/$defs/authoring" },
+    "placement": { "$ref": "common.schema.json#/$defs/placement" },
+    "est_minutes": { "type": "integer", "minimum": 3, "maximum": 120, "x-db": "prep_lessons.est_minutes" },
+    "prerequisites": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/slug" } },
+    "outcomes": { "type": "array", "minItems": 2, "maxItems": 6, "items": { "type": "string", "minLength": 10 }, "description": "After this lesson the learner can ..." },
+    "sections": {
+      "description": "In order: why, concept (one or more), example, misconception, interview, summary. Rendered to prep_lessons.body as Markdown (## heading per section, code as fenced blocks).",
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "heading", "body"],
+        "properties": {
+          "kind": { "enum": ["why", "concept", "example", "misconception", "interview", "summary", "note"] },
+          "heading": { "type": "string", "minLength": 2, "maxLength": 120 },
+          "body": { "$ref": "common.schema.json#/$defs/markdown" },
+          "code": { "type": "array", "maxItems": 6, "items": { "$ref": "common.schema.json#/$defs/code_block" } },
+          "visual": { "$ref": "common.schema.json#/$defs/visual" },
+          "qa": {
+            "description": "kind interview: question and model answer pairs.",
+            "type": "array",
+            "items": { "type": "object", "additionalProperties": false, "required": ["q", "a"], "properties": { "q": { "type": "string", "minLength": 5 }, "a": { "type": "string", "minLength": 10 } } }
+          }
+        }
+      },
+      "x-db": "prep_lessons.body (Markdown, at most 200,000 characters)"
+    },
+    "quiz": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 10,
+      "items": { "$ref": "common.schema.json#/$defs/mcq_inline" },
+      "x-db": "practice_problems (mcq, slug <lesson-slug>-q<n>) + prep_lesson_quiz"
+    },
+    "hands_on": {
+      "description": "Khud karo: a small task checked by tests. Required for language lessons.",
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "task", "lang", "starter", "solution", "tests"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9-]{1,40}$" },
+          "title": { "type": "string", "minLength": 3 },
+          "task": { "$ref": "common.schema.json#/$defs/markdown" },
+          "lang": { "$ref": "common.schema.json#/$defs/run_language" },
+          "starter": { "type": "string", "minLength": 1 },
+          "solution": { "type": "string", "minLength": 1 },
+          "tests": { "type": "array", "minItems": 3, "items": { "$ref": "common.schema.json#/$defs/io_test" } },
+          "checker": { "$ref": "common.schema.json#/$defs/checker" }
+        }
+      },
+      "x-db": "practice_problems (kind code, slug <lesson-slug>-<id>), placed after the lesson in its module"
+    },
+    "revision_card": { "$ref": "common.schema.json#/$defs/revision_card" },
+    "next": { "type": "array", "maxItems": 4, "items": { "$ref": "common.schema.json#/$defs/slug" } },
+    "video_url": { "type": "string", "pattern": "^https://", "x-db": "prep_lessons.video_url" }
+  }
+}

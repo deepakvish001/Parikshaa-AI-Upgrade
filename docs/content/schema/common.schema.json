@@ -1,0 +1,266 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "common.schema.json",
+  "title": "Parikshaa content: shared definitions",
+  "description": "Pieces every content type uses. See docs/content/CONTENT-FORMAT.md. Keys starting x- are notes for the importer (x-db: where the value is stored today; x-needs-platform: what the platform must add before the value is used).",
+  "$defs": {
+    "slug": {
+      "description": "Stable address. Never changes after first upload; a re-upload with the same slug updates the item.",
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,78}[a-z0-9]$"
+    },
+    "version": {
+      "description": "Starts at 1. Raise by 1 on every change; the same slug and version with different content is refused.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "title": { "type": "string", "minLength": 3, "maxLength": 160 },
+    "markdown": { "type": "string", "minLength": 1 },
+    "tier": {
+      "description": "public: free for every learner. premium: Plus only.",
+      "enum": ["public", "premium"],
+      "x-needs-platform": "Per-item Plus lock. Today only lessons past a track's free modules are locked (prep.ts #locked); problems are never locked."
+    },
+    "text_language": {
+      "description": "Language the learner reads. en = English; hi-Latn = Hinglish (Hindi in Latin script).",
+      "enum": ["en", "hi-Latn"]
+    },
+    "difficulty": { "enum": ["easy", "medium", "hard"], "x-db": "practice_problems.difficulty" },
+    "level": {
+      "description": "PROBLEM-STANDARD.md section 2. L0/L1 go with easy, L2 with medium, L3/L4 with hard.",
+      "enum": ["L0", "L1", "L2", "L3", "L4"]
+    },
+    "label": { "type": "string", "pattern": "^[a-z0-9][a-z0-9+#.-]{0,40}$" },
+    "company": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "source", "verified"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "source": { "type": "string", "minLength": 3, "description": "Where the claim comes from: an interview-experience id of ours, or a public, linkable report." },
+        "verified": { "const": true, "description": "Only verified companies may be listed. Unverified: leave the company out." }
+      },
+      "x-db": "prep_companies + prep_company_reports (source 'staff')"
+    },
+    "tags": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["topics"],
+      "properties": {
+        "topics": { "type": "array", "minItems": 1, "maxItems": 8, "uniqueItems": true, "items": { "$ref": "#/$defs/label" } },
+        "patterns": { "type": "array", "maxItems": 8, "uniqueItems": true, "items": { "$ref": "#/$defs/label" } },
+        "companies": { "type": "array", "maxItems": 20, "items": { "$ref": "#/$defs/company" } },
+        "extra": { "type": "array", "maxItems": 10, "uniqueItems": true, "items": { "$ref": "#/$defs/label" } }
+      },
+      "x-db": "practice_problems.tags = topics + patterns + extra (companies go to prep_company_reports)"
+    },
+    "authoring": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["author", "generated_with", "originality"],
+      "properties": {
+        "author": { "type": "string", "minLength": 2, "description": "Person or team accountable for the item." },
+        "generated_with": { "enum": ["human", "ai", "ai+human"] },
+        "tool": { "type": "string", "description": "Name of the tool used, if any. Free text." },
+        "originality": {
+          "type": "string",
+          "minLength": 20,
+          "description": "One or two sentences: the story, statement, tests and editorial are our own; no text copied from another site or book we do not own."
+        },
+        "review": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state"],
+          "properties": {
+            "state": { "enum": ["draft", "self-checked", "reviewed", "approved"] },
+            "by": { "type": "string" },
+            "on": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+            "notes": { "type": "string" }
+          }
+        }
+      },
+      "x-needs-platform": "Stored with the item's version (content_items table); not in practice_problems today."
+    },
+    "placement": {
+      "description": "Where the item sits in a track. The track itself is declared in the bundle manifest.",
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["track", "module", "position"],
+        "properties": {
+          "track": { "$ref": "#/$defs/slug" },
+          "module": { "type": "string", "minLength": 1, "maxLength": 160 },
+          "position": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "x-db": "prep_tracks / prep_modules / prep_items"
+    },
+    "variants": {
+      "description": "Per-learner variants. Every string in the item may use {{name}} for a parameter. sets[0] is the default the item is written and checked for; each further set is a variant a learner may be given.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["params", "sets"],
+      "properties": {
+        "params": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 6,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "description"],
+            "properties": {
+              "name": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,30}$" },
+              "description": { "type": "string", "minLength": 3 }
+            }
+          }
+        },
+        "sets": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 20,
+          "items": { "type": "object" }
+        }
+      },
+      "x-needs-platform": "Variant expansion at upload (one stored copy per set) and assignment per learner (hash of learner id and slug). Not in the DB today."
+    },
+    "hints": {
+      "description": "A ladder: hint 1 nudges, the last one nearly gives the idea. Never code.",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 5,
+      "items": { "type": "string", "minLength": 10, "maxLength": 600 },
+      "x-db": "hints[0] -> practice_problems.hint (static rung 1). The rest: x-needs-platform (static rungs 2-3)."
+    },
+    "code_language": { "enum": ["c", "cpp", "java", "python", "javascript"] },
+    "run_language": { "enum": ["c", "cpp", "java", "python", "javascript", "sql"] },
+    "starters": {
+      "description": "Starter code by language: a function stub and fast input/output around it, with the right integer width.",
+      "type": "object",
+      "propertyNames": { "enum": ["c", "cpp", "java", "python", "javascript"] },
+      "additionalProperties": { "type": "string", "minLength": 1 },
+      "x-db": "question.starters"
+    },
+    "checker": {
+      "description": "How output is judged. exact is the default.",
+      "oneOf": [
+        { "type": "object", "additionalProperties": false, "required": ["kind"], "properties": { "kind": { "enum": ["exact", "tokens", "unordered"] } } },
+        { "type": "object", "additionalProperties": false, "required": ["kind", "tolerance"], "properties": { "kind": { "const": "numbers" }, "tolerance": { "type": "number", "minimum": 0, "maximum": 1 } } },
+        { "type": "object", "additionalProperties": false, "required": ["kind", "source"], "properties": { "kind": { "const": "custom" }, "source": { "type": "string", "minLength": 1 } } }
+      ],
+      "x-db": "question.checker (custom: Python 3, run as checker.py input expected output; exit 0 accepts)"
+    },
+    "solution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "lang", "src"],
+      "properties": {
+        "role": { "enum": ["reference", "brute", "wrong"] },
+        "lang": { "$ref": "#/$defs/run_language" },
+        "src": { "type": "string", "minLength": 1 },
+        "expect": { "enum": ["WA", "TLE", "RE", "MLE", "FAIL"], "description": "For a wrong solution: the verdict at least one test must give. FAIL: any verdict but pass." },
+        "why": { "type": "string", "minLength": 5, "description": "For a wrong solution: the mistake it makes (int overflow, off-by-one, O(n^2))." }
+      },
+      "x-needs-platform": "Brute and wrong solutions are kept for the gates only; stored with the item version, never shown."
+    },
+    "literal_test": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["input"],
+      "properties": {
+        "input": { "type": "string" },
+        "expected": { "type": "string", "description": "Optional: when given, must equal the reference's output. When absent, the reference's output is used." },
+        "explanation": { "type": "string", "description": "Markdown, shown under a sample." },
+        "note": { "type": "string", "description": "What this test is for (author's note, never shown)." },
+        "weight": { "type": "number", "minimum": 0 }
+      }
+    },
+    "io_test": {
+      "description": "A fixed test: standard input and the exact standard output.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "input", "expected", "hidden"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Za-z0-9_.-]{1,60}$" },
+        "input": { "type": "string" },
+        "expected": { "type": "string" },
+        "hidden": { "type": "boolean" },
+        "weight": { "type": "number", "minimum": 0 },
+        "milestone": { "type": "string" },
+        "note": { "type": "string" }
+      }
+    },
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "content"],
+      "properties": {
+        "path": { "type": "string", "pattern": "^[A-Za-z0-9_][A-Za-z0-9_./-]{0,120}$" },
+        "content": { "type": "string" },
+        "editable": { "type": "boolean", "description": "false: shown read-only (a test driver, data). Default true." },
+        "role": { "enum": ["source", "header", "driver", "data", "doc"] }
+      }
+    },
+    "files": { "type": "array", "minItems": 1, "maxItems": 40, "items": { "$ref": "#/$defs/file" } },
+    "mcq_inline": {
+      "description": "A short question asked inside a lesson or a design case.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stem", "options", "correct", "explanation"],
+      "properties": {
+        "stem": { "$ref": "#/$defs/markdown" },
+        "options": { "type": "array", "minItems": 2, "maxItems": 6, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+        "correct": { "type": "integer", "minimum": 0, "maximum": 5 },
+        "explanation": { "$ref": "#/$defs/markdown" }
+      },
+      "x-db": "practice_problems (kind mcq) + prep_lesson_quiz (at most 10 per lesson)"
+    },
+    "revision_card": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["front", "back"],
+      "properties": {
+        "front": { "type": "string", "minLength": 5, "maxLength": 300 },
+        "back": { "type": "string", "minLength": 5, "maxLength": 1200 }
+      },
+      "x-needs-platform": "Authored revision card text; today cards are made from wrong answers only."
+    },
+    "visual": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "alt", "data"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9-]{1,40}$" },
+        "kind": { "enum": ["array", "grid", "tree", "graph", "table", "dry-run", "mermaid", "timeline"] },
+        "alt": { "type": "string", "minLength": 15, "description": "What the picture shows, for a screen reader." },
+        "data": { "type": "object" }
+      },
+      "x-needs-platform": "Sketch renderer (LEARN-V2 section 3d). Until then the importer shows alt text and, for dry-run, a table of frames."
+    },
+    "code_block": {
+      "description": "Code shown in a lesson. runnable: the learner may press Run; with expected_output, the gates run it and compare.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lang", "src"],
+      "properties": {
+        "lang": { "type": "string", "pattern": "^[a-z0-9+#-]{1,20}$" },
+        "src": { "type": "string", "minLength": 1 },
+        "runnable": { "type": "boolean" },
+        "stdin": { "type": "string" },
+        "expected_output": { "type": "string" },
+        "caption": { "type": "string" }
+      }
+    },
+    "editorial_length": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["form", "target_words"],
+      "properties": {
+        "form": { "enum": ["standard", "long"] },
+        "target_words": { "type": "integer", "minimum": 200, "maximum": 12000, "description": "The owner's checklist sets it per tier and difficulty (INSTRUCTIONS.md). The gate fails below 85% of it." }
+      }
+    }
+  }
+}

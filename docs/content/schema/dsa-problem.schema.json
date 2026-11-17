@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "dsa-problem.schema.json",
+  "title": "Parikshaa content: DSA problem (stdin/stdout), package v2",
+  "description": "A coding problem the learner solves as a whole program reading standard input. Follows docs/learn/PROBLEM-STANDARD.md (package v2, test groups, machine gates) and docs/learn/EDITORIAL-STYLE.md (4-step editorial). See docs/content/CONTENT-FORMAT.md section 4.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "slug", "version", "title", "tier", "text_language", "difficulty", "level", "tags", "authoring", "statement", "input_format", "output_format", "constraints", "constraints_structured", "statement_rules", "languages", "starters", "solutions", "test_plan", "limits", "hints", "editorial", "editorial_length", "approaches", "related"],
+  "properties": {
+    "schema": { "const": "parikshaa.content/dsa-problem@1" },
+    "slug": { "$ref": "common.schema.json#/$defs/slug", "x-db": "practice_problems.slug" },
+    "version": { "$ref": "common.schema.json#/$defs/version" },
+    "title": { "$ref": "common.schema.json#/$defs/title", "x-db": "practice_problems.title" },
+    "tier": { "$ref": "common.schema.json#/$defs/tier" },
+    "text_language": { "$ref": "common.schema.json#/$defs/text_language" },
+    "difficulty": { "$ref": "common.schema.json#/$defs/difficulty" },
+    "level": { "$ref": "common.schema.json#/$defs/level" },
+    "rating": { "type": "integer", "minimum": 800, "maximum": 3500, "description": "Codeforces-like estimate." },
+    "tags": { "$ref": "common.schema.json#/$defs/tags" },
+    "authoring": { "$ref": "common.schema.json#/$defs/authoring" },
+    "placement": { "$ref": "common.schema.json#/$defs/placement" },
+    "variants": { "$ref": "common.schema.json#/$defs/variants" },
+    "statement": { "$ref": "common.schema.json#/$defs/markdown", "description": "Our own story and statement. No example blocks here: samples come from test_plan group samples.", "x-db": "question.stem" },
+    "input_format": { "$ref": "common.schema.json#/$defs/markdown", "x-db": "question.inputFormat" },
+    "output_format": { "$ref": "common.schema.json#/$defs/markdown", "x-db": "question.outputFormat" },
+    "constraints": { "$ref": "common.schema.json#/$defs/markdown", "x-db": "question.constraints" },
+    "constraints_structured": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "type"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "type": { "enum": ["int", "int64", "float", "string", "char", "bool"] },
+          "min": { "type": "number" },
+          "max": { "type": "number" },
+          "note": { "type": "string" }
+        }
+      },
+      "x-needs-platform": "Kept with the item version for the validator gate; no column today."
+    },
+    "statement_rules": {
+      "description": "The rules that are often left out. Each one written into the statement too.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["output_when_empty"],
+      "properties": {
+        "case": { "type": "string" },
+        "ties": { "type": "string" },
+        "no_answer": { "type": "string" },
+        "multiple_answers": { "type": "string" },
+        "output_when_empty": { "type": "string" },
+        "floating": { "type": "string" }
+      }
+    },
+    "languages": {
+      "type": "array",
+      "minItems": 5,
+      "uniqueItems": true,
+      "items": { "$ref": "common.schema.json#/$defs/code_language" },
+      "x-db": "question.languages (question.language = python)"
+    },
+    "starters": { "$ref": "common.schema.json#/$defs/starters" },
+    "solutions": {
+      "description": "At least one reference per language in languages, one brute, two wrong.",
+      "type": "array",
+      "minItems": 8,
+      "items": { "$ref": "common.schema.json#/$defs/solution" }
+    },
+    "generators": {
+      "description": "Python 3 programs. Each reads one line of space-separated arguments on standard input and prints one test input. Same arguments, same output (seeded).",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "lang", "src"],
+        "properties": {
+          "name": { "type": "string", "pattern": "^[a-z0-9_]{1,40}$" },
+          "lang": { "const": "python" },
+          "src": { "type": "string", "minLength": 1 },
+          "params": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "x-needs-platform": "Kept with the item version; the importer materialises generated tests into question.tests."
+    },
+    "validator": {
+      "description": "Optional Python 3 program: reads one test input on stdin, exits 0 if it meets the constraints, 1 (with a message on stderr) if not.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lang", "src"],
+      "properties": { "lang": { "const": "python" }, "src": { "type": "string", "minLength": 1 } }
+    },
+    "test_plan": {
+      "type": "array",
+      "minItems": 6,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["group", "hidden"],
+        "properties": {
+          "group": { "enum": ["samples", "minimal", "boundary", "edge", "random_small", "random_large", "anti", "output_edge"] },
+          "hidden": { "type": "boolean" },
+          "brute": { "type": "boolean", "description": "Whether the brute solution is held to this group too. Default: true for samples, minimal, edge, random_small, output_edge." },
+          "tests": { "type": "array", "items": { "$ref": "common.schema.json#/$defs/literal_test" } },
+          "gen": { "type": "string" },
+          "args": { "type": "array", "items": { "type": "array", "minItems": 1, "items": { "type": ["string", "integer"] } } }
+        }
+      },
+      "x-db": "question.tests (materialised: id = group-n, hidden, weight 1, explanation for samples)"
+    },
+    "checker": { "$ref": "common.schema.json#/$defs/checker" },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["time_ms", "memory_mb"],
+      "properties": {
+        "time_ms": {
+          "type": "object",
+          "propertyNames": { "enum": ["c", "cpp", "java", "python", "javascript"] },
+          "additionalProperties": { "type": "integer", "minimum": 100, "maximum": 10000 }
+        },
+        "memory_mb": { "type": "integer", "minimum": 32, "maximum": 1024 }
+      },
+      "x-db": "question.limits.timeMs (one value today: the importer stores the largest) and memoryMb",
+      "x-needs-platform": "Per-language time limit."
+    },
+    "hints": { "$ref": "common.schema.json#/$defs/hints" },
+    "approaches": {
+      "description": "The editorial's tabs: brute, better (when there is one), optimal.",
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "time", "space", "summary"],
+        "properties": {
+          "name": { "enum": ["brute", "better", "optimal"] },
+          "time": { "type": "string", "minLength": 3 },
+          "space": { "type": "string", "minLength": 3 },
+          "summary": { "type": "string", "minLength": 20, "maxLength": 600 }
+        }
+      }
+    },
+    "editorial": {
+      "$ref": "common.schema.json#/$defs/markdown",
+      "description": "EDITORIAL-STYLE.md: ## headings Problem, Understand The Problem, Coming Up With The Solution, Writing The Solution, Testing / Reflection, in that order. [[code-tabs]] where the reference code goes; [[visual:id]] for each visual.",
+      "x-db": "practice_problems.editorial ([[code-tabs]] replaced by the references, one fenced block per language)"
+    },
+    "editorial_length": { "$ref": "common.schema.json#/$defs/editorial_length" },
+    "visuals": { "type": "array", "maxItems": 10, "items": { "$ref": "common.schema.json#/$defs/visual" } },
+    "revision_card": { "$ref": "common.schema.json#/$defs/revision_card" },
+    "related": {
+      "description": "Slugs of our own problems, easier to harder. Never another site's link.",
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 8,
+      "items": { "$ref": "common.schema.json#/$defs/slug" },
+      "x-needs-platform": "Related links resolved at publish; a missing slug is a warning until the bank has it."
+    }
+  }
+}
