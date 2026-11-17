@@ -155,5 +155,5 @@
     "front": "Many questions: the sum of a[l..r] (1-indexed) on a fixed array. Method, formula, and two traps?",
     "back": "Prefix sums: prefix[0] = 0, prefix[i] = prefix[i-1] + a[i-1]. Sum(l..r) = prefix[r] − prefix[l − 1]. O(n + q). Traps: subtracting prefix[l] (loses day l); 32-bit totals overflow."
   },
-  "related": ["metro-turnstile-window", "canteen-bill-split-subarray"]
+  "related": ["sql-cab-running-fare", "sql-monthly-growth-with-gaps"]
 }

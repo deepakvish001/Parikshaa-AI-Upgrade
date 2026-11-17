@@ -1,0 +1,178 @@
+{
+  "schema": "parikshaa.content/project@1",
+  "slug": "proj-cpp-inventory",
+  "version": 1,
+  "title": "Mess store inventory in C++",
+  "tier": "public",
+  "text_language": "en",
+  "difficulty": "easy",
+  "tags": {
+    "topics": [
+      "cpp",
+      "stl",
+      "classes"
+    ],
+    "patterns": [
+      "std-map",
+      "header-and-source"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own project brief, code, tests and rubric for mess store inventory in c++, examples, code, quiz and explanations; no text from any site, book or course.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-projects",
+      "module": "C++",
+      "position": 0
+    }
+  ],
+  "language": "cpp",
+  "est_hours": 2,
+  "brief": "The mess store keeps rice, dal, oil and milk packets. Build its inventory class in C++: stock goes up when supplies arrive, down when the kitchen takes them, and a LOW report lists what must be reordered. You implement the class declared in the header; the driver handles input.",
+  "requirements": [
+    "RECEIVE adds stock and creates new items; ISSUE takes stock only if enough is there, otherwise nothing changes.",
+    "REORDER sets the level below which an item counts as low.",
+    "LOW lists items below their level as stock/level, sorted by name, including items with no stock at all.",
+    "Quantities are whole numbers from 1 to 999999."
+  ],
+  "io_protocol": "| Command | Prints |\n|---|---|\n| `RECEIVE <item> <qty>` | `<item> stock <n>` |\n| `ISSUE <item> <qty>` | `<item> stock <n>` or `error: only <n> <item> in stock` |\n| `REORDER <item> <level>` | `<item> reorder at <level>` |\n| `LOW` | `<item> <stock>/<level>` lines, or `nothing to reorder` |\n\nAnything else: `error: bad command <line>`.",
+  "milestones": [
+    {
+      "id": "m1",
+      "title": "Stock in and out",
+      "instructions": "Implement `receive`, `issue` and `stock`. A failed issue must not change anything.",
+      "hints": [
+        "stock_[item] += qty creates the item with 0 first if it is new.",
+        "Use find in const functions: operator[] would insert a missing key."
+      ]
+    },
+    {
+      "id": "m2",
+      "title": "Reorder report",
+      "instructions": "Implement `setReorder` and `low`. Items with a level but no stock are low too.",
+      "hints": [
+        "Loop over reorder_, not stock_, so items never received still appear.",
+        "std::map already iterates in sorted key order."
+      ]
+    }
+  ],
+  "files": [
+    {
+      "path": "inventory.h",
+      "content": "#ifndef INVENTORY_H\n#define INVENTORY_H\n\n#include <map>\n#include <string>\n#include <vector>\n\n// Stock of the hostel mess store. Quantities are whole units (kg, packets, litres).\nclass Inventory {\npublic:\n    // Adds qty (> 0) to the item, creating it if new. Returns the new stock.\n    int receive(const std::string& item, int qty);\n    // Takes qty out. Returns false, and changes nothing, if the item is unknown or short.\n    bool issue(const std::string& item, int qty);\n    // Stock of an item (0 if unknown).\n    int stock(const std::string& item) const;\n    // Reorder level for an item: LOW lists items whose stock is below it.\n    void setReorder(const std::string& item, int level);\n    // \"<item> <stock>/<level>\" for every item below its level, sorted by item name.\n    std::vector<std::string> low() const;\n\nprivate:\n    std::map<std::string, int> stock_;\n    std::map<std::string, int> reorder_;\n};\n\n#endif\n",
+      "role": "header",
+      "editable": false
+    },
+    {
+      "path": "inventory.cpp",
+      "content": "#include \"inventory.h\"\n\nint Inventory::receive(const std::string& item, int qty) {\n    return 0;   // Milestone 1\n}\n\nbool Inventory::issue(const std::string& item, int qty) {\n    return false;   // Milestone 1\n}\n\nint Inventory::stock(const std::string& item) const {\n    return 0;   // Milestone 1\n}\n\nvoid Inventory::setReorder(const std::string& item, int level) {\n    // Milestone 2\n}\n\nstd::vector<std::string> Inventory::low() const {\n    return {};   // Milestone 2\n}\n",
+      "role": "source"
+    },
+    {
+      "path": "main.cpp",
+      "content": "#include <iostream>\n#include <sstream>\n#include <string>\n#include \"inventory.h\"\nusing namespace std;\n\nstatic bool positive(const string& s, int& out) {\n    if (s.empty() || s.size() > 6 || s.find_first_not_of(\"0123456789\") != string::npos || s[0] == '0') return false;\n    out = stoi(s);\n    return true;\n}\n\nint main() {\n    ios::sync_with_stdio(false);\n    Inventory inv;\n    string line;\n    while (getline(cin, line)) {\n        istringstream in(line);\n        string cmd, item, num, extra;\n        if (!(in >> cmd)) continue;\n        in >> item >> num;\n        bool more = static_cast<bool>(in >> extra);\n        int qty = 0;\n        if (cmd == \"RECEIVE\" && !more && positive(num, qty)) cout << item << \" stock \" << inv.receive(item, qty) << \"\\n\";\n        else if (cmd == \"ISSUE\" && !more && positive(num, qty)) {\n            if (inv.issue(item, qty)) cout << item << \" stock \" << inv.stock(item) << \"\\n\";\n            else cout << \"error: only \" << inv.stock(item) << \" \" << item << \" in stock\\n\";\n        } else if (cmd == \"REORDER\" && !more && positive(num, qty)) {\n            inv.setReorder(item, qty);\n            cout << item << \" reorder at \" << qty << \"\\n\";\n        } else if (cmd == \"LOW\" && item.empty()) {\n            auto rows = inv.low();\n            if (rows.empty()) cout << \"nothing to reorder\\n\";\n            for (const auto& r : rows) cout << r << \"\\n\";\n        } else cout << \"error: bad command \" << line << \"\\n\";\n    }\n    return 0;\n}\n",
+      "role": "driver",
+      "editable": false
+    }
+  ],
+  "solution_files": [
+    {
+      "path": "inventory.cpp",
+      "content": "#include \"inventory.h\"\n\nint Inventory::receive(const std::string& item, int qty) {\n    return stock_[item] += qty;\n}\n\nbool Inventory::issue(const std::string& item, int qty) {\n    auto it = stock_.find(item);\n    if (it == stock_.end() || it->second < qty) return false;\n    it->second -= qty;\n    return true;\n}\n\nint Inventory::stock(const std::string& item) const {\n    auto it = stock_.find(item);\n    return it == stock_.end() ? 0 : it->second;\n}\n\nvoid Inventory::setReorder(const std::string& item, int level) {\n    reorder_[item] = level;\n}\n\nstd::vector<std::string> Inventory::low() const {\n    std::vector<std::string> out;\n    for (const auto& [item, level] : reorder_) {   // std::map iterates in key order\n        int have = stock(item);\n        if (have < level) out.push_back(item + \" \" + std::to_string(have) + \"/\" + std::to_string(level));\n    }\n    return out;\n}\n",
+      "role": "source"
+    }
+  ],
+  "bundle_order": [
+    "inventory.h",
+    "inventory.cpp",
+    "main.cpp"
+  ],
+  "tests": [
+    {
+      "id": "receive-issue",
+      "input": "RECEIVE rice 50\nISSUE rice 12\nRECEIVE rice 5\n",
+      "expected": "rice stock 50\nrice stock 38\nrice stock 43\n",
+      "hidden": false,
+      "milestone": "m1"
+    },
+    {
+      "id": "low-report",
+      "input": "RECEIVE dal 8\nRECEIVE oil 30\nREORDER dal 10\nREORDER oil 20\nREORDER milk 40\nLOW\n",
+      "expected": "dal stock 8\noil stock 30\ndal reorder at 10\noil reorder at 20\nmilk reorder at 40\ndal 8/10\nmilk 0/40\n",
+      "hidden": false,
+      "milestone": "m2"
+    },
+    {
+      "id": "short-issue",
+      "input": "RECEIVE milk 3\nISSUE milk 4\nISSUE milk 3\nISSUE milk 1\nISSUE sugar 1\n",
+      "expected": "milk stock 3\nerror: only 3 milk in stock\nmilk stock 0\nerror: only 0 milk in stock\nerror: only 0 sugar in stock\n",
+      "hidden": true,
+      "milestone": "m1"
+    },
+    {
+      "id": "nothing-low",
+      "input": "LOW\nRECEIVE salt 5\nREORDER salt 5\nLOW\nISSUE salt 1\nLOW\n",
+      "expected": "nothing to reorder\nsalt stock 5\nsalt reorder at 5\nnothing to reorder\nsalt stock 4\nsalt 4/5\n",
+      "hidden": true,
+      "milestone": "m2"
+    },
+    {
+      "id": "bad-numbers",
+      "input": "RECEIVE rice 0\nRECEIVE rice -4\nRECEIVE rice 1000000\nRECEIVE rice 07\nRECEIVE rice\nRECEIVE rice 5 kg\nLOW now\n",
+      "expected": "error: bad command RECEIVE rice 0\nerror: bad command RECEIVE rice -4\nerror: bad command RECEIVE rice 1000000\nerror: bad command RECEIVE rice 07\nerror: bad command RECEIVE rice\nerror: bad command RECEIVE rice 5 kg\nerror: bad command LOW now\n",
+      "hidden": true,
+      "milestone": "m1"
+    },
+    {
+      "id": "many-items",
+      "input": "RECEIVE tea 2\nRECEIVE atta 100\nRECEIVE ghee 1\nREORDER tea 5\nREORDER atta 50\nREORDER ghee 2\nREORDER besan 3\nLOW\nRECEIVE ghee 1\nLOW\n",
+      "expected": "tea stock 2\natta stock 100\nghee stock 1\ntea reorder at 5\natta reorder at 50\nghee reorder at 2\nbesan reorder at 3\nbesan 0/3\nghee 1/2\ntea 2/5\nghee stock 2\nbesan 0/3\ntea 2/5\n",
+      "hidden": true,
+      "milestone": "m2"
+    },
+    {
+      "id": "reorder-update",
+      "input": "RECEIVE oil 15\nREORDER oil 20\nLOW\nREORDER oil 10\nLOW\n",
+      "expected": "oil stock 15\noil reorder at 20\noil 15/20\noil reorder at 10\nnothing to reorder\n",
+      "hidden": true,
+      "milestone": "m2"
+    },
+    {
+      "id": "issue-all",
+      "input": "RECEIVE eggs 30\nISSUE eggs 30\nISSUE eggs 1\nRECEIVE eggs 6\n",
+      "expected": "eggs stock 30\neggs stock 0\nerror: only 0 eggs in stock\neggs stock 6\n",
+      "hidden": true,
+      "milestone": "m1"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "tests",
+      "criterion": "Hidden tests pass: every command prints exactly the expected output.",
+      "weight": 65,
+      "checked_by": "tests"
+    },
+    {
+      "id": "structure",
+      "criterion": "Inventory's maps are private; const member functions never insert keys; a failed ISSUE changes nothing.",
+      "weight": 20,
+      "checked_by": "review"
+    },
+    {
+      "id": "feedback",
+      "criterion": "Readable names, small functions and clear error handling (AI feedback, advice only).",
+      "weight": 15,
+      "checked_by": "ai-feedback"
+    }
+  ],
+  "extensions": [
+    "Track the date of each receipt and issue first-in, first-out.",
+    "Print the total value of stock given prices per unit."
+  ]
+}

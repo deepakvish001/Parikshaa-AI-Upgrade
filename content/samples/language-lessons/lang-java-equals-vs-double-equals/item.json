@@ -1,0 +1,221 @@
+{
+  "schema": "parikshaa.content/lesson@1",
+  "slug": "lang-java-equals-vs-double-equals",
+  "version": 1,
+  "title": "Java: == versus equals",
+  "tier": "public",
+  "text_language": "en",
+  "course": "lang-java",
+  "difficulty": "easy",
+  "tags": {
+    "topics": [
+      "strings",
+      "objects"
+    ],
+    "patterns": [
+      "equality",
+      "equals-hashcode"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own lesson text and examples on java: == versus equals, examples, code, quiz and explanations; no text from any site, book or course.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-languages",
+      "module": "Java",
+      "position": 0
+    }
+  ],
+  "est_minutes": 12,
+  "prerequisites": [],
+  "outcomes": [
+    "can predict the result of == and equals for strings and boxed numbers",
+    "can write equals and hashCode for a class of their own",
+    "can explain why HashSet and contains depend on equals"
+  ],
+  "sections": [
+    {
+      "kind": "why",
+      "heading": "Why this matters",
+      "body": "`if (status == \"PAID\")` is one of the most common Java bugs in student code, and it is cruel: it works in some tests and fails in others. \"What is the difference between == and equals?\" is asked in nearly every Java interview because the honest answer requires knowing how objects, references and the string pool work."
+    },
+    {
+      "kind": "concept",
+      "heading": "Two kinds of sameness",
+      "body": "For objects, a Java variable holds a **reference**, an arrow to an object somewhere on the heap.\n\n- **`a == b`** asks: do the two arrows point to **the same object**? It never looks inside.\n- **`a.equals(b)`** asks: do the two objects **mean the same thing**? `String.equals` compares the characters. The default `equals` inherited from `Object` is just `==`, so your own classes compare by reference until you override it.\n\nFor primitives (`int`, `double`, `char`, `boolean`), `==` compares the values directly, which is what you want.\n\n**String literals** are stored once in the **string pool**, so two identical literals share one object and `==` happens to be `true`. A string made at runtime (read from input, built with `StringBuilder`, created with `new`) is a separate object, so `==` is `false` even when the text matches. That is why `==` \"sometimes works\": it depends on where the string came from.\n\n> **Note:** Compare strings with `equals`, or `equalsIgnoreCase` for case-insensitive text. To be safe when the variable may be null, put the constant first: `\"PAID\".equals(status)` is `false` for null instead of throwing `NullPointerException`."
+    },
+    {
+      "kind": "example",
+      "heading": "Five comparisons",
+      "body": "Literals, `new String`, a string built at runtime, and boxed `Integer`s. The last two lines show a second trap: `Integer` values from -128 to 127 are cached, so `==` works for 127 and fails for 128.",
+      "code": [
+        {
+          "lang": "java",
+          "src": "public class Main {\n    public static void main(String[] args) {\n        String a = \"Kaveri\";\n        String b = \"Kaveri\";                                   // same literal: the same pooled object\n        String c = new String(\"Kaveri\");                       // a new object, same text\n        String d = new StringBuilder(\"Kav\").append(\"eri\").toString();  // built at runtime\n        System.out.println(\"a == b: \" + (a == b));\n        System.out.println(\"a == c: \" + (a == c) + \", a.equals(c): \" + a.equals(c));\n        System.out.println(\"a == d: \" + (a == d) + \", a.equals(d): \" + a.equals(d));\n        Integer x = 127, y = 127, p = 128, q = 128;           // autoboxing uses a small cache\n        System.out.println(\"127 == 127: \" + (x == y) + \", 128 == 128: \" + (p == q));\n        System.out.println(\"128 equals 128: \" + p.equals(q));\n    }\n}\n",
+          "runnable": true,
+          "expected_output": "a == b: true\na == c: false, a.equals(c): true\na == d: false, a.equals(d): true\n127 == 127: true, 128 == 128: false\n128 equals 128: true\n",
+          "caption": "== compares references; equals compares contents"
+        }
+      ]
+    },
+    {
+      "kind": "concept",
+      "heading": "equals and hashCode for your own classes",
+      "body": "When you create a class such as `Room(block, number)`, Java does not know that two rooms with the same block and number are \"the same room\". `list.contains(...)`, `indexOf`, `remove(Object)` and every hash-based collection use `equals`, so without an override they all compare references.\n\nOverride **both** `equals` and `hashCode`, always together. The **contract**: if `a.equals(b)` is true, then `a.hashCode() == b.hashCode()` must also be true. `HashSet` and `HashMap` first use the hash to find a bucket, then `equals` inside it. Equal objects with different hashes land in different buckets, so the set keeps both \"copies\" and `contains` may miss.\n\n`Objects.hash(block, number)` builds a good hash from the same fields that `equals` compares. Use the same fields in both methods, and keep them `final` so an object's hash cannot change while it sits in a set."
+    },
+    {
+      "kind": "example",
+      "heading": "A Room that knows its own equality",
+      "body": "`Room` overrides both methods; `PlainRoom` does not. The same `contains` call gives different answers, and the `HashSet` keeps only one of two equal rooms.",
+      "code": [
+        {
+          "lang": "java",
+          "src": "import java.util.*;\n\npublic class Main {\n    static final class Room {\n        final String block;\n        final int number;\n        Room(String block, int number) { this.block = block; this.number = number; }\n\n        @Override\n        public boolean equals(Object o) {\n            if (this == o) return true;\n            if (!(o instanceof Room)) return false;\n            Room r = (Room) o;\n            return number == r.number && block.equals(r.block);\n        }\n\n        @Override\n        public int hashCode() { return Objects.hash(block, number); }\n    }\n\n    static final class PlainRoom {                // no equals or hashCode\n        final String block;\n        final int number;\n        PlainRoom(String block, int number) { this.block = block; this.number = number; }\n    }\n\n    public static void main(String[] args) {\n        List<Room> booked = new ArrayList<>(List.of(new Room(\"A\", 101)));\n        List<PlainRoom> plain = new ArrayList<>(List.of(new PlainRoom(\"A\", 101)));\n        System.out.println(\"Room with equals, contains: \" + booked.contains(new Room(\"A\", 101)));\n        System.out.println(\"PlainRoom, contains: \" + plain.contains(new PlainRoom(\"A\", 101)));\n        Set<Room> set = new HashSet<>(List.of(new Room(\"B\", 7), new Room(\"B\", 7)));\n        System.out.println(\"HashSet of two equal rooms has size \" + set.size());\n    }\n}\n",
+          "runnable": true,
+          "expected_output": "Room with equals, contains: true\nPlainRoom, contains: false\nHashSet of two equal rooms has size 1\n",
+          "caption": "Overriding equals and hashCode for your own class"
+        }
+      ]
+    },
+    {
+      "kind": "example",
+      "heading": "Planning the hands-on task",
+      "body": "The task reads names from input and counts how many match a query, ignoring case. The starter compares with `==`. Every name read by `readLine()` is a **new String object**, so `n == query` is false for all of them and the count is always 0, even when the text matches exactly.\n\nThe fix is one method call: `n.equalsIgnoreCase(query)`. Trace the first test: names `Aditi`, `bilal`, `ADITI`, `Charu` and query `aditi`. `equalsIgnoreCase` matches the first and third, so the answer is 2. With `equals` (case-sensitive) it would be 0, because neither is spelled `aditi` in lower case. Read the task carefully: \"ignoring case\" decides which method you need.\n\nOne more check: the input lines may carry trailing spaces, which is why the program calls `trim()` before comparing. Two strings that differ only by a space are not equal under either method."
+    },
+    {
+      "kind": "note",
+      "heading": "Where the string pool comes from",
+      "body": "Why do two literals share an object at all? Strings in Java are **immutable**: once created, their characters never change. That makes sharing safe, so the compiler and JVM keep one copy of each literal in the **string pool** and point every use of `\"Kaveri\"` at it. This saves memory in programs that repeat the same words thousands of times.\n\nStrings created while the program runs do not go into the pool automatically. `readLine()`, `substring`, `concat`, `StringBuilder.toString()` and `new String(...)` all give new objects. You *can* force a string into the pool with `s.intern()`, after which `s.intern() == \"Kaveri\"` is true, but do not use that as a way to compare strings: it is slower than `equals` for one-off checks and hides the intent.\n\nThe same idea explains the `Integer` cache. `Integer` objects are immutable too, and the JVM pre-creates the ones from -128 to 127 because small numbers are so common. Autoboxing (`Integer x = 127`) calls `Integer.valueOf`, which hands out the cached object; above 127 it creates a new one each time.\n\nThe lesson is the same in both cases: **sharing is an optimisation the JVM is allowed to do, not a guarantee your code can rely on.** Only `equals` tells you whether two values mean the same thing."
+    },
+    {
+      "kind": "misconception",
+      "heading": "Common mix-ups",
+      "body": "**Many students think `==` works for strings because it worked in their test.** It worked because both strings were literals from the pool. Strings from input, files or string building are separate objects.\n\n**Many students think overriding `equals` alone is enough.** Without a matching `hashCode`, `HashSet` and `HashMap` break silently: duplicates appear and lookups fail.\n\n**Many students think `Integer` behaves like `int`.** `Integer` is an object; `==` compares references and only seems to work for small cached values. Use `equals`, or unbox to `int`."
+    },
+    {
+      "kind": "interview",
+      "heading": "Interview questions",
+      "body": "Answers as a strong candidate would say them.",
+      "qa": [
+        {
+          "q": "Difference between == and equals in Java?",
+          "a": "== compares primitive values, or for objects whether two references point to the same object. equals compares logical equality as defined by the class; String compares characters, and the default from Object is the same as ==."
+        },
+        {
+          "q": "Why must equals and hashCode be overridden together?",
+          "a": "Hash-based collections find a bucket by hashCode, then compare with equals. If equal objects had different hash codes they would land in different buckets, so a HashSet could hold duplicates and a HashMap lookup could miss."
+        },
+        {
+          "q": "Why does `Integer a = 128, b = 128; a == b` print false but 127 prints true?",
+          "a": "Autoboxing uses Integer.valueOf, which caches values from -128 to 127. Two boxed 127s are the same cached object; two boxed 128s are separate objects, so the reference comparison fails. Use equals or compare ints."
+        }
+      ]
+    },
+    {
+      "kind": "summary",
+      "heading": "Summary",
+      "body": "- `==` on objects compares references; `equals` compares meaning.\n- Literals share pooled objects; runtime strings do not.\n- Compare strings with `equals` / `equalsIgnoreCase`, constant first if null is possible.\n- Override `equals` and `hashCode` together, on the same final fields.\n- Boxed `Integer` `==` only seems to work from -128 to 127."
+    }
+  ],
+  "quiz": [
+    {
+      "stem": "`String s = new String(\"OK\");` What is `s == \"OK\"`?",
+      "options": [
+        "true",
+        "false",
+        "compile error",
+        "NullPointerException"
+      ],
+      "correct": 1,
+      "explanation": "new String creates a separate object; == compares references."
+    },
+    {
+      "stem": "`Integer a = 1000, b = 1000;` What is `a.equals(b)` and `a == b`?",
+      "options": [
+        "true, true",
+        "true, false",
+        "false, false",
+        "false, true"
+      ],
+      "correct": 1,
+      "explanation": "equals compares values; 1000 is outside the cache, so the references differ."
+    },
+    {
+      "stem": "A class overrides equals but not hashCode. What can go wrong?",
+      "options": [
+        "Nothing",
+        "HashSet may keep two equal objects",
+        "The code will not compile",
+        "equals stops working"
+      ],
+      "correct": 1,
+      "explanation": "Equal objects may hash to different buckets."
+    },
+    {
+      "stem": "Safest way to check `status` (may be null) against \"PAID\"?",
+      "options": [
+        "status == \"PAID\"",
+        "status.equals(\"PAID\")",
+        "\"PAID\".equals(status)",
+        "status.compareTo(\"PAID\") == 0"
+      ],
+      "correct": 2,
+      "explanation": "Calling equals on the constant never throws for a null argument."
+    }
+  ],
+  "hands_on": [
+    {
+      "id": "count-names",
+      "title": "Count the matching names",
+      "task": "Read `n`, then `n` names (one per line), then a query name. Print how many of the names equal the query **ignoring case**. The starter compares with `==`; fix `countMatches`.",
+      "lang": "java",
+      "starter": "import java.io.*;\nimport java.util.*;\n\npublic class Main {\n    static int countMatches(List<String> names, String query) {\n        int count = 0;\n        for (String n : names) if (n == query) count++;   // TODO: this compares references, not text\n        return count;\n    }\n\n    public static void main(String[] args) throws IOException {\n        BufferedReader in = new BufferedReader(new InputStreamReader(System.in));\n        int n = Integer.parseInt(in.readLine().trim());\n        List<String> names = new ArrayList<>();\n        for (int i = 0; i < n; i++) names.add(in.readLine().trim());\n        String query = in.readLine().trim();\n        System.out.println(countMatches(names, query));\n    }\n}\n",
+      "solution": "import java.io.*;\nimport java.util.*;\n\npublic class Main {\n    static int countMatches(List<String> names, String query) {\n        int count = 0;\n        for (String n : names) if (n.equalsIgnoreCase(query)) count++;\n        return count;\n    }\n\n    public static void main(String[] args) throws IOException {\n        BufferedReader in = new BufferedReader(new InputStreamReader(System.in));\n        int n = Integer.parseInt(in.readLine().trim());\n        List<String> names = new ArrayList<>();\n        for (int i = 0; i < n; i++) names.add(in.readLine().trim());\n        String query = in.readLine().trim();\n        System.out.println(countMatches(names, query));\n    }\n}\n",
+      "tests": [
+        {
+          "id": "t1",
+          "input": "4\nAditi\nbilal\nADITI\nCharu\naditi\n",
+          "expected": "2\n",
+          "hidden": false
+        },
+        {
+          "id": "t2",
+          "input": "1\nZoya\nzoya\n",
+          "expected": "1\n",
+          "hidden": true
+        },
+        {
+          "id": "t3",
+          "input": "3\nOm\nOm\nOm\nOm\n",
+          "expected": "3\n",
+          "hidden": true
+        },
+        {
+          "id": "t4",
+          "input": "2\nRavi\nRavindra\nravi\n",
+          "expected": "1\n",
+          "hidden": true
+        },
+        {
+          "id": "t5",
+          "input": "3\nAsha\nUsha\nNisha\nMeena\n",
+          "expected": "0\n",
+          "hidden": true
+        }
+      ]
+    }
+  ],
+  "revision_card": {
+    "front": "Java equality: == vs equals, the hashCode contract, and the Integer trap?",
+    "back": "== compares references (values for primitives); equals compares meaning. Override equals and hashCode together on the same fields. Boxed Integer == works only from -128 to 127 (cache)."
+  },
+  "next": [
+    "lang-java-hashmap-basics"
+  ]
+}

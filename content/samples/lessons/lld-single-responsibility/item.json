@@ -1,0 +1,185 @@
+{
+  "schema": "parikshaa.content/lesson@1",
+  "slug": "lld-single-responsibility",
+  "version": 1,
+  "title": "Single responsibility: one reason to change",
+  "tier": "public",
+  "text_language": "en",
+  "course": "lld",
+  "difficulty": "easy",
+  "tags": {
+    "topics": [
+      "solid",
+      "class-design"
+    ],
+    "patterns": [
+      "single-responsibility"
+    ],
+    "extra": [
+      "refactoring"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own mess-bill example of the single responsibility principle, examples, code, quiz and explanations; no text from any site, book or course.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-cs-core",
+      "module": "Low-level design",
+      "position": 0
+    }
+  ],
+  "est_minutes": 11,
+  "prerequisites": [],
+  "outcomes": [
+    "can name the different reasons a class might change",
+    "can split a class that mixes calculation, formatting and storage",
+    "can explain in an interview when splitting further stops helping"
+  ],
+  "sections": [
+    {
+      "kind": "why",
+      "heading": "Why this matters",
+      "body": "In a low-level design round you write classes, and the interviewer then says: \"now the tax rule changes\" or \"now we also need an SMS receipt\". If one change forces edits all over one giant class, the design is fragile. The **single responsibility principle** (the S in SOLID) is the simplest tool for designs that bend instead of break, and it is the first thing reviewers look for in your code."
+    },
+    {
+      "kind": "concept",
+      "heading": "The principle",
+      "body": "**A class should have one reason to change.** \"Reason\" means a person or a rule that might ask for a change: the accounts office changes tax rules, the warden changes the receipt wording, the IT team moves the data from files to a database.\n\nIf one class answers to all three, a change for one of them can break the others. A typo fix in the receipt text should never risk the tax maths, but if both live in one method, every edit is a risk to both.\n\nSo the test is not \"does this class do one *thing*?\" (everything does many small things) but **\"who would ask me to change it?\"**. If the answer is more than one group of people, think about splitting.\n\n> **Note:** Say it this way in an interview: \"This class has two reasons to change, the tax policy and the storage, so I'll separate them.\" It shows you are reasoning about change, not counting lines."
+    },
+    {
+      "kind": "example",
+      "heading": "A mess bill that does everything",
+      "body": "Here is a first version of the hostel's mess bill. It works, and it prints the right line.",
+      "code": [
+        {
+          "lang": "python",
+          "src": "class MessBill:\n    \"\"\"Does everything: the maths, the receipt text, and the saving.\"\"\"\n\n    def __init__(self, student, days, rate):\n        self.student, self.days, self.rate = student, days, rate\n\n    def total(self):\n        base = self.days * self.rate\n        return round(base * 1.05)          # 5% tax, hard-coded here\n\n    def receipt(self):\n        return f\"{self.student}: {self.days} days x Rs {self.rate} = Rs {self.total()} (incl. tax)\"\n\n    def save(self, ledger):\n        ledger.append(self.receipt())      # pretend this is a file or a database\n\n\nledger = []\nMessBill(\"Aditi\", 30, 90).save(ledger)\nprint(ledger[0])\n",
+          "runnable": true,
+          "expected_output": "Aditi: 30 days x Rs 90 = Rs 2835 (incl. tax)\n",
+          "caption": "Before: one class with three reasons to change"
+        }
+      ]
+    },
+    {
+      "kind": "concept",
+      "heading": "Finding the reasons to change",
+      "body": "Read `MessBill` and ask who could request a change to each part:\n\n| Part | Who asks for changes | Example change |\n|---|---|---|\n| `total()` | accounts office | tax goes from 5% to 12% for some students |\n| `receipt()` | warden, students | print in Hindi, add the month |\n| `save()` | IT team | move from a file to a database |\n\nThree groups, three reasons, one class. Also notice what is hard to do *without* editing the class: you cannot test the tax maths without also creating receipt text; you cannot use a different tax rate for one student; you cannot save to two places.\n\nThe fix is to give each reason its own class, and let a small function (or a service class) **wire them together**:\n\n- `BillCalculator` owns the maths, with the tax rate passed in.\n- `ReceiptFormatter` owns the words.\n- `Ledger` owns storage.\n- `bill_student()` coordinates: calculate, format, save."
+    },
+    {
+      "kind": "example",
+      "heading": "After the split",
+      "body": "The same bill, now in three small classes. Bilal's bill uses a different tax rate, and **no class had to be edited** to allow it: we passed a different calculator.",
+      "code": [
+        {
+          "lang": "python",
+          "src": "class BillCalculator:\n    def __init__(self, tax_rate):\n        self.tax_rate = tax_rate\n\n    def total(self, days, rate):\n        return round(days * rate * (1 + self.tax_rate))\n\n\nclass ReceiptFormatter:\n    def line(self, student, days, rate, total):\n        return f\"{student}: {days} days x Rs {rate} = Rs {total} (incl. tax)\"\n\n\nclass Ledger:\n    def __init__(self):\n        self.rows = []\n\n    def save(self, text):\n        self.rows.append(text)\n\n\ndef bill_student(student, days, rate, calc, fmt, ledger):\n    total = calc.total(days, rate)\n    ledger.save(fmt.line(student, days, rate, total))\n    return total\n\n\nledger = Ledger()\nbill_student(\"Aditi\", 30, 90, BillCalculator(0.05), ReceiptFormatter(), ledger)\nbill_student(\"Bilal\", 26, 90, BillCalculator(0.12), ReceiptFormatter(), ledger)  # tax rule changed: one class\nprint(\"\\n\".join(ledger.rows))\n",
+          "runnable": true,
+          "expected_output": "Aditi: 30 days x Rs 90 = Rs 2835 (incl. tax)\nBilal: 26 days x Rs 90 = Rs 2621 (incl. tax)\n",
+          "caption": "After: one reason to change per class"
+        }
+      ]
+    },
+    {
+      "kind": "example",
+      "heading": "What we gained",
+      "body": "- **Changes stay local.** A new receipt wording touches only `ReceiptFormatter`. A database touches only `Ledger` (or a new `DatabaseLedger` with the same `save` method).\n- **Testing is direct.** `BillCalculator(0.05).total(30, 90)` can be checked with no receipts or storage involved: 30 × 90 = 2700, plus 5% is 2835.\n- **Reuse.** The calculator can price a guest's meals too, without dragging in a student receipt.\n\nAnd we did not overdo it: there is no `TaxRateProvider`, no `ReceiptLineFactory`. Each class exists because a real group of people may ask for changes to it."
+    },
+    {
+      "kind": "note",
+      "heading": "Using SRP in a 45-minute design round",
+      "body": "In a real LLD round you will not have time to refactor twice, so use SRP while you first sketch the classes. A rhythm that works:\n\n1. **List the nouns and the verbs** from the requirements. For a hostel mess: student, bill, rate, tax, receipt, ledger; compute, print, save.\n2. **Group verbs by owner.** Computing belongs with tax rules (accounts); printing belongs with presentation (warden, students); saving belongs with storage (IT). Each group is a candidate class.\n3. **Write the coordinator last.** One function or service class calls the others in the order the business process runs. If the coordinator reads like the process (\"calculate, format, save\"), the split is right.\n4. **Say the trade-off out loud.** \"I could put formatting inside the bill, but then a wording change touches the maths, so I've kept it separate.\" Interviewers reward the reasoning more than the final class count.\n\nA quick self-check at the end: pick one likely change request (new tax slab, Hindi receipt, database instead of a list) and point to the **single** class it touches. If you have to point to two, one of them probably has two reasons to change.\n\nSRP also prepares the ground for the next principles. Once the calculator is its own class, swapping in a different calculator for guests is easy; that idea, varying behaviour behind one interface, is the strategy pattern in the next lesson. And because `bill_student()` receives its calculator, formatter and ledger instead of creating them, it is already using **dependency injection**, which makes tests trivial: pass a fake ledger and inspect what was saved."
+    },
+    {
+      "kind": "misconception",
+      "heading": "Common mix-ups",
+      "body": "**Many students think SRP means one method per class.** It means one *reason to change*. A `BillCalculator` with `total()`, `tax()` and `discount()` is fine: all three answer to the accounts office.\n\n**Many students think more classes are always better design.** Splitting has a cost: more files, more wiring, more names to learn. Split when you can name the different reasons to change, not because a class \"feels big\". A 40-line class with one reason is better than five 8-line classes with no clear owners.\n\n**Many students think SRP is only about classes.** It applies to functions and modules too: a function that parses input, computes and prints is harder to test than three functions that each do one of those."
+    },
+    {
+      "kind": "interview",
+      "heading": "Interview questions",
+      "body": "Answers as a strong candidate would say them.",
+      "qa": [
+        {
+          "q": "State the single responsibility principle in your own words.",
+          "a": "A class should have only one reason to change, meaning it should answer to one source of change, such as the tax rules or the storage choice. If two different groups could ask for changes to the same class, a change for one risks breaking the other, so I separate them."
+        },
+        {
+          "q": "How do you decide when to split a class?",
+          "a": "I list who could request changes to each part. If the list has more than one owner, or I cannot test one part without setting up another, I split along those lines. If every part answers to the same owner, I keep it together, even if it is long."
+        },
+        {
+          "q": "Show how SRP helps when the interviewer adds a requirement mid-round.",
+          "a": "Say they add SMS receipts. With a separate formatter and ledger, I add an SMS sender that takes the formatted line, and the calculator is untouched. In a single do-everything class, I would be editing the method that also does the maths."
+        },
+        {
+          "q": "Can following SRP go too far?",
+          "a": "Yes. Splitting every method into its own class adds indirection with no benefit, and the design becomes hard to follow. I stop when each class has one clear owner and the wiring code still reads like the business process."
+        }
+      ]
+    },
+    {
+      "kind": "summary",
+      "heading": "Summary",
+      "body": "- SRP: one reason to change per class, where a reason is a person or rule that can ask for changes.\n- Find reasons by asking \"who would ask me to change this?\" for each part.\n- Split calculation, formatting and storage when different people own them.\n- A small coordinating function wires the pieces together.\n- Do not split without a named reason; more classes is not automatically better."
+    }
+  ],
+  "quiz": [
+    {
+      "stem": "A `ReportCard` class computes grades, renders HTML, and emails parents. How many reasons to change does it have?",
+      "options": [
+        "One",
+        "Two",
+        "Three",
+        "It depends on the number of methods"
+      ],
+      "correct": 2,
+      "explanation": "Grading rules, presentation and delivery are owned by different people: three reasons."
+    },
+    {
+      "stem": "Which change best shows that a design follows SRP?",
+      "options": [
+        "Changing tax rules edits only the calculator class",
+        "Every class has exactly one method",
+        "All logic is in one service class",
+        "Classes have no constructors"
+      ],
+      "correct": 0,
+      "explanation": "SRP is about change staying local to the class that owns that concern."
+    },
+    {
+      "stem": "With `BillCalculator(0.05)`, what is `total(30, 90)`?",
+      "options": [
+        "2700",
+        "2835",
+        "2790",
+        "2970"
+      ],
+      "correct": 1,
+      "explanation": "30 × 90 = 2700; 2700 × 1.05 = 2835."
+    },
+    {
+      "stem": "When should you NOT split a class further?",
+      "options": [
+        "When it has more than 50 lines",
+        "When every part answers to the same owner and is tested together",
+        "When it uses a dictionary",
+        "Never: always split"
+      ],
+      "correct": 1,
+      "explanation": "Without separate reasons to change, splitting only adds indirection."
+    }
+  ],
+  "revision_card": {
+    "front": "Single responsibility principle: the rule, the test, and the limit?",
+    "back": "One reason to change per class. Test: who would ask for changes to each part? Split calculation, formatting, storage when owned by different people; do not split without a named reason."
+  },
+  "next": [
+    "lld-strategy-pattern"
+  ]
+}

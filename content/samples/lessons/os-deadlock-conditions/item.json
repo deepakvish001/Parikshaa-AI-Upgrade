@@ -1,0 +1,187 @@
+{
+  "schema": "parikshaa.content/lesson@1",
+  "slug": "os-deadlock-conditions",
+  "version": 1,
+  "title": "Deadlock: chaar shartein aur Banker ka hisaab",
+  "tier": "premium",
+  "text_language": "hi-Latn",
+  "course": "os",
+  "difficulty": "medium",
+  "tags": {
+    "topics": [
+      "deadlock",
+      "concurrency"
+    ],
+    "patterns": [
+      "bankers-algorithm",
+      "resource-allocation-graph"
+    ],
+    "extra": [
+      "coffman-conditions"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own Hinglish explanation of deadlocks, examples, code, quiz and explanations; no text from any site, book or course.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-cs-core",
+      "module": "Operating systems",
+      "position": 1
+    }
+  ],
+  "est_minutes": 13,
+  "prerequisites": [
+    "os-paging-address-translation"
+  ],
+  "outcomes": [
+    "can name the four conditions of deadlock and break each one with an example",
+    "can read a resource allocation graph and spot a cycle",
+    "can run the Banker's safety check by hand and decide whether a request is safe"
+  ],
+  "sections": [
+    {
+      "kind": "why",
+      "heading": "Ye kyun zaroori hai",
+      "body": "Do threads, do locks, aur program hamesha ke liye ruk gaya: na crash, na error, bas kuch nahi hota. Yahi **deadlock** hai. Database, payment service, ya hostel ka booking app: jahan bhi kai kaam ek saath shared cheezein lete hain, deadlock ho sakta hai. Interview me ye sawaal pakka aata hai, aur achha jawab sirf chaar shartein ratna nahi, balki **har shart ko todne ka tareeka** batana hai."
+    },
+    {
+      "kind": "concept",
+      "heading": "Ek chhoti kahani",
+      "body": "College lab me do teams hain. Team A ke paas **projector** hai aur use ek **lab PC** chahiye. Team B ke paas aakhri lab PC hai aur use **projector** chahiye. Dono apni cheez pakde baithi hain aur doosre ki cheez ka intezaar kar rahi hain. Koi chhodega nahi, koi cheen nahi sakta. Dono hamesha intezaar karengi.\n\nYahi deadlock hai: **ek group ke processes, jisme har ek us resource ka intezaar kar raha hai jo group ka hi koi doosra pakde hue hai.**",
+      "visual": {
+        "id": "rag-cycle",
+        "kind": "mermaid",
+        "alt": "Resource allocation graph: projector is held by Team A, Team A waits for the lab PC, the lab PC is held by Team B, Team B waits for the projector: a cycle.",
+        "data": {
+          "source": "graph LR\n  P[Projector] -->|held by| A[Team A]\n  A -->|waits for| L[Lab PC]\n  L -->|held by| B[Team B]\n  B -->|waits for| P"
+        }
+      }
+    },
+    {
+      "kind": "concept",
+      "heading": "Chaar shartein (Coffman conditions)",
+      "body": "Deadlock tabhi hota hai jab ye **chaaron ek saath** sach hon:\n\n1. **Mutual exclusion:** resource ek waqt me ek hi process use kar sakta hai (projector do teams ek saath nahi chala sakti).\n2. **Hold and wait:** process ek resource pakde hue doosre ka intezaar karta hai.\n3. **No preemption:** kisi se resource zabardasti cheena nahi ja sakta; wo khud chhodta hai.\n4. **Circular wait:** intezaar ka ek gol chakkar hai: A → B → A.\n\n**Inme se ek bhi shart tod do, deadlock ho hi nahi sakta.** Yahi prevention ki poori soch hai.\n\n| Shart | Kaise todein | Keemat |\n|---|---|---|\n| Mutual exclusion | Resource ko shareable banao (read-only data, spooling) | Har resource ke liye mumkin nahi |\n| Hold and wait | Saare resources ek saath maango, ya kuch pakde ho to pehle chhodo | Resources bekaar pade rehte hain |\n| No preemption | Na mile to apne resources chhod do aur baad me dobara koshish | Kaam dobara karna padta hai |\n| Circular wait | Har resource ko number do; hamesha chhote number se bade ki taraf maango | Sab code ko order maanna padta hai |\n\n> **Note:** Code me sabse kaam ka tareeka aakhri hai: **lock ordering**. Agar har thread pehle `lock_projector` aur phir `lock_pc` le, to chakkar ban hi nahi sakta."
+    },
+    {
+      "kind": "concept",
+      "heading": "Avoidance: Banker ka hisaab",
+      "body": "Prevention niyam pehle se laga deta hai. **Avoidance** har request par sochta hai: \"ye de diya, to kya baad me sab kaam poore ho sakte hain?\"\n\nIske liye har process pehle bata deta hai ki use **zyada se zyada** kitna chahiye (`max`). Phir:\n\n- `need = max − allocation` (abhi aur kitna chahiye).\n- **Safe state:** koi aisa kram (safe order) hai jisme har process ek-ek karke apna poora `need` paa kar khatam ho sake, aur khatam hokar sab resources lauta de.\n- Request tabhi do jab dene ke baad bhi state safe rahe. Warna process ko **rukne** do.\n\nSafety check ka tareeka: `work = available` se shuru karo. Aisa process dhundho jiska `need ≤ work` ho. Maan lo wo khatam hua: `work = work + uska allocation`. Dohraao. Sab khatam ho gaye to safe; koi atak gaya to unsafe.\n\n> **Note:** Unsafe ka matlab deadlock nahi hai. Unsafe ka matlab hai \"deadlock **ho sakta** hai\". Banker's algorithm itna saavdhaan hai ki aisi state me jaane hi nahi deta."
+    },
+    {
+      "kind": "example",
+      "heading": "Teen teams, do resources",
+      "body": "Lab me 2 PC aur 1 projector abhi free hain. Teen teams ka hisaab:\n\n| Team | allocation (PC, projector) | max | need |\n|---|---|---|---|\n| T1 | (1, 0) | (3, 1) | (2, 1) |\n| T2 | (2, 1) | (3, 1) | (1, 0) |\n| T3 | (1, 1) | (4, 2) | (3, 1) |\n\nHaath se: `work = (2, 1)`. T1 ka need `(2, 1) ≤ (2, 1)`, to T1 khatam, `work = (3, 1)`. T2 `(1, 0) ≤ (3, 1)`, khatam, `work = (5, 2)`. T3 `(3, 1) ≤ (5, 2)`, khatam. **Safe order: T1, T2, T3.**\n\nAb program se dekhte hain, aur do requests bhi jaanchte hain: T3 `(1, 1)` maange, aur T3 `(2, 1)` maange.",
+      "code": [
+        {
+          "lang": "python",
+          "src": "def safe_order(available, alloc, need):\n    work, done, order = list(available), set(), []\n    while len(done) < len(alloc):\n        for team in sorted(alloc):\n            if team not in done and all(n <= w for n, w in zip(need[team], work)):\n                work = [w + a for w, a in zip(work, alloc[team])]   # team finishes, returns all\n                done.add(team)\n                order.append(team)\n                break\n        else:\n            return None                                             # nobody can finish\n    return order\n\n\navailable = [2, 1]                               # free: lab PCs, projectors\nalloc = {\"T1\": [1, 0], \"T2\": [2, 1], \"T3\": [1, 1]}\nmaximum = {\"T1\": [3, 1], \"T2\": [3, 1], \"T3\": [4, 2]}\nneed = {t: [m - a for m, a in zip(maximum[t], alloc[t])] for t in alloc}\nprint(\"Abhi safe?\", \" \".join(safe_order(available, alloc, need)))\n\nfor ask in ([1, 1], [2, 1]):\n    avail2 = [a - r for a, r in zip(available, ask)]\n    alloc2 = dict(alloc, T3=[a + r for a, r in zip(alloc[\"T3\"], ask)])\n    need2 = dict(need, T3=[n - r for n, r in zip(need[\"T3\"], ask)])\n    order = safe_order(avail2, alloc2, need2)\n    print(f\"T3 maange {tuple(ask)}:\", f\"de do (safe order {' '.join(order)})\" if order else \"ruko (koi safe order nahi)\")\n",
+          "runnable": true,
+          "expected_output": "Abhi safe? T1 T2 T3\nT3 maange (1, 1): de do (safe order T2 T1 T3)\nT3 maange (2, 1): ruko (koi safe order nahi)\n",
+          "caption": "Banker's safety check: kya ye request dena safe hai?"
+        }
+      ]
+    },
+    {
+      "kind": "example",
+      "heading": "Output ko padho",
+      "body": "- Pehli line wahi kehti hai jo humne haath se nikala: T1, T2, T3.\n- T3 `(1, 1)` maange to free bachega `(1, 0)`. T1 ka need `(2, 1)` ab poora nahi hota, par T2 ka `(1, 0)` hota hai. T2 khatam hokar `(2, 1)` lautata hai, phir T1, phir T3. Safe, to request **de do**.\n- T3 `(2, 1)` maange to free bachega `(0, 0)`. Ab kisi ka bhi need poora nahi hota: koi safe order nahi. Request **rok do**, chahe abhi resources free dikh rahe the. Yahi avoidance ki taakat hai: deadlock aane se pehle hi rasta band."
+    },
+    {
+      "kind": "note",
+      "heading": "Detection: wait-for graph",
+      "body": "Kai systems deadlock ko rokte nahi, balki **pakadte** hain. Databases iska sabse achha udaharan hain: wahan transactions apne aap rows lock karti hain, aur programmer har jagah lock ordering tay nahi kar sakta.\n\nTareeka: ek **wait-for graph** banao. Har transaction ek node hai, aur `T1 → T2` ka matlab hai \"T1, T2 ke pakde lock ka intezaar kar raha hai\". Database thodi-thodi der me (ya jab koi lock bahut der se atka ho) is graph me **cycle** dhoondhta hai. Cycle mili to us chakkar me se ek transaction ko **victim** chunta hai (aksar jisne sabse kam kaam kiya), use rollback karta hai, aur baaki aage badh jaate hain. App ko \"deadlock detected, retry\" jaisa error milta hai.\n\nIsliye database ke saath kaam karne wale code me ek niyam yaad rakho: **deadlock error aaye to poori transaction dobara chalao**, sirf aakhri query nahi."
+    },
+    {
+      "kind": "misconception",
+      "heading": "Aam galat-fehmiyan",
+      "body": "**Kai students sochte hain ki unsafe state matlab deadlock.** Asal me unsafe sirf khatra hai; ho sakta hai processes apna poora max kabhi na maange. Banker's algorithm khatre se hi bachta hai.\n\n**Kai students sochte hain ki graph me cycle hamesha deadlock hai.** Agar har resource ka **ek hi** instance hai, to haan, cycle = deadlock. Par ek resource ke kai instance ho (3 lab PC), to cycle hone par bhi koi doosra process ek PC chhod kar chakkar tod sakta hai.\n\n**Kai students sochte hain ki deadlock aur starvation ek hi hain.** Starvation me system chal raha hai par ek process ko baar-baar mauka nahi milta. Deadlock me group ka koi bhi aage nahi badhta."
+    },
+    {
+      "kind": "interview",
+      "heading": "Interview ke sawaal",
+      "body": "Jawab jaise ek achha candidate bolega.",
+      "qa": [
+        {
+          "q": "Deadlock ki chaar shartein kya hain?",
+          "a": "Mutual exclusion, hold and wait, no preemption, aur circular wait. Chaaron ek saath sach hon tabhi deadlock hota hai, isliye kisi ek ko todna kaafi hai."
+        },
+        {
+          "q": "Apne code me deadlock kaise rokoge?",
+          "a": "Sabse simple aur pakka tareeka lock ordering hai: saare locks ka ek global order tay karo aur har thread usi order me locks le, to circular wait ban hi nahi sakta. Saath me lock pakde-pakde lamba kaam ya network call na karo, aur jahan ho sake tryLock ke saath timeout lagao."
+        },
+        {
+          "q": "Prevention, avoidance aur detection me farak?",
+          "a": "Prevention niyam se ek shart hi tod deta hai, jaise lock ordering. Avoidance har request par safety check karta hai, jaise Banker's algorithm, aur iske liye max demand pehle pata honi chahiye. Detection deadlock hone deta hai, phir wait-for graph me cycle dhoondh kar kisi process ko rollback ya kill karta hai; databases yahi karte hain."
+        },
+        {
+          "q": "Banker's algorithm real OS me kam kyun dikhta hai?",
+          "a": "Use har process ki maximum demand pehle se chahiye aur har request par poora safety check chalana padta hai, jo general-purpose OS me na pata hota hai na sasta hai. Isliye OS aksar deadlock ko ignore karte hain ya lock ordering jaise niyam programmers par chhodte hain, aur databases detection use karte hain."
+        }
+      ]
+    },
+    {
+      "kind": "summary",
+      "heading": "Saar",
+      "body": "- Deadlock: group ka har process group ke hi kisi doosre ke resource ka intezaar karta hai.\n- Chaar shartein: mutual exclusion, hold and wait, no preemption, circular wait; ek todo, deadlock khatam.\n- Code me sabse kaam ka: **lock ordering**.\n- Banker's: `need = max − allocation`; request tabhi do jab safe order bacha rahe.\n- Unsafe ≠ deadlock; ek instance wale resources me cycle = deadlock."
+    }
+  ],
+  "quiz": [
+    {
+      "stem": "Har thread pehle `lockA`, phir `lockB` leta hai. Kaunsi shart tooti?",
+      "options": [
+        "Mutual exclusion",
+        "Hold and wait",
+        "No preemption",
+        "Circular wait"
+      ],
+      "correct": 3,
+      "explanation": "Ek tay order me locks lene se intezaar ka chakkar ban hi nahi sakta: circular wait tooti."
+    },
+    {
+      "stem": "Available (1, 0). T1 need (1, 0), alloc (1, 1). T2 need (2, 1), alloc (0, 0). Kya state safe hai?",
+      "options": [
+        "Haan: T1 phir T2",
+        "Nahi: koi aage nahi badh sakta",
+        "Haan: T2 phir T1",
+        "Pata nahi chal sakta"
+      ],
+      "correct": 0,
+      "explanation": "T1 ka need (1, 0) ≤ (1, 0): T1 khatam, work = (2, 1). Ab T2 ka (2, 1) ≤ (2, 1): T2 khatam. Safe order T1, T2."
+    },
+    {
+      "stem": "Resource allocation graph me cycle hai aur har resource ke 2 instance hain. To?",
+      "options": [
+        "Deadlock pakka hai",
+        "Deadlock ho bhi sakta hai, nahi bhi",
+        "Deadlock ho hi nahi sakta",
+        "Graph galat hai"
+      ],
+      "correct": 1,
+      "explanation": "Kai instance ho to cycle sirf khatre ka ishaara hai; ek instance wale resources me hi cycle = deadlock."
+    },
+    {
+      "stem": "Database ek transaction ko rollback karke deadlock khatam karta hai. Ye kaunsa tareeka hai?",
+      "options": [
+        "Prevention",
+        "Avoidance",
+        "Detection and recovery",
+        "Ignore karna"
+      ],
+      "correct": 2,
+      "explanation": "Deadlock hone diya, wait-for graph me cycle dhoondhi, phir ek victim rollback kiya: detection and recovery."
+    }
+  ],
+  "revision_card": {
+    "front": "Deadlock ki chaar shartein, code me sabse kaam ka bachaav, aur Banker's safety check ek line me?",
+    "back": "Mutual exclusion, hold and wait, no preemption, circular wait. Lock ordering se circular wait tooti. Banker's: need = max − alloc; work = available se shuru, jiska need ≤ work use khatam maano, uska alloc work me jodo; sab khatam = safe."
+  },
+  "next": [
+    "dbms-normal-forms"
+  ]
+}

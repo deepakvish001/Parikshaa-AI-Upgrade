@@ -1,0 +1,210 @@
+{
+  "schema": "parikshaa.content/lesson@1",
+  "slug": "os-paging-address-translation",
+  "version": 1,
+  "title": "Paging: from a virtual address to a physical one",
+  "tier": "public",
+  "text_language": "en",
+  "course": "os",
+  "difficulty": "medium",
+  "tags": {
+    "topics": [
+      "memory-management",
+      "paging"
+    ],
+    "patterns": [
+      "address-translation"
+    ],
+    "extra": [
+      "tlb",
+      "page-fault"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own explanations of paging, examples, code, quiz and explanations; no text from any site, book or course.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-cs-core",
+      "module": "Operating systems",
+      "position": 0
+    }
+  ],
+  "est_minutes": 12,
+  "prerequisites": [],
+  "outcomes": [
+    "can split a virtual address into page number and offset for any page size",
+    "can translate a virtual address to a physical one with a page table, or say it faults",
+    "can compute the size of a single-level page table and explain why systems use multi-level tables and a TLB"
+  ],
+  "sections": [
+    {
+      "kind": "why",
+      "heading": "Why this matters",
+      "body": "Every address your program uses is a **virtual** address. When your C program prints a pointer, that number is not a place in RAM. The hardware translates it on every single memory access, millions of times a second. Placement tests and interviews love paging because it mixes a clear idea with **exact arithmetic**: give a candidate an address and a page table, and you see at once whether they understand it."
+    },
+    {
+      "kind": "concept",
+      "heading": "Pages and frames",
+      "body": "The operating system cuts each process's virtual memory into fixed-size blocks called **pages**, and cuts physical RAM into blocks of the same size called **frames**. A common size is **4 KB = 4096 bytes**.\n\nAny page can sit in any frame. The **page table**, one per process, records which frame holds each page. So a process can see one long, neat address space while its pages are scattered all over RAM, or not in RAM at all.\n\nThis gives three big wins:\n\n- **Isolation:** a process can only reach frames its page table points to, so it cannot read another process's memory.\n- **No external fragmentation:** any free frame fits any page; RAM never needs to be one big contiguous hole.\n- **Demand loading:** a page can stay on disk until it is first used.\n\n> **Note:** A page size of `2^k` bytes means the **low `k` bits** of an address are the offset. For 4 KB, `k = 12`. Translation never changes the offset."
+    },
+    {
+      "kind": "concept",
+      "heading": "The translation, step by step",
+      "body": "For a virtual address `v` and page size `P`:\n\n1. **page number** = `v // P` (integer division); **offset** = `v % P`.\n2. Look up the page number in the page table to get a **frame number**.\n3. **physical address** = `frame × P + offset`.\n\nWith `P = 4096`, the address `4100` is page `1` (since `4100 // 4096 = 1`) with offset `4`. If page 1 sits in frame 9, the physical address is `9 × 4096 + 4 = 36868`.\n\nIn binary this is just cutting bits: the top bits are the page number, the low 12 bits are the offset, and translation swaps the top bits for the frame number. That is why page sizes are always powers of two: the hardware never divides, it only splits wires.\n\nTwo things can go wrong in step 2:\n\n- The page is **valid but not in RAM** (the entry's *present* bit is 0). The hardware raises a **page fault**; the OS reads the page from disk into a free frame, updates the table, and the instruction runs again. The program never notices, except for the delay.\n- The page is **not part of the process at all**. That is a real error: the OS stops the program with a segmentation fault.",
+      "visual": {
+        "id": "address-split",
+        "kind": "table",
+        "alt": "The 32-bit address 4100 split into page number 1 (the top 20 bits) and offset 4 (the low 12 bits); page 1 maps to frame 9, giving physical address 36868.",
+        "data": {
+          "headers": [
+            "Step",
+            "Value"
+          ],
+          "rows": [
+            [
+              "virtual address",
+              "4100"
+            ],
+            [
+              "page = 4100 // 4096",
+              "1"
+            ],
+            [
+              "offset = 4100 % 4096",
+              "4"
+            ],
+            [
+              "page table[1]",
+              "frame 9"
+            ],
+            [
+              "physical = 9 × 4096 + 4",
+              "36868"
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "kind": "example",
+      "heading": "Translating five addresses",
+      "body": "Here is a tiny page table for a process with four pages. Page 2 is valid but currently on disk. The program translates five addresses.",
+      "code": [
+        {
+          "lang": "python",
+          "src": "PAGE = 4096                              # 4 KB pages: the low 12 bits are the offset\npage_table = {0: 5, 1: 9, 2: None, 3: 2}  # page -> frame; None = valid page, not in RAM now\n\n\ndef translate(vaddr):\n    page, offset = divmod(vaddr, PAGE)\n    where = f\"virtual {vaddr:>5} = page {page}, offset {offset:>4}\"\n    if page not in page_table:\n        return where + \" -> invalid address (segmentation fault)\"\n    frame = page_table[page]\n    if frame is None:\n        return where + \" -> page fault: OS loads it, then retries\"\n    return where + f\" -> frame {frame}, physical {frame * PAGE + offset}\"\n\n\nfor v in [100, 4100, 8200, 13000, 20000]:\n    print(translate(v))\n",
+          "runnable": true,
+          "expected_output": "virtual   100 = page 0, offset  100 -> frame 5, physical 20580\nvirtual  4100 = page 1, offset    4 -> frame 9, physical 36868\nvirtual  8200 = page 2, offset    8 -> page fault: OS loads it, then retries\nvirtual 13000 = page 3, offset  712 -> frame 2, physical 8904\nvirtual 20000 = page 4, offset 3616 -> invalid address (segmentation fault)\n",
+          "caption": "Translating virtual addresses with a page table"
+        }
+      ]
+    },
+    {
+      "kind": "example",
+      "heading": "Reading the output",
+      "body": "- `100` is in page 0 at offset 100; page 0 is in frame 5, so `5 × 4096 + 100 = 20580`.\n- `4100` is page 1, offset 4, frame 9: `36868`, as we computed by hand.\n- `8200` is page 2, offset 8. Page 2 is valid but not in RAM: a **page fault**. After the OS loads it, the same instruction translates normally.\n- `13000` is page 3 (`13000 // 4096 = 3`, `13000 − 12288 = 712`), frame 2: `2 × 4096 + 712 = 8904`.\n- `20000` is page 4, which this process does not have: **invalid**, a segmentation fault.\n\nNotice that every offset survives translation unchanged; only the page part is replaced."
+    },
+    {
+      "kind": "concept",
+      "heading": "Making it fast: the TLB and multi-level tables",
+      "body": "If every memory access needed an extra memory access to read the page table, programs would run at half speed. CPUs keep a small cache of recent translations, the **TLB** (translation lookaside buffer). Programs touch the same pages again and again, so the TLB answers most lookups, often more than 99% of them, in about one cycle.\n\nSize is the other problem. With 32-bit addresses and 4 KB pages there are `2^32 / 2^12 = 2^20` pages, about a million. At 4 bytes per entry, one flat page table is **4 MB per process**, even if the process uses only a few pages. **Multi-level page tables** fix this: the top-level table points to second-level tables, and a second-level table exists only for parts of the address space that are in use. 64-bit systems use four or five levels."
+    },
+    {
+      "kind": "note",
+      "heading": "When paging goes wrong: thrashing",
+      "body": "Page faults are cheap only when they are rare. A fault that goes to an SSD costs tens of microseconds; to a spinning disk, several milliseconds. An ordinary memory access costs about a hundred nanoseconds. So one fault can cost as much as tens of thousands of normal accesses.\n\nEach process has a **working set**: the pages it uses again and again in a short window of time. If the frames given to a process are fewer than its working set, it evicts a page it will need almost at once, faults it back in, evicts another, and so on. The CPU sits idle waiting for the disk. This is **thrashing**, and the fix is not a faster CPU: it is fewer processes in memory at once, or more RAM, so that each working set fits.\n\nIn an interview, if someone says \"the machine is slow, the disk light is always on, and CPU use is low\", thrashing is the answer they are looking for."
+    },
+    {
+      "kind": "misconception",
+      "heading": "Common mix-ups",
+      "body": "**Many students think a page fault is an error.** Actually a page fault is normal and handled by the OS: it brings the page in and retries. The *error* is an access to an address outside the process, which ends in a segmentation fault.\n\n**Many students think the offset is looked up too.** Actually only the page number goes through the table; the offset is copied as it is. If your answer changes the offset, recheck it.\n\n**Many students think a bigger page is always better.** Bigger pages mean smaller tables and fewer TLB misses, but more **internal fragmentation**: a process that needs 5 KB still uses two full 4 KB pages, wasting 3 KB, and with 2 MB pages it would waste nearly 2 MB."
+    },
+    {
+      "kind": "interview",
+      "heading": "Interview questions",
+      "body": "Answers as a strong candidate would say them.",
+      "qa": [
+        {
+          "q": "With 4 KB pages, how do you split the address 0x3A7F?",
+          "a": "The low 12 bits are the offset and the rest is the page number. 0x3A7F is page 0x3 and offset 0xA7F, because the last three hex digits are exactly 12 bits."
+        },
+        {
+          "q": "How big is a single-level page table for a 32-bit address space, 4 KB pages, 4-byte entries?",
+          "a": "There are 2^32 / 2^12 = 2^20 entries, and 2^20 × 4 bytes is 4 MB per process. That cost for mostly unused space is why real systems use multi-level tables, which only allocate the parts in use."
+        },
+        {
+          "q": "What does the TLB do, and what happens on a context switch?",
+          "a": "It caches recent page-to-frame translations so most accesses skip the page-table walk. On a context switch the new process has different mappings, so the TLB is flushed or its entries are tagged with an address-space id so they cannot be confused."
+        },
+        {
+          "q": "Walk me through a page fault.",
+          "a": "The CPU finds the page's present bit is 0 and traps to the OS. The OS checks the access is legal, picks a free frame or evicts one, reads the page from disk, updates the page table entry, and restarts the faulting instruction, which now translates normally."
+        }
+      ]
+    },
+    {
+      "kind": "summary",
+      "heading": "Summary",
+      "body": "- Pages (virtual) map to frames (physical) through a per-process page table.\n- page = `v // P`, offset = `v % P`, physical = `frame × P + offset`.\n- The offset never changes; with `P = 2^k` it is the low `k` bits.\n- A page fault loads a valid page; touching an invalid page is a segmentation fault.\n- The TLB makes translation fast; multi-level tables make it small."
+    }
+  ],
+  "quiz": [
+    {
+      "stem": "With 4096-byte pages, what are the page number and offset of virtual address 9000?",
+      "options": [
+        "page 2, offset 808",
+        "page 2, offset 900",
+        "page 9, offset 0",
+        "page 3, offset 808"
+      ],
+      "correct": 0,
+      "explanation": "9000 // 4096 = 2 and 9000 − 8192 = 808."
+    },
+    {
+      "stem": "Page 2 is in frame 7, pages are 4096 bytes. What is the physical address of virtual address 9000?",
+      "options": [
+        "29480",
+        "28672",
+        "9000",
+        "37672"
+      ],
+      "correct": 0,
+      "explanation": "7 × 4096 + 808 = 28672 + 808 = 29480. The offset 808 is copied unchanged."
+    },
+    {
+      "stem": "A program reads a valid page whose present bit is 0. What happens?",
+      "options": [
+        "The program crashes with a segmentation fault",
+        "A page fault: the OS loads the page and the instruction is retried",
+        "The CPU returns zero",
+        "The TLB fixes it without the OS"
+      ],
+      "correct": 1,
+      "explanation": "A valid page that is not in RAM causes a page fault, which the OS handles transparently."
+    },
+    {
+      "stem": "Why are page sizes powers of two?",
+      "options": [
+        "Disks require it",
+        "So splitting page number and offset is just splitting bits, with no division",
+        "To make pages larger",
+        "Because RAM is sold in powers of two"
+      ],
+      "correct": 1,
+      "explanation": "With P = 2^k the offset is the low k bits and the page number is the rest; hardware only routes bits."
+    }
+  ],
+  "revision_card": {
+    "front": "Translate a virtual address with page size P and a page table. Formula, and the two ways the lookup can fail?",
+    "back": "page = v // P, offset = v % P, physical = frame × P + offset (offset unchanged). Present bit 0 → page fault (OS loads, retries). No such page → segmentation fault. TLB caches translations."
+  },
+  "next": [
+    "os-deadlock-conditions"
+  ]
+}

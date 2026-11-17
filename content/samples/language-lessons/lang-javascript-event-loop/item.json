@@ -1,0 +1,221 @@
+{
+  "schema": "parikshaa.content/lesson@1",
+  "slug": "lang-javascript-event-loop",
+  "version": 1,
+  "title": "JavaScript's event loop: promises, await and timers",
+  "tier": "premium",
+  "text_language": "en",
+  "course": "lang-javascript",
+  "difficulty": "medium",
+  "tags": {
+    "topics": [
+      "async",
+      "promises",
+      "event-loop"
+    ],
+    "patterns": [
+      "microtasks",
+      "promise-all"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own lesson text and examples on javascript's event loop: promises, await and timers, examples, code, quiz and explanations; no text from any site, book or course.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-languages",
+      "module": "JavaScript",
+      "position": 1
+    }
+  ],
+  "est_minutes": 14,
+  "prerequisites": [
+    "lang-javascript-closures"
+  ],
+  "outcomes": [
+    "can predict the print order of synchronous code, microtasks and timers",
+    "can explain what await does to the rest of an async function",
+    "can run independent requests in parallel with Promise.all and keep results in order"
+  ],
+  "sections": [
+    {
+      "kind": "why",
+      "heading": "Why this matters",
+      "body": "JavaScript runs your code on one thread, yet a Node server handles thousands of requests and a web page stays responsive while it loads data. The **event loop** is how. \"What order do these lines print in?\" is a standard front-end and Node interview question, and misunderstanding it causes real bugs: results printed out of order, requests made one after another when they could run together, and errors that vanish."
+    },
+    {
+      "kind": "concept",
+      "heading": "One thread, two queues",
+      "body": "JavaScript runs one piece of code at a time, to the end, without interruption. Work that must wait (a timer, a network reply) is handed to the runtime, and its **callback** is queued for later.\n\nThere are two queues that matter:\n\n- The **microtask queue**: promise reactions (`.then`, `.catch`, the code after an `await`) and `queueMicrotask`.\n- The **macrotask queue** (task queue): timers (`setTimeout`, `setInterval`), I/O callbacks, UI events.\n\nThe loop's rule: **run the current script to the end; then run every microtask, including ones added while doing so; then take one macrotask; then all microtasks again; repeat.**\n\nSo `setTimeout(fn, 0)` does not mean \"now\". It means \"after the current code and after every pending microtask\".\n\n> **Note:** An `async` function runs **synchronously until its first `await`**. Everything after the `await` becomes a microtask, scheduled when the awaited promise settles."
+    },
+    {
+      "kind": "example",
+      "heading": "Predict, then run",
+      "body": "Before reading the output, write down the order you expect. The labels say which queue each line comes from.",
+      "code": [
+        {
+          "lang": "javascript",
+          "src": "console.log(\"sync: script starts\");\nsetTimeout(() => console.log(\"macrotask: setTimeout 0\"), 0);\nPromise.resolve().then(() => console.log(\"microtask: promise.then\"));\nqueueMicrotask(() => console.log(\"microtask: queueMicrotask\"));\n(async () => {\n  console.log(\"sync: async function runs until its first await\");\n  await null;\n  console.log(\"microtask: code after await\");\n})();\nconsole.log(\"sync: script ends\");\n",
+          "runnable": true,
+          "expected_output": "sync: script starts\nsync: async function runs until its first await\nsync: script ends\nmicrotask: promise.then\nmicrotask: queueMicrotask\nmicrotask: code after await\nmacrotask: setTimeout 0\n",
+          "caption": "Synchronous code, then all microtasks, then a timer"
+        }
+      ]
+    },
+    {
+      "kind": "example",
+      "heading": "Reading the order",
+      "body": "1. The three `sync:` lines print first, in source order, because the script runs to the end before anything queued. The async function's first line is among them: it runs synchronously up to `await`.\n2. Then the microtasks, in the order they were queued: the `.then` (queued first), `queueMicrotask`, and the code after `await` (queued when the async function reached `await null`, which happened after the other two were queued).\n3. Only then the timer, even though its delay was 0.\n\nIf a microtask kept queuing new microtasks forever, the timer would **never** run, and on a web page the screen would freeze: microtasks starve everything else. That is why long loops of chained promises can make a page unresponsive."
+    },
+    {
+      "kind": "concept",
+      "heading": "await in sequence or in parallel",
+      "body": "`await` pauses **only the async function it is in**, not the program. But inside that function, these two shapes behave very differently:\n\n```javascript\nconst a = await getCanteen();   // waits 30 ms\nconst b = await getLibrary();   // only then starts: total about 40 ms\n\nconst [x, y] = await Promise.all([getCanteen(), getLibrary()]);  // both start now: about 30 ms\n```\n\nIf the requests are **independent**, start them together and await them together with **`Promise.all`**. It resolves to an array **in the order you passed the promises**, no matter which finished first. If **any** one rejects, `Promise.all` rejects at once with that error. When you want every result, successes and failures, use **`Promise.allSettled`**, which reports `fulfilled` or `rejected` for each."
+    },
+    {
+      "kind": "example",
+      "heading": "Promise.all in action",
+      "body": "Three fake requests finish in a different order from the one they were started in. `Promise.all` still returns them in input order. Then one request fails.",
+      "code": [
+        {
+          "lang": "javascript",
+          "src": "const wait = (ms, value) => new Promise((resolve) => setTimeout(() => resolve(value), ms));\n\nasync function main() {\n  const finished = [];\n  const track = (p) => p.then((v) => { finished.push(v); return v; });\n  const results = await Promise.all([track(wait(30, \"canteen\")), track(wait(10, \"library\")), track(wait(20, \"hostel\"))]);\n  console.log(\"finished in:\", finished.join(\", \"));\n  console.log(\"Promise.all gives:\", results.join(\", \"));\n  try {\n    await Promise.all([wait(5, \"ok\"), Promise.reject(new Error(\"hostel API down\"))]);\n  } catch (e) {\n    console.log(\"Promise.all rejected:\", e.message);\n  }\n  const settled = await Promise.allSettled([wait(5, \"ok\"), Promise.reject(new Error(\"down\"))]);\n  console.log(\"allSettled:\", settled.map((s) => s.status).join(\", \"));\n}\n\nmain();\n",
+          "runnable": true,
+          "expected_output": "finished in: library, hostel, canteen\nPromise.all gives: canteen, library, hostel\nPromise.all rejected: hostel API down\nallSettled: fulfilled, rejected\n",
+          "caption": "Promise.all keeps input order; one failure rejects it; allSettled waits for all"
+        }
+      ]
+    },
+    {
+      "kind": "example",
+      "heading": "Planning the hands-on task",
+      "body": "The task asks several offices for their free seats at once and prints the answers **in input order**. The starter attaches a `.then` to each request that prints as soon as the answer arrives, so the fastest office prints first: for delays 30, 10, 20 the output order is the second office, the third, then the first. Wrong.\n\nThe fix keeps the parallel start (all requests are created in the loop before anything is awaited) and changes how results are collected: `await Promise.all(jobs)` gives an array in the same order as `jobs`, which is input order. Total waiting time is the **slowest** request, not the sum.\n\nA tempting wrong fix is `for (const job of jobs) console.log(await job);`. It does print in order and, because the requests already started, it is not slower here. But it hides the intent, and if someone later moves the request creation into the loop, it silently becomes sequential. `Promise.all` says exactly what you mean: run together, collect in order."
+    },
+    {
+      "kind": "note",
+      "heading": "Errors in async code",
+      "body": "A rejected promise that nobody handles is easy to lose. In Node it prints an \"unhandled rejection\" warning and, in recent versions, **stops the process**; in a browser it only logs to the console, and the user just sees nothing happen.\n\nTwo habits keep errors visible:\n\n- In an `async` function, wrap the `await`s that can fail in `try { ... } catch (e) { ... }`. A rejected awaited promise throws at the `await`, so ordinary `try/catch` works, which is one of the main reasons `async/await` is easier to read than chains of `.then`.\n- Every promise you start must be awaited or given a `.catch` **somewhere**. Code like `jobs.forEach(async (j) => await process(j));` starts promises that nobody waits for: `forEach` ignores the returned promises, so errors escape and the caller continues before the work is done. Use `await Promise.all(jobs.map(process))` instead.\n\nWhen a request may hang, combine it with a timeout using `Promise.race([request, wait(5000).then(() => { throw new Error(\"timeout\"); })])`, so one slow office does not stall the whole page."
+    },
+    {
+      "kind": "misconception",
+      "heading": "Common mix-ups",
+      "body": "**Many students think `setTimeout(fn, 0)` runs immediately.** It runs after the current code and after all queued microtasks.\n\n**Many students think `await` blocks the whole program.** It suspends only its own async function; other callbacks keep running.\n\n**Many students think `Promise.all` returns results in completion order.** It returns them in the order of the input array."
+    },
+    {
+      "kind": "interview",
+      "heading": "Interview questions",
+      "body": "Answers as a strong candidate would say them.",
+      "qa": [
+        {
+          "q": "In what order do synchronous code, a resolved promise's then, and setTimeout 0 run?",
+          "a": "Synchronous code first, to the end. Then all microtasks, which include promise callbacks and code after await. Then one macrotask such as the timer. So: sync, then, timeout."
+        },
+        {
+          "q": "How do you run three independent API calls concurrently and use all results?",
+          "a": "Start all three without awaiting each, and await Promise.all on the array. The total time is the slowest call, and results come back in the order I passed them. If partial results are acceptable, I use Promise.allSettled instead."
+        },
+        {
+          "q": "What happens to the rest of an async function at an await?",
+          "a": "The function returns a pending promise to its caller and pauses. When the awaited promise settles, the rest of the function is scheduled as a microtask and continues with the result or throws the error."
+        }
+      ]
+    },
+    {
+      "kind": "summary",
+      "heading": "Summary",
+      "body": "- One thread: run the script, then all microtasks, then one macrotask, repeat.\n- Microtasks: promise callbacks, code after `await`, `queueMicrotask`. Macrotasks: timers, I/O.\n- `setTimeout(fn, 0)` waits for all microtasks.\n- Independent work: start together, `await Promise.all(...)`; results keep input order.\n- `Promise.all` rejects on the first failure; `allSettled` reports every outcome."
+    }
+  ],
+  "quiz": [
+    {
+      "stem": "`setTimeout(() => log('T')); Promise.resolve().then(() => log('P')); log('S');` What is the order?",
+      "options": [
+        "T P S",
+        "S P T",
+        "S T P",
+        "P S T"
+      ],
+      "correct": 1,
+      "explanation": "Sync first, then microtasks (P), then the timer (T)."
+    },
+    {
+      "stem": "Three independent requests take 50, 20 and 30 ms. About how long does `await Promise.all([...])` take?",
+      "options": [
+        "20 ms",
+        "50 ms",
+        "100 ms",
+        "30 ms"
+      ],
+      "correct": 1,
+      "explanation": "They run together, so the total is the slowest, 50 ms."
+    },
+    {
+      "stem": "`Promise.all([p1, p2])` where p2 rejects. What happens?",
+      "options": [
+        "It resolves with p1's value",
+        "It rejects with p2's error",
+        "It waits forever",
+        "It resolves with [value, undefined]"
+      ],
+      "correct": 1,
+      "explanation": "Promise.all rejects as soon as any input rejects."
+    },
+    {
+      "stem": "Inside an async function, which line runs synchronously when the function is called?",
+      "options": [
+        "Only lines after the first await",
+        "Lines before the first await",
+        "None",
+        "All of them"
+      ],
+      "correct": 1,
+      "explanation": "The body runs synchronously until the first await."
+    }
+  ],
+  "hands_on": [
+    {
+      "id": "seats-in-order",
+      "title": "Free seats, in the order asked",
+      "task": "Read `n`, then `n` lines `office delay seats`. `fetchSeats` answers after `delay` milliseconds. Start all requests together and print the answers **in input order**, one per line. The starter prints them in arrival order.",
+      "lang": "javascript",
+      "starter": "const lines = require(\"fs\").readFileSync(0, \"utf8\").split(\"\\n\").map((s) => s.trim()).filter(Boolean);\nconst wait = (ms, value) => new Promise((resolve) => setTimeout(() => resolve(value), ms));\n\n// Pretend each office answers after `ms` milliseconds with its seat count.\nfunction fetchSeats(office, ms, seats) {\n  return wait(ms, `${office}: ${seats}`);\n}\n\nasync function main() {\n  const n = Number(lines[0]);\n  const jobs = [];\n  for (let k = 1; k <= n; k++) {\n    const [office, ms, seats] = lines[k].split(\" \");\n    jobs.push(fetchSeats(office, Number(ms), seats));\n  }\n  // TODO: print the answers in INPUT order. This prints them as they arrive.\n  for (const job of jobs) job.then((answer) => console.log(answer));\n}\n\nmain();\n",
+      "solution": "const lines = require(\"fs\").readFileSync(0, \"utf8\").split(\"\\n\").map((s) => s.trim()).filter(Boolean);\nconst wait = (ms, value) => new Promise((resolve) => setTimeout(() => resolve(value), ms));\n\n// Pretend each office answers after `ms` milliseconds with its seat count.\nfunction fetchSeats(office, ms, seats) {\n  return wait(ms, `${office}: ${seats}`);\n}\n\nasync function main() {\n  const n = Number(lines[0]);\n  const jobs = [];\n  for (let k = 1; k <= n; k++) {\n    const [office, ms, seats] = lines[k].split(\" \");\n    jobs.push(fetchSeats(office, Number(ms), seats));\n  }\n  const answers = await Promise.all(jobs);\n  console.log(answers.join(\"\\n\"));\n}\n\nmain();\n",
+      "tests": [
+        {
+          "id": "t1",
+          "input": "3\ncanteen 30 12\nlibrary 10 40\nhostel 20 5\n",
+          "expected": "canteen: 12\nlibrary: 40\nhostel: 5\n",
+          "hidden": false
+        },
+        {
+          "id": "t2",
+          "input": "1\nlab 5 3\n",
+          "expected": "lab: 3\n",
+          "hidden": true
+        },
+        {
+          "id": "t3",
+          "input": "4\na 40 1\nb 30 2\nc 20 3\nd 10 4\n",
+          "expected": "a: 1\nb: 2\nc: 3\nd: 4\n",
+          "hidden": true
+        },
+        {
+          "id": "t4",
+          "input": "2\nx 10 7\ny 25 8\n",
+          "expected": "x: 7\ny: 8\n",
+          "hidden": true
+        }
+      ]
+    }
+  ],
+  "revision_card": {
+    "front": "Event loop order, what await does, and parallel requests?",
+    "back": "Script, then all microtasks (then, await continuations), then one macrotask (timers, I/O). await pauses only its async function. Independent calls: start together, await Promise.all (input order; rejects on first failure; allSettled for all outcomes)."
+  },
+  "next": []
+}

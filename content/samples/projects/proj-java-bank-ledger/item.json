@@ -1,0 +1,182 @@
+{
+  "schema": "parikshaa.content/project@1",
+  "slug": "proj-java-bank-ledger",
+  "version": 1,
+  "title": "Hostel bank: accounts, transfers and statements",
+  "tier": "premium",
+  "text_language": "en",
+  "difficulty": "medium",
+  "tags": {
+    "topics": [
+      "java",
+      "encapsulation",
+      "transactions"
+    ],
+    "patterns": [
+      "invariants",
+      "all-or-nothing"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own project brief, code, tests and rubric for hostel bank: accounts, transfers and statements, examples, code, quiz and explanations; no text from any site, book or course.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-projects",
+      "module": "Java",
+      "position": 1
+    }
+  ],
+  "language": "java",
+  "est_hours": 4,
+  "brief": "The hostel runs a small savings scheme: students keep money with the office, take it out, and send it to each other. Build the accounts so a balance can never go negative, a transfer either happens completely or not at all, and every account can print its statement.",
+  "requirements": [
+    "An account's balance is private and never negative; only deposit and withdraw change it.",
+    "A transfer checks everything first (both accounts exist, not the same account, enough money) and then moves the money: never half a transfer.",
+    "Every change is recorded in the account's history with the balance after it.",
+    "Amounts are whole rupees from 1 to 999,999,999; anything else is refused."
+  ],
+  "io_protocol": "| Command | Prints |\n|---|---|\n| `OPEN <id> <owner>` | `opened <id> for <owner>` or `error: account <id> exists` |\n| `DEPOSIT <id> <amount>` | `<id> balance <b>` |\n| `WITHDRAW <id> <amount>` | `<id> balance <b>` or `error: insufficient funds in <id>` |\n| `TRANSFER <from> <to> <amount>` | `moved <amount> from <from> to <to>` or an error |\n| `STATEMENT <id>` | `<n>. <entry> -> <balance>` lines, or `no transactions` |\n\nTransfers appear in statements as `withdraw` and `deposit` entries. Errors: `error: no account <id>`, `error: same account`, `error: bad amount <text>`, `error: bad command <line>`.",
+  "milestones": [
+    {
+      "id": "m1",
+      "title": "A safe account",
+      "instructions": "Fill in `deposit` and `withdraw`. A withdrawal that would go below zero changes nothing and returns false.",
+      "hints": [
+        "Check before changing: the history must not contain a failed withdrawal.",
+        "Record the balance after the change in the history line."
+      ]
+    },
+    {
+      "id": "m2",
+      "title": "All-or-nothing transfers",
+      "instructions": "Fill in `Bank.transfer`: do every check first, then withdraw and deposit.",
+      "hints": [
+        "If the money check came after the withdrawal you would have to undo it; check first instead.",
+        "Compare the two Account objects to catch a transfer to the same account."
+      ]
+    }
+  ],
+  "files": [
+    {
+      "path": "Account.java",
+      "content": "import java.util.*;\n\nclass Account {\n    final String id;\n    final String owner;\n    private long balance;\n    private final List<String> history = new ArrayList<>();\n\n    Account(String id, String owner) {\n        this.id = id;\n        this.owner = owner;\n    }\n\n    long balance() { return balance; }\n\n    /** Milestone 1: add money and record \"deposit <amount> -> <balance>\". */\n    void deposit(long amount) {\n    }\n\n    /** Milestone 1: false (and no change) if it would go below zero; else take it and record \"withdraw <amount> -> <balance>\". */\n    boolean withdraw(long amount) {\n        return false;\n    }\n\n    /** Milestone 2: record a line for a transfer without changing the balance rules. */\n    void note(String line) {\n    }\n\n    /** A copy, so callers cannot change the history. */\n    List<String> statement() { return List.copyOf(history); }\n}\n",
+      "role": "source"
+    },
+    {
+      "path": "Bank.java",
+      "content": "import java.util.*;\n\nclass Bank {\n    private final Map<String, Account> accounts = new HashMap<>();\n\n    String open(String id, String owner) {\n        if (accounts.containsKey(id)) return \"error: account \" + id + \" exists\";\n        accounts.put(id, new Account(id, owner));\n        return \"opened \" + id + \" for \" + owner;\n    }\n\n    Account find(String id) { return accounts.get(id); }\n\n    /**\n     * Milestone 2: move money only if every check passes; never leave one side changed.\n     * Errors: \"error: no account <id>\", \"error: same account\", \"error: insufficient funds in <from>\".\n     * Success: \"moved <amount> from <from> to <to>\", and both accounts note the transfer.\n     */\n    String transfer(String from, String to, long amount) {\n        return \"TODO\";\n    }\n}\n",
+      "role": "source"
+    },
+    {
+      "path": "Main.java",
+      "content": "import java.io.*;\nimport java.util.*;\n\npublic class Main {\n    static long amount(String s) {\n        return s.matches(\"[1-9]\\\\d{0,8}\") ? Long.parseLong(s) : -1;\n    }\n\n    public static void main(String[] args) throws IOException {\n        BufferedReader in = new BufferedReader(new InputStreamReader(System.in));\n        StringBuilder out = new StringBuilder();\n        Bank bank = new Bank();\n        for (String raw; (raw = in.readLine()) != null; ) {\n            String[] p = raw.trim().split(\"\\\\s+\");\n            if (p[0].isEmpty()) continue;\n            String reply;\n            if (p[0].equals(\"OPEN\") && p.length == 3) reply = bank.open(p[1], p[2]);\n            else if ((p[0].equals(\"DEPOSIT\") || p[0].equals(\"WITHDRAW\")) && p.length == 3) {\n                Account a = bank.find(p[1]);\n                long amt = amount(p[2]);\n                if (a == null) reply = \"error: no account \" + p[1];\n                else if (amt < 0) reply = \"error: bad amount \" + p[2];\n                else if (p[0].equals(\"DEPOSIT\")) { a.deposit(amt); reply = a.id + \" balance \" + a.balance(); }\n                else reply = a.withdraw(amt) ? a.id + \" balance \" + a.balance() : \"error: insufficient funds in \" + a.id;\n            } else if (p[0].equals(\"TRANSFER\") && p.length == 4) {\n                long amt = amount(p[3]);\n                reply = amt < 0 ? \"error: bad amount \" + p[3] : bank.transfer(p[1], p[2], amt);\n            } else if (p[0].equals(\"STATEMENT\") && p.length == 2) {\n                Account a = bank.find(p[1]);\n                if (a == null) reply = \"error: no account \" + p[1];\n                else {\n                    List<String> lines = a.statement();\n                    StringBuilder sb = new StringBuilder();\n                    for (int i = 0; i < lines.size(); i++) sb.append(i > 0 ? \"\\n\" : \"\").append(i + 1).append(\". \").append(lines.get(i));\n                    reply = lines.isEmpty() ? \"no transactions\" : sb.toString();\n                }\n            } else reply = \"error: bad command \" + raw.trim();\n            out.append(reply).append('\\n');\n        }\n        System.out.print(out);\n    }\n}\n",
+      "role": "driver",
+      "editable": false
+    }
+  ],
+  "solution_files": [
+    {
+      "path": "Account.java",
+      "content": "import java.util.*;\n\nclass Account {\n    final String id;\n    final String owner;\n    private long balance;\n    private final List<String> history = new ArrayList<>();\n\n    Account(String id, String owner) {\n        this.id = id;\n        this.owner = owner;\n    }\n\n    long balance() { return balance; }\n\n    void deposit(long amount) {\n        balance += amount;\n        history.add(\"deposit \" + amount + \" -> \" + balance);\n    }\n\n    boolean withdraw(long amount) {\n        if (amount > balance) return false;\n        balance -= amount;\n        history.add(\"withdraw \" + amount + \" -> \" + balance);\n        return true;\n    }\n\n    void note(String line) {\n        history.add(line + \" -> \" + balance);\n    }\n\n    List<String> statement() { return List.copyOf(history); }\n}\n",
+      "role": "source"
+    },
+    {
+      "path": "Bank.java",
+      "content": "import java.util.*;\n\nclass Bank {\n    private final Map<String, Account> accounts = new HashMap<>();\n\n    String open(String id, String owner) {\n        if (accounts.containsKey(id)) return \"error: account \" + id + \" exists\";\n        accounts.put(id, new Account(id, owner));\n        return \"opened \" + id + \" for \" + owner;\n    }\n\n    Account find(String id) { return accounts.get(id); }\n\n    String transfer(String from, String to, long amount) {\n        Account a = accounts.get(from), b = accounts.get(to);\n        if (a == null) return \"error: no account \" + from;\n        if (b == null) return \"error: no account \" + to;\n        if (a == b) return \"error: same account\";\n        if (amount > a.balance()) return \"error: insufficient funds in \" + from;\n        a.withdraw(amount);\n        b.deposit(amount);\n        return \"moved \" + amount + \" from \" + from + \" to \" + to;\n    }\n}\n",
+      "role": "source"
+    }
+  ],
+  "bundle_order": [
+    "Account.java",
+    "Bank.java",
+    "Main.java"
+  ],
+  "tests": [
+    {
+      "id": "open-deposit",
+      "input": "OPEN A1 aditi\nDEPOSIT A1 500\nWITHDRAW A1 120\nSTATEMENT A1\n",
+      "expected": "opened A1 for aditi\nA1 balance 500\nA1 balance 380\n1. deposit 500 -> 500\n2. withdraw 120 -> 380\n",
+      "hidden": false,
+      "milestone": "m1"
+    },
+    {
+      "id": "transfer",
+      "input": "OPEN A1 aditi\nOPEN B2 bilal\nDEPOSIT A1 300\nTRANSFER A1 B2 200\nSTATEMENT A1\nSTATEMENT B2\n",
+      "expected": "opened A1 for aditi\nopened B2 for bilal\nA1 balance 300\nmoved 200 from A1 to B2\n1. deposit 300 -> 300\n2. withdraw 200 -> 100\n1. deposit 200 -> 200\n",
+      "hidden": false,
+      "milestone": "m2"
+    },
+    {
+      "id": "overdraw",
+      "input": "OPEN A1 aditi\nDEPOSIT A1 100\nWITHDRAW A1 101\nWITHDRAW A1 100\nWITHDRAW A1 1\nSTATEMENT A1\n",
+      "expected": "opened A1 for aditi\nA1 balance 100\nerror: insufficient funds in A1\nA1 balance 0\nerror: insufficient funds in A1\n1. deposit 100 -> 100\n2. withdraw 100 -> 0\n",
+      "hidden": true,
+      "milestone": "m1"
+    },
+    {
+      "id": "transfer-too-much",
+      "input": "OPEN A1 a\nOPEN B2 b\nDEPOSIT A1 50\nTRANSFER A1 B2 51\nSTATEMENT A1\nSTATEMENT B2\n",
+      "expected": "opened A1 for a\nopened B2 for b\nA1 balance 50\nerror: insufficient funds in A1\n1. deposit 50 -> 50\nno transactions\n",
+      "hidden": true,
+      "milestone": "m2"
+    },
+    {
+      "id": "transfer-errors",
+      "input": "OPEN A1 a\nDEPOSIT A1 50\nTRANSFER A1 ZZ 10\nTRANSFER ZZ A1 10\nTRANSFER A1 A1 10\nSTATEMENT A1\n",
+      "expected": "opened A1 for a\nA1 balance 50\nerror: no account ZZ\nerror: no account ZZ\nerror: same account\n1. deposit 50 -> 50\n",
+      "hidden": true,
+      "milestone": "m2"
+    },
+    {
+      "id": "duplicate-open",
+      "input": "OPEN A1 a\nOPEN A1 b\nSTATEMENT A1\n",
+      "expected": "opened A1 for a\nerror: account A1 exists\nno transactions\n",
+      "hidden": true,
+      "milestone": "m1"
+    },
+    {
+      "id": "bad-amounts",
+      "input": "OPEN A1 a\nDEPOSIT A1 0\nDEPOSIT A1 -5\nDEPOSIT A1 12.5\nDEPOSIT A1 007\nDEPOSIT A1 1000000000\nDEPOSIT A2 5\nSTATEMENT A1\n",
+      "expected": "opened A1 for a\nerror: bad amount 0\nerror: bad amount -5\nerror: bad amount 12.5\nerror: bad amount 007\nerror: bad amount 1000000000\nerror: no account A2\nno transactions\n",
+      "hidden": true,
+      "milestone": "m1"
+    },
+    {
+      "id": "chain",
+      "input": "OPEN X x\nOPEN Y y\nOPEN Z z\nDEPOSIT X 1000\nTRANSFER X Y 400\nTRANSFER Y Z 400\nTRANSFER Z X 150\nSTATEMENT X\nSTATEMENT Y\nSTATEMENT Z\n",
+      "expected": "opened X for x\nopened Y for y\nopened Z for z\nX balance 1000\nmoved 400 from X to Y\nmoved 400 from Y to Z\nmoved 150 from Z to X\n1. deposit 1000 -> 1000\n2. withdraw 400 -> 600\n3. deposit 150 -> 750\n1. deposit 400 -> 400\n2. withdraw 400 -> 0\n1. deposit 400 -> 400\n2. withdraw 150 -> 250\n",
+      "hidden": true,
+      "milestone": "m2"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "tests",
+      "criterion": "Hidden tests pass: every command prints exactly the expected output.",
+      "weight": 65,
+      "checked_by": "tests"
+    },
+    {
+      "id": "structure",
+      "criterion": "Account keeps balance and history private; Bank.transfer checks everything before changing anything.",
+      "weight": 20,
+      "checked_by": "review"
+    },
+    {
+      "id": "feedback",
+      "criterion": "Readable names, small functions and clear error handling (AI feedback, advice only).",
+      "weight": 15,
+      "checked_by": "ai-feedback"
+    }
+  ],
+  "extensions": [
+    "Add a daily withdrawal limit per account.",
+    "Print the three accounts with the highest balance."
+  ]
+}

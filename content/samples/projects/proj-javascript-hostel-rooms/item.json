@@ -1,0 +1,185 @@
+{
+  "schema": "parikshaa.content/project@1",
+  "slug": "proj-javascript-hostel-rooms",
+  "version": 1,
+  "title": "Hostel room allotment",
+  "tier": "public",
+  "text_language": "en",
+  "difficulty": "easy",
+  "tags": {
+    "topics": [
+      "javascript",
+      "maps",
+      "classes"
+    ],
+    "patterns": [
+      "first-fit",
+      "command-driver"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own project brief, code, tests and rubric for hostel room allotment, examples, code, quiz and explanations; no text from any site, book or course.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-projects",
+      "module": "JavaScript",
+      "position": 0
+    }
+  ],
+  "language": "javascript",
+  "est_hours": 2,
+  "brief": "The hostel office allots beds by hand on a register. Build the logic behind a simple allotment tool: rooms with a number of beds, students placed in the lowest-numbered room that has space, students leaving, and a room-by-room view. You write one class; the driver turns typed commands into calls.",
+  "requirements": [
+    "Rooms have a number and a bed count; a room number can be added once.",
+    "A student is placed in the lowest-numbered room with a free bed (first fit), and only once.",
+    "Vacating frees the bed; the student can be allotted again later.",
+    "SHOW lists every room by number with its students sorted by name and its free beds."
+  ],
+  "io_protocol": "| Command | Prints |\n|---|---|\n| `ROOM <no> <beds>` | `room <no> added with <beds> beds` or `error: room <no> exists` |\n| `ALLOT <student>` | `<student> -> room <no>`, `error: <student> already in room <no>`, or `error: hostel full` |\n| `VACATE <student>` | `<student> left room <no>` or `error: <student> not found` |\n| `SHOW` | `room <no>: <names> (<free> free)` per room (`-` when empty), or `no rooms` |\n\nAnything else: `error: bad command <line>`.",
+  "milestones": [
+    {
+      "id": "m1",
+      "title": "Rooms and first-fit allotment",
+      "instructions": "Fill in `addRoom` and the happy path of `allot`: try rooms in increasing number and take the first with a free bed.",
+      "hints": [
+        "Map keys come out in insertion order, not numeric order: sort them.",
+        "Keep a second Map from student to room so later commands are O(1)."
+      ]
+    },
+    {
+      "id": "m2",
+      "title": "Errors and vacating",
+      "instructions": "Refuse a second allotment for the same student, report a full hostel, and implement `vacate`.",
+      "hints": [
+        "Check the student first: an already-placed student gets their room number in the error even if the hostel is full."
+      ]
+    },
+    {
+      "id": "m3",
+      "title": "The room view",
+      "instructions": "Return one line per room from `show`, rooms by number, names sorted, free beds counted.",
+      "hints": [
+        "[...set].sort().join(', ') gives the names; print '-' when the room is empty."
+      ]
+    }
+  ],
+  "files": [
+    {
+      "path": "rooms.js",
+      "content": "class RoomRegistry {\n  constructor() {\n    this.rooms = new Map();    // room number -> { beds, students: Set }\n    this.whereIs = new Map();  // student -> room number\n  }\n\n  addRoom(no, beds) {\n    // Milestone 1: \"room <no> added with <beds> beds\", or \"error: room <no> exists\".\n    return \"TODO\";\n  }\n\n  allot(student) {\n    // Milestone 1: put the student in the LOWEST-numbered room with a free bed: \"<student> -> room <no>\".\n    // Milestone 2: \"error: <student> already in room <no>\", \"error: hostel full\".\n    return \"TODO\";\n  }\n\n  vacate(student) {\n    // Milestone 2: \"<student> left room <no>\" or \"error: <student> not found\".\n    return \"TODO\";\n  }\n\n  show() {\n    // Milestone 3: \"room <no>: <names sorted, comma-separated> (<free> free)\" per room, by room number.\n    return [];\n  }\n}\n\nmodule.exports = { RoomRegistry };\n",
+      "role": "source"
+    },
+    {
+      "path": "main.js",
+      "content": "const { RoomRegistry } = require(\"./rooms\");\n\nconst registry = new RoomRegistry();\nconst out = [];\nconst lines = require(\"fs\").readFileSync(0, \"utf8\").split(\"\\n\");\nfor (const raw of lines) {\n  const p = raw.trim().split(/\\s+/).filter(Boolean);\n  if (p.length === 0) continue;\n  if (p[0] === \"ROOM\" && p.length === 3 && /^\\d+$/.test(p[1]) && /^[1-9]\\d*$/.test(p[2])) out.push(registry.addRoom(Number(p[1]), Number(p[2])));\n  else if (p[0] === \"ALLOT\" && p.length === 2) out.push(registry.allot(p[1]));\n  else if (p[0] === \"VACATE\" && p.length === 2) out.push(registry.vacate(p[1]));\n  else if (p[0] === \"SHOW\" && p.length === 1) {\n    const rows = registry.show();\n    out.push(rows.length ? rows.join(\"\\n\") : \"no rooms\");\n  } else out.push(`error: bad command ${raw.trim()}`);\n}\nconsole.log(out.join(\"\\n\"));\n",
+      "role": "driver",
+      "editable": false
+    }
+  ],
+  "solution_files": [
+    {
+      "path": "rooms.js",
+      "content": "class RoomRegistry {\n  constructor() {\n    this.rooms = new Map();    // room number -> { beds, students: Set }\n    this.whereIs = new Map();  // student -> room number\n  }\n\n  addRoom(no, beds) {\n    if (this.rooms.has(no)) return `error: room ${no} exists`;\n    this.rooms.set(no, { beds, students: new Set() });\n    return `room ${no} added with ${beds} beds`;\n  }\n\n  allot(student) {\n    if (this.whereIs.has(student)) return `error: ${student} already in room ${this.whereIs.get(student)}`;\n    const numbers = [...this.rooms.keys()].sort((a, b) => a - b);\n    for (const no of numbers) {\n      const room = this.rooms.get(no);\n      if (room.students.size < room.beds) {\n        room.students.add(student);\n        this.whereIs.set(student, no);\n        return `${student} -> room ${no}`;\n      }\n    }\n    return \"error: hostel full\";\n  }\n\n  vacate(student) {\n    const no = this.whereIs.get(student);\n    if (no === undefined) return `error: ${student} not found`;\n    this.rooms.get(no).students.delete(student);\n    this.whereIs.delete(student);\n    return `${student} left room ${no}`;\n  }\n\n  show() {\n    return [...this.rooms.keys()]\n      .sort((a, b) => a - b)\n      .map((no) => {\n        const room = this.rooms.get(no);\n        const names = [...room.students].sort().join(\", \") || \"-\";\n        return `room ${no}: ${names} (${room.beds - room.students.size} free)`;\n      });\n  }\n}\n\nmodule.exports = { RoomRegistry };\n",
+      "role": "source"
+    }
+  ],
+  "bundle_order": [
+    "rooms.js",
+    "main.js"
+  ],
+  "tests": [
+    {
+      "id": "allot-and-show",
+      "input": "ROOM 102 2\nROOM 101 1\nALLOT aditi\nALLOT bilal\nALLOT charu\nSHOW\n",
+      "expected": "room 102 added with 2 beds\nroom 101 added with 1 beds\naditi -> room 101\nbilal -> room 102\ncharu -> room 102\nroom 101: aditi (0 free)\nroom 102: bilal, charu (0 free)\n",
+      "hidden": false,
+      "milestone": "m1"
+    },
+    {
+      "id": "full-hostel",
+      "input": "ROOM 1 1\nALLOT asha\nALLOT bina\n",
+      "expected": "room 1 added with 1 beds\nasha -> room 1\nerror: hostel full\n",
+      "hidden": false,
+      "milestone": "m2"
+    },
+    {
+      "id": "no-rooms",
+      "input": "SHOW\nALLOT ghost\n",
+      "expected": "no rooms\nerror: hostel full\n",
+      "hidden": true,
+      "milestone": "m3"
+    },
+    {
+      "id": "duplicate-room",
+      "input": "ROOM 7 2\nROOM 7 3\nSHOW\n",
+      "expected": "room 7 added with 2 beds\nerror: room 7 exists\nroom 7: - (2 free)\n",
+      "hidden": true,
+      "milestone": "m1"
+    },
+    {
+      "id": "already-placed",
+      "input": "ROOM 5 3\nALLOT om\nALLOT om\n",
+      "expected": "room 5 added with 3 beds\nom -> room 5\nerror: om already in room 5\n",
+      "hidden": true,
+      "milestone": "m2"
+    },
+    {
+      "id": "vacate-and-reuse",
+      "input": "ROOM 9 1\nROOM 10 1\nALLOT a\nALLOT b\nVACATE a\nALLOT c\nVACATE zz\nSHOW\n",
+      "expected": "room 9 added with 1 beds\nroom 10 added with 1 beds\na -> room 9\nb -> room 10\na left room 9\nc -> room 9\nerror: zz not found\nroom 9: c (0 free)\nroom 10: b (0 free)\n",
+      "hidden": true,
+      "milestone": "m2"
+    },
+    {
+      "id": "first-fit-gap",
+      "input": "ROOM 300 2\nROOM 20 2\nROOM 4 1\nALLOT p\nALLOT q\nALLOT r\nALLOT s\nVACATE p\nALLOT t\nSHOW\n",
+      "expected": "room 300 added with 2 beds\nroom 20 added with 2 beds\nroom 4 added with 1 beds\np -> room 4\nq -> room 20\nr -> room 20\ns -> room 300\np left room 4\nt -> room 4\nroom 4: t (0 free)\nroom 20: q, r (0 free)\nroom 300: s (1 free)\n",
+      "hidden": true,
+      "milestone": "m1"
+    },
+    {
+      "id": "full-then-free",
+      "input": "ROOM 1 1\nALLOT x\nALLOT y\nVACATE x\nALLOT y\nSHOW\n",
+      "expected": "room 1 added with 1 beds\nx -> room 1\nerror: hostel full\nx left room 1\ny -> room 1\nroom 1: y (0 free)\n",
+      "hidden": true,
+      "milestone": "m2"
+    },
+    {
+      "id": "bad-commands",
+      "input": "ROOM 12\nROOM 12 0\nROOM twelve 2\nMOVE a 5\nSHOW\n",
+      "expected": "error: bad command ROOM 12\nerror: bad command ROOM 12 0\nerror: bad command ROOM twelve 2\nerror: bad command MOVE a 5\nno rooms\n",
+      "hidden": true,
+      "milestone": "m1"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "tests",
+      "criterion": "Hidden tests pass: every command prints exactly the expected output.",
+      "weight": 65,
+      "checked_by": "tests"
+    },
+    {
+      "id": "structure",
+      "criterion": "RoomRegistry keeps rooms and student positions consistent: every allot and vacate updates both maps together.",
+      "weight": 20,
+      "checked_by": "review"
+    },
+    {
+      "id": "feedback",
+      "criterion": "Readable names, small functions and clear error handling (AI feedback, advice only).",
+      "weight": 15,
+      "checked_by": "ai-feedback"
+    }
+  ],
+  "extensions": [
+    "Add MOVE <student> <room> that keeps the old bed if the new room is full.",
+    "Print the occupancy percentage of the hostel."
+  ]
+}

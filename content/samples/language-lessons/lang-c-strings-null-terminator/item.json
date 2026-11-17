@@ -1,0 +1,234 @@
+{
+  "schema": "parikshaa.content/lesson@1",
+  "slug": "lang-c-strings-null-terminator",
+  "version": 1,
+  "title": "C strings: the byte at the end",
+  "tier": "premium",
+  "text_language": "en",
+  "course": "lang-c",
+  "difficulty": "medium",
+  "tags": {
+    "topics": [
+      "strings",
+      "memory"
+    ],
+    "patterns": [
+      "null-terminator",
+      "bounded-copy"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own lesson text and examples on c strings: the byte at the end, examples, code, quiz and explanations; no text from any site, book or course.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-languages",
+      "module": "C",
+      "position": 1
+    }
+  ],
+  "est_minutes": 13,
+  "prerequisites": [
+    "lang-c-pointers-and-arrays"
+  ],
+  "outcomes": [
+    "can explain how C knows where a string ends",
+    "can tell strlen from sizeof and predict both",
+    "can read and copy strings without writing past a buffer"
+  ],
+  "sections": [
+    {
+      "kind": "why",
+      "heading": "Why this matters",
+      "body": "C has no string type. A \"string\" is just bytes in a `char` array, ending with a byte whose value is 0. That one convention explains a huge share of C bugs, from off-by-one buffer sizes to the overflows behind famous security holes. Interviewers use it to check whether you understand memory, not just syntax."
+    },
+    {
+      "kind": "concept",
+      "heading": "A string is bytes plus a 0",
+      "body": "The literal `\"chai\"` is five bytes: `'c' 'h' 'a' 'i' '\\0'`. The last one, the **null terminator** (value 0), marks the end. Every string function, from `printf(\"%s\")` to `strlen` and `strcpy`, walks forward until it finds that 0. **C never stores a string's length; it finds it by searching.**\n\nTwo sizes now matter, and they are different:\n\n- `strlen(s)`: the number of characters **before** the terminator. It walks the bytes, so it costs `O(n)`.\n- `sizeof buf`: the size of the **whole array** in bytes, known at compile time, including the terminator and any unused space after it.\n\nA buffer must have room for the terminator: storing a 7-letter word needs at least 8 bytes.\n\n> **Note:** `char word[] = \"chai\";` lets the compiler count, and it allocates 5 bytes. `char word[4] = \"chai\";` compiles in C but leaves **no room for the terminator**, so `word` is not a valid string. This is one of the places C and C++ differ: C++ rejects it."
+    },
+    {
+      "kind": "example",
+      "heading": "strlen, sizeof and the terminator",
+      "body": "The array `hostel` has 16 bytes but holds a 6-letter word. Writing a 0 into the middle shortens the string without changing the array.",
+      "code": [
+        {
+          "lang": "c",
+          "src": "#include <stdio.h>\n#include <string.h>\n\nint main(void) {\n    char hostel[16] = \"Kaveri\";\n    printf(\"strlen = %zu, sizeof = %zu\\n\", strlen(hostel), sizeof hostel);\n    printf(\"byte after the last letter = %d\\n\", hostel[6]);\n    char word[] = \"chai\";\n    printf(\"sizeof word = %zu (4 letters + the terminator)\\n\", sizeof word);\n    hostel[3] = '\\0';                        /* cut the string short */\n    printf(\"after hostel[3] = 0: \\\"%s\\\", strlen = %zu\\n\", hostel, strlen(hostel));\n    return 0;\n}\n",
+          "runnable": true,
+          "expected_output": "strlen = 6, sizeof = 16\nbyte after the last letter = 0\nsizeof word = 5 (4 letters + the terminator)\nafter hostel[3] = 0: \"Kav\", strlen = 3\n",
+          "caption": "strlen counts up to the terminator; sizeof counts the whole buffer"
+        }
+      ]
+    },
+    {
+      "kind": "concept",
+      "heading": "Reading and copying without overflowing",
+      "body": "The dangerous functions are the ones that **do not know the destination's size**:\n\n- `gets(buf)` reads a whole line no matter how long; it was removed from the C standard. Use `fgets(buf, sizeof buf, stdin)`, which writes at most `sizeof buf − 1` characters plus the terminator.\n- `strcpy(dst, src)` copies until `src` ends, even past the end of `dst`. Prefer `snprintf(dst, sizeof dst, \"%s\", src)`, which always terminates and never writes more than `sizeof dst` bytes; its return value tells you how long the full string would have been, so you can detect truncation.\n- `scanf(\"%s\", buf)` has the same problem; give it a width: `scanf(\"%31s\", buf)` for a 32-byte buffer.\n\n`fgets` keeps the newline if the line fit. `line[strcspn(line, \"\\n\")] = '\\0';` removes it: `strcspn` returns the index of the first newline, or the length if there is none, so the line is safe either way."
+    },
+    {
+      "kind": "example",
+      "heading": "A safe read and a safe copy",
+      "body": "The program reads `Narmada Hostel` from standard input, strips the newline, and copies it into an 8-byte `tag`. `snprintf` keeps 7 characters and the terminator; nothing is written past the buffer.",
+      "code": [
+        {
+          "lang": "c",
+          "src": "#include <stdio.h>\n#include <string.h>\n\nint main(void) {\n    char line[32];\n    if (fgets(line, sizeof line, stdin) == NULL) return 1;\n    line[strcspn(line, \"\\n\")] = '\\0';        /* fgets keeps the newline: drop it */\n    char tag[8];\n    snprintf(tag, sizeof tag, \"%s\", line);   /* never writes past tag[7] */\n    printf(\"read \\\"%s\\\" (%zu chars)\\n\", line, strlen(line));\n    printf(\"tag  \\\"%s\\\" (cut to fit %zu bytes)\\n\", tag, sizeof tag);\n    return 0;\n}\n",
+          "runnable": true,
+          "expected_output": "read \"Narmada Hostel\" (14 chars)\ntag  \"Narmada\" (cut to fit 8 bytes)\n",
+          "stdin": "Narmada Hostel\n",
+          "caption": "Reading a line safely and copying it into a smaller buffer"
+        }
+      ]
+    },
+    {
+      "kind": "note",
+      "heading": "What an overflow actually does",
+      "body": "Suppose a function has `char name[8];` followed by other local variables, and calls `strcpy(name, input)` with a 20-character input. The first 8 bytes fill `name`; the next 12 overwrite **whatever lives next to it in memory**: another variable, a saved pointer, or the return address of the function. The program may print a wrong value, crash much later in unrelated code, or, if an attacker chose the input, jump to code the attacker supplied. This is the classic **stack buffer overflow**.\n\nNotice that nothing fails at the moment of the bad write. That is what makes these bugs expensive: the symptom appears far from the cause. Two habits prevent almost all of them: **every write into a buffer passes the buffer's size** (`fgets`, `snprintf`, `strncat` with care), and **every buffer is sized for the terminator**. When testing, `-fsanitize=address` reports the exact overflowing line instead of a random crash later."
+    },
+    {
+      "kind": "example",
+      "heading": "Walking a string with a pointer",
+      "body": "The hands-on task asks you to count vowels by walking the string yourself. The standard C shape is:\n\n```c\nfor (const char *p = s; *p != '\\0'; p++) {\n    /* look at *p */\n}\n```\n\nThe loop stops on the terminator, so it never needs the length. Compare it with the tempting version `for (size_t i = 0; i < strlen(s); i++)`: it is correct, but `strlen` walks the whole string **on every iteration**, so a loop over `n` characters does about `n^2 / 2` steps. On a 200-character line nobody notices; on a 2 MB file it takes seconds instead of milliseconds. If you need the length, compute it once before the loop.\n\nTwo more details for the task:\n\n- **Case:** `tolower` from `<ctype.h>` turns `'A'` into `'a'` and leaves other characters alone. Pass it an `unsigned char` value: `tolower((unsigned char)*p)`. A plain `char` can be negative for non-ASCII bytes (such as UTF-8 letters in Hindi text), and passing a negative value to `tolower` is undefined behaviour.\n- **The newline:** `fgets` keeps the `'\\n'`. It is not a vowel, so it would not change the count here, but stripping it is a good habit: the moment you compare the line with another string, or print it inside quotes, a stray newline gives a wrong answer.\n\nTrace `\"Chai Point\"`: C (no), h (no), a (1), i (2), space, P, o (3), i (4), n, t. The answer is 4, and the loop stopped at the terminator after `t` without ever asking how long the line was."
+    },
+    {
+      "kind": "misconception",
+      "heading": "Common mix-ups",
+      "body": "**Many students think `strlen` includes the terminator.** It does not: `strlen(\"chai\")` is 4. The buffer needs `strlen + 1` bytes.\n\n**Many students think `sizeof` gives the string's length.** It gives the array's size, which is often larger, and for a `char *` parameter it gives the pointer's size (8), which has nothing to do with the text.\n\n**Many students think `strncpy` is the safe `strcpy`.** If the source is too long, `strncpy` copies exactly `n` bytes and **does not add a terminator**, leaving an unterminated string. `snprintf` is the simpler safe choice."
+    },
+    {
+      "kind": "interview",
+      "heading": "Interview questions",
+      "body": "Answers as a strong candidate would say them.",
+      "qa": [
+        {
+          "q": "How does `printf(\"%s\", s)` know where the string ends?",
+          "a": "It reads bytes from s until it finds a byte with value 0, the null terminator. C stores no length, so a missing terminator makes printf run past the buffer into other memory."
+        },
+        {
+          "q": "What is the difference between `strlen(s)` and `sizeof s` for `char s[20] = \"hi\";`?",
+          "a": "strlen is 2, the characters before the terminator, found by scanning. sizeof is 20, the size of the whole array, known at compile time. For a char pointer, sizeof would be the pointer size instead."
+        },
+        {
+          "q": "Why was `gets` removed from the C standard?",
+          "a": "It reads an entire line into a buffer without knowing the buffer's size, so any long input overflows it. There is no way to use it safely; fgets with the buffer size replaces it."
+        },
+        {
+          "q": "How would you copy a string into a fixed buffer safely?",
+          "a": "snprintf(dst, sizeof dst, \"%s\", src): it never writes more than the buffer size, always adds the terminator, and returns the length the full string needed, so I can check for truncation."
+        }
+      ]
+    },
+    {
+      "kind": "summary",
+      "heading": "Summary",
+      "body": "- A C string is a `char` array ending in a 0 byte.\n- `strlen` scans to the terminator; `sizeof` is the whole buffer.\n- Buffers need `length + 1` bytes.\n- Use functions that take the destination size: `fgets`, `snprintf`.\n- Overflows corrupt neighbouring memory silently; sanitisers find them."
+    }
+  ],
+  "quiz": [
+    {
+      "stem": "`char s[10] = \"code\";` What are `strlen(s)` and `sizeof s`?",
+      "options": [
+        "4 and 5",
+        "4 and 10",
+        "5 and 10",
+        "10 and 10"
+      ],
+      "correct": 1,
+      "explanation": "strlen counts the 4 characters; sizeof is the whole 10-byte array."
+    },
+    {
+      "stem": "How many bytes must a buffer have to store the word \"Narmada\" as a C string?",
+      "options": [
+        "7",
+        "8",
+        "6",
+        "16"
+      ],
+      "correct": 1,
+      "explanation": "7 characters plus the terminator."
+    },
+    {
+      "stem": "Which call can never write past `char buf[16]`?",
+      "options": [
+        "gets(buf)",
+        "strcpy(buf, src)",
+        "snprintf(buf, sizeof buf, \"%s\", src)",
+        "scanf(\"%s\", buf)"
+      ],
+      "correct": 2,
+      "explanation": "snprintf is told the buffer size and always terminates."
+    },
+    {
+      "stem": "After `fgets(line, sizeof line, stdin)` reads \"chai\\n\", what is `strlen(line)`?",
+      "options": [
+        "4",
+        "5",
+        "6",
+        "32"
+      ],
+      "correct": 1,
+      "explanation": "fgets keeps the newline: c, h, a, i and '\\n' make 5."
+    }
+  ],
+  "hands_on": [
+    {
+      "id": "vowels",
+      "title": "Count the vowels",
+      "task": "Read one line (at most 200 characters) and print how many of its letters are vowels (`a e i o u`, upper or lower case). Fill in `count_vowels`, walking the string with a pointer until you reach the `'\\0'` terminator. Do not use `strlen` in the loop condition.",
+      "lang": "c",
+      "starter": "#include <ctype.h>\n#include <stdio.h>\n#include <string.h>\n\n/* Count a, e, i, o, u in either case. Walk the string until the '\\0' terminator. */\nstatic int count_vowels(const char *s) {\n    (void)s;\n    /* TODO: your code here */\n    return 0;\n}\n\nint main(void) {\n    char line[256];\n    if (fgets(line, sizeof line, stdin) == NULL) line[0] = '\\0';\n    line[strcspn(line, \"\\n\")] = '\\0';\n    printf(\"%d\\n\", count_vowels(line));\n    return 0;\n}\n",
+      "solution": "#include <ctype.h>\n#include <stdio.h>\n#include <string.h>\n\nstatic int count_vowels(const char *s) {\n    int count = 0;\n    for (; *s != '\\0'; s++) {\n        char c = (char)tolower((unsigned char)*s);\n        if (c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u') count++;\n    }\n    return count;\n}\n\nint main(void) {\n    char line[256];\n    if (fgets(line, sizeof line, stdin) == NULL) line[0] = '\\0';\n    line[strcspn(line, \"\\n\")] = '\\0';\n    printf(\"%d\\n\", count_vowels(line));\n    return 0;\n}\n",
+      "tests": [
+        {
+          "id": "t1",
+          "input": "Chai Point\n",
+          "expected": "4\n",
+          "hidden": false
+        },
+        {
+          "id": "t2",
+          "input": "RHYTHM\n",
+          "expected": "0\n",
+          "hidden": true
+        },
+        {
+          "id": "t3",
+          "input": "aeiouAEIOU\n",
+          "expected": "10\n",
+          "hidden": true
+        },
+        {
+          "id": "t4",
+          "input": "Kaveri Hostel, Room 214\n",
+          "expected": "7\n",
+          "hidden": true
+        },
+        {
+          "id": "t5",
+          "input": "\n",
+          "expected": "0\n",
+          "hidden": true
+        },
+        {
+          "id": "t6",
+          "input": "Quiet queue at the UPI counter\n",
+          "expected": "14\n",
+          "hidden": true
+        }
+      ]
+    }
+  ],
+  "revision_card": {
+    "front": "C strings: how is the end found, strlen vs sizeof, and the safe read and copy?",
+    "back": "A 0 byte ends every string; C stores no length. strlen counts chars before it; sizeof is the whole buffer. Read with fgets(buf, sizeof buf, stdin); copy with snprintf(dst, sizeof dst, \"%s\", src)."
+  },
+  "next": [
+    "lang-cpp-references-vs-pointers"
+  ]
+}

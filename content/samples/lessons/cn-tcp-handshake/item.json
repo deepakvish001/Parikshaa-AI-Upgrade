@@ -1,0 +1,238 @@
+{
+  "schema": "parikshaa.content/lesson@1",
+  "slug": "cn-tcp-handshake",
+  "version": 1,
+  "title": "TCP's three-way handshake",
+  "tier": "public",
+  "text_language": "en",
+  "course": "cn",
+  "difficulty": "easy",
+  "tags": {
+    "topics": [
+      "tcp",
+      "transport-layer"
+    ],
+    "patterns": [
+      "connection-setup"
+    ],
+    "extra": [
+      "sequence-numbers"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own explanations of the TCP handshake, examples, code, quiz and explanations; no text from any site, book or course.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-cs-core",
+      "module": "Computer networks",
+      "position": 0
+    }
+  ],
+  "est_minutes": 10,
+  "prerequisites": [],
+  "outcomes": [
+    "can draw the SYN, SYN+ACK, ACK exchange with sequence and acknowledgement numbers",
+    "can explain why TCP needs three messages and not two",
+    "can work out the acknowledgement number after a segment of data"
+  ],
+  "sections": [
+    {
+      "kind": "why",
+      "heading": "Why this matters",
+      "body": "Every time the canteen app on your phone fetches the menu, it first opens a TCP connection to the server. Before a single byte of the menu moves, the phone and the server exchange three small messages. Interviewers love this exchange: it is short enough to draw on a whiteboard, and it tests whether you understand **why** reliable delivery needs agreement, not just the names of the packets."
+    },
+    {
+      "kind": "concept",
+      "heading": "What the two sides must agree on",
+      "body": "TCP promises that bytes arrive **complete and in order**. To keep that promise, each side numbers every byte it sends. The number of the first byte is the **initial sequence number (ISN)**. Each side picks its own ISN, so there are two of them: one for client-to-server bytes and one for server-to-client bytes.\n\nThe receiver tells the sender how far it has got with an **acknowledgement number**: the number of the **next byte it expects**. If the server says `ack = 4010`, it means \"I have everything up to byte 4009; send 4010 next\".\n\nSo before any data flows, each side must learn the *other* side's ISN and confirm that it learned it. That is the whole job of the handshake.\n\n> **Note:** A SYN and a FIN each use up one sequence number even though they carry no data. That is why the first data byte after a SYN with `seq = 4000` is numbered `4001`.",
+      "visual": {
+        "id": "handshake-timeline",
+        "kind": "timeline",
+        "alt": "Three arrows between client and server: SYN with seq 4000 from client, SYN+ACK with seq 9000 and ack 4001 from server, ACK with ack 9001 from client; then data flows.",
+        "data": {
+          "lanes": [
+            "client",
+            "server"
+          ],
+          "events": [
+            {
+              "from": "client",
+              "to": "server",
+              "label": "SYN seq=4000"
+            },
+            {
+              "from": "server",
+              "to": "client",
+              "label": "SYN+ACK seq=9000 ack=4001"
+            },
+            {
+              "from": "client",
+              "to": "server",
+              "label": "ACK seq=4001 ack=9001"
+            },
+            {
+              "from": "client",
+              "to": "server",
+              "label": "data seq=4001"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "kind": "concept",
+      "heading": "The three messages",
+      "body": "1. **SYN** (client → server): \"I want to talk. My bytes start after `4000`.\" The client picks ISN `4000` and sets the SYN flag.\n2. **SYN+ACK** (server → client): \"I heard you; I expect your byte `4001` next. My bytes start after `9000`.\" One segment carries both the server's own SYN and the acknowledgement of the client's SYN.\n3. **ACK** (client → server): \"I heard you; I expect your byte `9001` next.\"\n\nAfter message 3 both sides are in the **ESTABLISHED** state, and both ISNs are known and confirmed. **Each side's SYN is acknowledged by the other side**: that is the rule to remember, and the reason for three messages.\n\n> **Note:** The client may put data in the third segment itself. Many stacks wait and send the data in the next segment instead; both are allowed."
+    },
+    {
+      "kind": "concept",
+      "heading": "Why not two messages?",
+      "body": "Suppose the server considered the connection open right after sending SYN+ACK. Then the server's ISN `9000` would never be confirmed by the client, and the server could not know whether its SYN+ACK ever arrived.\n\nThere is a sharper reason: **old duplicate SYNs**. A SYN from a connection that was closed a minute ago can be stuck in a router queue and arrive late. With two messages, the server would open a connection the client never asked for and start sending data into the void. With three, the client sees a SYN+ACK that acknowledges an ISN it never used, answers with a reset (RST), and the stale connection dies before any data moves.\n\nSo the third message is not politeness: it is how the server learns that the client is really there and really wants **this** connection."
+    },
+    {
+      "kind": "concept",
+      "heading": "The states each side moves through",
+      "body": "Each end of a TCP connection is a small state machine. Knowing the states helps you read tools like `netstat` or `ss`, and it is a favourite follow-up question.\n\n- The server starts in **LISTEN**: it has called `listen()` and waits for SYNs on a port.\n- The client calls `connect()`, sends its SYN and moves to **SYN_SENT**.\n- The server receives the SYN, sends SYN+ACK and moves to **SYN_RECEIVED**. The half-open connection now sits in the server's SYN queue.\n- The client receives SYN+ACK, sends the final ACK and moves to **ESTABLISHED**.\n- The server receives that ACK and also moves to **ESTABLISHED**. Only now does `accept()` hand the connection to the application.\n\n**The two sides do not become ESTABLISHED at the same moment.** The client is ready one half round trip earlier, which is why it may send data immediately while the server is still finishing.\n\nThe round trip matters for speed too. A handshake costs one full round trip before the first request byte can leave the client. On a phone network with an 80 ms round trip, that is 80 ms of waiting on every new connection. This is why browsers and apps **reuse connections** (keep-alive, connection pools) instead of opening a new one per request.",
+      "visual": {
+        "id": "handshake-states",
+        "kind": "table",
+        "alt": "Table of states: client CLOSED to SYN_SENT to ESTABLISHED; server LISTEN to SYN_RECEIVED to ESTABLISHED, with the message that causes each change.",
+        "data": {
+          "headers": [
+            "Message",
+            "Client state after",
+            "Server state after"
+          ],
+          "rows": [
+            [
+              "(before)",
+              "CLOSED",
+              "LISTEN"
+            ],
+            [
+              "SYN sent",
+              "SYN_SENT",
+              "SYN_RECEIVED (on receipt)"
+            ],
+            [
+              "SYN+ACK received",
+              "ESTABLISHED",
+              "SYN_RECEIVED"
+            ],
+            [
+              "ACK received",
+              "ESTABLISHED",
+              "ESTABLISHED"
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "kind": "example",
+      "heading": "Following the numbers",
+      "body": "Let's run the numbers for a client with ISN `4000` that sends a 9-byte request (`GET /menu`) right after the handshake, and a server with ISN `9000`. The program prints each segment the way you would draw it in an exam.\n\nRead the output line by line. Line 2 acknowledges `4001` because the SYN used up `4000`. Line 3 acknowledges `9001` for the same reason on the server's side. The request starts at `4001`, its 9 bytes are `4001` to `4009`, and the server's acknowledgement on line 5 is `4010`: the next byte it expects. If a later request of 12 bytes followed, it would start at `4010` and be acknowledged with `4022`.",
+      "code": [
+        {
+          "lang": "python",
+          "src": "client_isn = 4000\nserver_isn = 9000\nprint(f\"1. client -> server  SYN      seq={client_isn}\")\nprint(f\"2. server -> client  SYN+ACK  seq={server_isn} ack={client_isn + 1}\")\nprint(f\"3. client -> server  ACK      seq={client_isn + 1} ack={server_isn + 1}\")\nrequest = b\"GET /menu\"\nprint(f\"4. client -> server  DATA     seq={client_isn + 1} len={len(request)}\")\nprint(f\"5. server -> client  ACK      ack={client_isn + 1 + len(request)}\")\n",
+          "runnable": true,
+          "expected_output": "1. client -> server  SYN      seq=4000\n2. server -> client  SYN+ACK  seq=9000 ack=4001\n3. client -> server  ACK      seq=4001 ack=9001\n4. client -> server  DATA     seq=4001 len=9\n5. server -> client  ACK      ack=4010\n",
+          "caption": "Sequence and acknowledgement numbers through a handshake and one request"
+        }
+      ]
+    },
+    {
+      "kind": "misconception",
+      "heading": "Common mix-ups",
+      "body": "**Many students think the ACK number is the last byte received.** Actually it is the **next byte expected**. After receiving bytes `4001` to `4009`, the server acknowledges `4010`, not `4009`. Get this wrong and every number in an exam answer shifts by one.\n\n**Many students think the ISN is always 0.** Actually each side picks a hard-to-guess ISN. Starting at 0 would make old segments from a previous connection on the same ports look valid, and would let an attacker guess numbers and inject data. Tools like Wireshark *show* relative numbers starting at 0 to make reading easier, which is where the confusion comes from.\n\n**Many students think the handshake is about security.** It is about agreement and freshness. TLS, which handles encryption, runs its own handshake *after* TCP's."
+    },
+    {
+      "kind": "interview",
+      "heading": "Interview questions",
+      "body": "Answers as a strong candidate would say them.",
+      "qa": [
+        {
+          "q": "Walk me through TCP connection setup.",
+          "a": "The client sends a SYN with its initial sequence number, say x. The server replies with SYN+ACK carrying its own ISN y and ack x+1. The client answers with ACK y+1. Now both ISNs are known and acknowledged, and both sides move to ESTABLISHED."
+        },
+        {
+          "q": "Why does TCP use three messages instead of two?",
+          "a": "Each direction has its own sequence numbers, and each side's SYN must be acknowledged by the other. Two messages would leave the server's ISN unconfirmed. The third message also protects against old duplicate SYNs: the client resets a SYN+ACK that acknowledges an ISN it never sent."
+        },
+        {
+          "q": "What is a SYN flood, and how do servers survive it?",
+          "a": "An attacker sends many SYNs and never sends the final ACK, so the server keeps half-open connections until its queue fills. SYN cookies let the server encode the connection state in its ISN instead of storing it, so it only allocates memory when a valid final ACK arrives."
+        },
+        {
+          "q": "If the server's SYN+ACK is lost, what happens?",
+          "a": "The client never gets it, so it retransmits its SYN after a timeout. The server, still waiting for the final ACK, also retransmits its SYN+ACK. Whichever arrives first completes the exchange; TCP's timers and retries make the handshake reliable even though IP is not."
+        }
+      ]
+    },
+    {
+      "kind": "summary",
+      "heading": "Summary",
+      "body": "- TCP numbers every byte; each side picks its own initial sequence number.\n- The ACK number is the **next byte expected**.\n- SYN, SYN+ACK, ACK: each side's SYN is acknowledged by the other.\n- The third message confirms the client is real and kills stale duplicate SYNs.\n- SYN and FIN each consume one sequence number; the first data byte is ISN + 1."
+    }
+  ],
+  "quiz": [
+    {
+      "stem": "A client sends SYN with seq = 700. What ack number does the server's SYN+ACK carry?",
+      "options": [
+        "700",
+        "701",
+        "0",
+        "The server's own ISN"
+      ],
+      "correct": 1,
+      "explanation": "The ACK number is the next byte expected. The SYN uses up sequence number 700, so the server expects 701."
+    },
+    {
+      "stem": "After the handshake, the client sends 20 bytes starting at seq = 701. What does the server acknowledge?",
+      "options": [
+        "720",
+        "721",
+        "701",
+        "20"
+      ],
+      "correct": 1,
+      "explanation": "Bytes 701 to 720 have arrived, so the next byte expected is 721."
+    },
+    {
+      "stem": "Why is the third message of the handshake needed?",
+      "options": [
+        "To carry the encryption key",
+        "So the server knows its own ISN was received and the SYN was not a stale duplicate",
+        "Because IP needs three packets to route",
+        "To tell the client the server's port"
+      ],
+      "correct": 1,
+      "explanation": "The final ACK confirms the server's ISN and shows the client really started this connection; old duplicate SYNs are rejected by the client."
+    },
+    {
+      "stem": "A server receives thousands of SYNs but almost no final ACKs. What is most likely happening?",
+      "options": [
+        "Normal traffic",
+        "A SYN flood filling the half-open connection queue",
+        "The server's clock is wrong",
+        "TLS failing"
+      ],
+      "correct": 1,
+      "explanation": "Half-open connections pile up when the final ACK never comes, which is the signature of a SYN flood."
+    }
+  ],
+  "revision_card": {
+    "front": "TCP handshake: the three messages and their numbers, for client ISN x and server ISN y?",
+    "back": "SYN seq=x; SYN+ACK seq=y ack=x+1; ACK ack=y+1. ACK = next byte expected. Three messages so each side's SYN is acknowledged and stale SYNs die."
+  },
+  "next": [
+    "cn-dns-resolution"
+  ]
+}

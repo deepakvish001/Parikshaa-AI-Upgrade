@@ -1,0 +1,215 @@
+{
+  "schema": "parikshaa.content/lesson@1",
+  "slug": "lang-python-mutable-defaults",
+  "version": 1,
+  "title": "Python: mutable defaults and shared lists",
+  "tier": "public",
+  "text_language": "en",
+  "course": "lang-python",
+  "difficulty": "medium",
+  "tags": {
+    "topics": [
+      "functions",
+      "mutability"
+    ],
+    "patterns": [
+      "none-default",
+      "aliasing"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own lesson text and examples on python: mutable defaults and shared lists, examples, code, quiz and explanations; no text from any site, book or course.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-languages",
+      "module": "Python",
+      "position": 0
+    }
+  ],
+  "est_minutes": 12,
+  "prerequisites": [],
+  "outcomes": [
+    "can explain when a default argument is created and why a list default is shared",
+    "can write the None-default idiom",
+    "can tell aliasing from copying, including the [[0] * n] * m trap"
+  ],
+  "sections": [
+    {
+      "kind": "why",
+      "heading": "Why this matters",
+      "body": "This bug has a reputation: it passes every test you write by calling a function once, then corrupts data the moment the function is called twice in a running server. It also appears in nearly every list of Python interview gotchas. Understanding it means understanding something deeper about Python: **names point to objects, and some objects can change**."
+    },
+    {
+      "kind": "concept",
+      "heading": "Defaults are evaluated once",
+      "body": "A default value is computed **when the `def` statement runs**, once, when the module loads. It is not recomputed on each call. For an immutable default (`0`, `\"\"`, `None`, a tuple) that never matters: nobody can change it.\n\nFor a **mutable** default (a list, dict or set), every call that uses the default receives **the same object**. If the function changes it, the change is still there on the next call. The function object even keeps it where you can see it: `add_item.__defaults__`.\n\n> **Note:** The rule is not \"lists are bad as defaults\" but \"a default that the function **mutates** is shared state\". A default list that is only read is harmless, but it is still a trap for whoever edits the function next. Linters such as pylint flag every mutable default for that reason."
+    },
+    {
+      "kind": "example",
+      "heading": "Watching the default fill up",
+      "body": "Each call should start with an empty tray. The second call shows the first call's chai still sitting there.",
+      "code": [
+        {
+          "lang": "python",
+          "src": "def add_item(item, tray=[]):          # the default list is made ONCE, when def runs\n    tray.append(item)\n    return tray\n\nprint(add_item(\"chai\"))\nprint(add_item(\"samosa\"))             # expected a fresh tray...\nprint(add_item(\"poha\", []))           # a tray passed in explicitly is fine\nprint(add_item.__defaults__)          # the shared default, now holding two items\n",
+          "runnable": true,
+          "expected_output": "['chai']\n['chai', 'samosa']\n['poha']\n(['chai', 'samosa'],)\n",
+          "caption": "The shared default list"
+        }
+      ]
+    },
+    {
+      "kind": "concept",
+      "heading": "The None idiom, and aliasing in general",
+      "body": "The standard fix uses `None` as the default and creates a fresh object inside the function:\n\n```python\ndef add_item(item, tray=None):\n    if tray is None:\n        tray = []\n```\n\n`None` is immutable, so sharing it is safe, and `is None` distinguishes \"not passed\" from \"passed an empty list\".\n\nThe default-argument bug is one case of a general Python fact: **assignment never copies**. `alias = menu` makes a second name for the same list. To get an independent list you must ask for a copy: `list(menu)`, `menu[:]` or `menu.copy()` (a shallow copy), or `copy.deepcopy(menu)` when the list holds other lists.\n\nThe same fact explains the grid trap. `[[0] * 3] * 2` builds **one** inner list and puts two references to it in the outer list, so setting `grid[0][0]` also changes `grid[1][0]`. A list comprehension runs `[0] * 3` once per row, giving separate rows."
+    },
+    {
+      "kind": "example",
+      "heading": "The fix, and two relatives of the bug",
+      "body": "The None idiom gives each call its own tray. Then aliasing versus copying, and the shared-row grid.",
+      "code": [
+        {
+          "lang": "python",
+          "src": "def add_item(item, tray=None):\n    if tray is None:                  # a new list on every call that needs one\n        tray = []\n    tray.append(item)\n    return tray\n\nprint(add_item(\"chai\"))\nprint(add_item(\"samosa\"))\n\nmenu = [\"chai\", \"poha\"]\nalias = menu                          # the same list, two names\ncopy = list(menu)                     # a new list with the same items\nalias.append(\"vada\")\nprint(menu, copy, alias is menu, copy is menu)\n\ngrid = [[0] * 3] * 2                  # two references to ONE inner list\ngrid[0][0] = 9\nprint(grid)\nsafe = [[0] * 3 for _ in range(2)]    # two different inner lists\nsafe[0][0] = 9\nprint(safe)\n",
+          "runnable": true,
+          "expected_output": "['chai']\n['samosa']\n['chai', 'poha', 'vada'] ['chai', 'poha'] True False\n[[9, 0, 0], [9, 0, 0]]\n[[9, 0, 0], [0, 0, 0]]\n",
+          "caption": "The None idiom, aliasing, and the shared-row trap"
+        }
+      ]
+    },
+    {
+      "kind": "note",
+      "heading": "When sharing is what you want",
+      "body": "Shared mutable state is sometimes useful, which is why Python allows it. A function that remembers results between calls (a **cache**) can use a dict that lives as long as the function:\n\n```python\ndef fare(km, _cache={}):\n    if km not in _cache:\n        _cache[km] = 10 + 8 * km\n    return _cache[km]\n```\n\nThis works, and the leading underscore tells callers not to pass the argument. But it is better written with `functools.lru_cache`, which says the intent in its name, limits the size and is thread-safe. If you ever *do* rely on a shared default, leave a comment: the next reader will assume it is the bug.\n\nIn a web server the stakes are higher. A request handler like `def handle(req, errors=[])` keeps one `errors` list for the whole life of the process, so one user's validation errors show up in the next user's response. Nothing fails in testing, where each test starts a new process; it fails in production, after the second request. That is why code reviewers treat a mutable default as a bug until proved otherwise."
+    },
+    {
+      "kind": "example",
+      "heading": "Tracing a leaking ledger",
+      "body": "The hands-on task has a `record(name, amount, ledger={})` function that adds a payment to a dict of totals. Let's trace two days to see the leak before you fix it.\n\n**Day 1:** `aditi:30 bilal:15 aditi:10`. The first call passes no ledger, so it uses the default dict, call it `D`. After three calls, `D` is `{\"aditi\": 40, \"bilal\": 15}`, which is printed. Correct so far.\n\n**Day 2:** `bilal:20`. The first call again passes no ledger, so it uses... the same `D`, still holding day 1's totals. Bilal becomes 35 and Aditi's 40 appears on a day she did not eat. The program prints `aditi=40 bilal=35` instead of `bilal=20`.\n\nNothing about day 1 looked wrong, which is exactly why this bug survives testing: a test that checks one day passes. The fix is the None idiom: `ledger=None` in the signature and `if ledger is None: ledger = {}` as the first line of the body. Now every call that omits the ledger gets a fresh dict, while calls that pass one keep adding to it.\n\nA quick self-test for any function you write: **call it twice in a row with the same arguments and compare the results.** A function with no hidden state returns the same thing both times. If the second answer differs, something is being shared between calls, and a mutable default is the first place to look."
+    },
+    {
+      "kind": "misconception",
+      "heading": "Common mix-ups",
+      "body": "**Many students think the default is created fresh on each call, as in many other languages.** In Python it is created once, when `def` runs.\n\n**Many students think `if not tray:` is the same check as `if tray is None:`.** It is not: `not tray` is also true for an empty list the caller passed on purpose, and the function would then replace the caller's list with a new one, so the caller never sees the change.\n\n**Many students think `b = a` copies a list.** It creates a second name for the same object; use `a.copy()` or `list(a)` for a shallow copy."
+    },
+    {
+      "kind": "interview",
+      "heading": "Interview questions",
+      "body": "Answers as a strong candidate would say them.",
+      "qa": [
+        {
+          "q": "What does `def f(x, acc=[]): acc.append(x); return acc` return on the third call `f(3)` after `f(1)` and `f(2)`?",
+          "a": "[1, 2, 3]. The default list is created once when the function is defined, and every call without acc appends to that same list."
+        },
+        {
+          "q": "How do you fix a mutable default argument?",
+          "a": "Use None as the default and create the object inside: if acc is None: acc = []. None is immutable, and the is None test keeps an explicitly passed empty list working."
+        },
+        {
+          "q": "Why does `[[0] * 3] * 2` behave strangely?",
+          "a": "The outer multiplication repeats a reference to one inner list, so both rows are the same object and changing one changes both. A comprehension, [[0] * 3 for _ in range(2)], creates a new inner list per row."
+        }
+      ]
+    },
+    {
+      "kind": "summary",
+      "heading": "Summary",
+      "body": "- Default values are evaluated once, when `def` runs.\n- A mutable default that the function changes is shared across calls.\n- Use `None` as the default and build the object inside, tested with `is None`.\n- Assignment never copies; use `.copy()`, `list()` or `deepcopy`.\n- `[[0] * n] * m` shares one row; use a comprehension."
+    }
+  ],
+  "quiz": [
+    {
+      "stem": "`def f(x, acc=[]): acc.append(x); return len(acc)`. What does the third call `f(9)` return?",
+      "options": [
+        "1",
+        "3",
+        "9",
+        "0"
+      ],
+      "correct": 1,
+      "explanation": "The shared default already holds two items from the first two calls."
+    },
+    {
+      "stem": "Which default is safe to mutate inside the function?",
+      "options": [
+        "acc=[]",
+        "acc={}",
+        "acc=None, then acc = [] if acc is None",
+        "acc=set()"
+      ],
+      "correct": 2,
+      "explanation": "None is immutable; a fresh list is created on each call that needs one."
+    },
+    {
+      "stem": "`a = [1, 2]; b = a; b.append(3)`. What is `a`?",
+      "options": [
+        "[1, 2]",
+        "[1, 2, 3]",
+        "[3]",
+        "an error"
+      ],
+      "correct": 1,
+      "explanation": "b is another name for the same list."
+    },
+    {
+      "stem": "`g = [[0] * 2] * 2; g[1][1] = 5`. What is `g`?",
+      "options": [
+        "[[0, 0], [0, 5]]",
+        "[[0, 5], [0, 5]]",
+        "[[5, 5], [5, 5]]",
+        "[[0, 0], [5, 5]]"
+      ],
+      "correct": 1,
+      "explanation": "Both rows are the same list object."
+    }
+  ],
+  "hands_on": [
+    {
+      "id": "daily-ledger",
+      "title": "A fresh ledger every day",
+      "task": "Each input line after the first is one day of canteen payments like `aditi:30 bilal:15 aditi:10`. For each day the program prints the totals per name, sorted by name. `record` has a **mutable default bug**: totals from earlier days leak into later ones. Fix `record` (keep its signature usable with and without `ledger`).",
+      "lang": "python",
+      "starter": "import sys\n\n\ndef record(name, amount, ledger={}):\n    # Add amount to name's total in ledger and return the ledger.\n    # Each day must start with an EMPTY ledger when none is passed in.\n    ledger[name] = ledger.get(name, 0) + amount\n    return ledger\n\n\ndef main():\n    lines = sys.stdin.read().split(\"\\n\")\n    t = int(lines[0])\n    for k in range(1, t + 1):\n        ledger = None\n        for part in lines[k].split():\n            name, amount = part.split(\":\")\n            ledger = record(name, int(amount)) if ledger is None else record(name, int(amount), ledger)\n        print(\" \".join(f\"{n}={v}\" for n, v in sorted(ledger.items())))\n\n\nmain()\n",
+      "solution": "import sys\n\n\ndef record(name, amount, ledger=None):\n    if ledger is None:\n        ledger = {}\n    ledger[name] = ledger.get(name, 0) + amount\n    return ledger\n\n\ndef main():\n    lines = sys.stdin.read().split(\"\\n\")\n    t = int(lines[0])\n    for k in range(1, t + 1):\n        ledger = None\n        for part in lines[k].split():\n            name, amount = part.split(\":\")\n            ledger = record(name, int(amount)) if ledger is None else record(name, int(amount), ledger)\n        print(\" \".join(f\"{n}={v}\" for n, v in sorted(ledger.items())))\n\n\nmain()\n",
+      "tests": [
+        {
+          "id": "t1",
+          "input": "2\naditi:30 bilal:15 aditi:10\nbilal:20\n",
+          "expected": "aditi=40 bilal=15\nbilal=20\n",
+          "hidden": false
+        },
+        {
+          "id": "t2",
+          "input": "1\nzara:5\n",
+          "expected": "zara=5\n",
+          "hidden": true
+        },
+        {
+          "id": "t3",
+          "input": "3\na:1 b:2\na:3\nc:4 a:1\n",
+          "expected": "a=1 b=2\na=3\na=1 c=4\n",
+          "hidden": true
+        },
+        {
+          "id": "t4",
+          "input": "2\nx:10 x:10\ny:7\n",
+          "expected": "x=20\ny=7\n",
+          "hidden": true
+        }
+      ]
+    }
+  ],
+  "revision_card": {
+    "front": "Python mutable default: when is the default created, the fix, and the grid relative?",
+    "back": "Created once, at def time, so a mutated list/dict default is shared across calls. Fix: param=None, then create inside with is None. [[0]*n]*m shares one row; use a comprehension."
+  },
+  "next": [
+    "lang-python-generators"
+  ]
+}
