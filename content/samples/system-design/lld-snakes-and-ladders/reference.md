@@ -25,7 +25,7 @@ Each rule appears exactly once. The exact-finish rule is one `if`; the jump is o
 
 ## 4. The change request
 
-"A six gives another turn" is a **turn policy**. Because who plays next is decided only in `nextTurn(roll)`, the change is one line there: if the roll is 6, do not advance the turn. A win still ends the game first, because `move` returns before calling `nextTurn` when someone wins.
+"A six gives another turn" is a **turn policy**, and it is switched on per game (`RULE SIX-AGAIN`), so games without it must play exactly as before: the old tests still pass after the change. Because who plays next is decided only in `nextTurn(roll)`, the change is a flag on the game and one line there: if the rule is on and the roll is 6, do not advance the turn. A win still ends the game first, because `move` returns before calling `nextTurn` when someone wins.
 
 If turn logic had been written inline in `move` (or worse, in the driver), the same rule would have needed edits in several places, each a chance for a bug.
 
