@@ -1,0 +1,178 @@
+{
+  "schema": "parikshaa.content/project@1",
+  "slug": "proj-c-ring-buffer-log",
+  "version": 1,
+  "title": "A ring buffer for the gate log",
+  "tier": "premium",
+  "text_language": "en",
+  "difficulty": "medium",
+  "tags": {
+    "topics": [
+      "c",
+      "memory",
+      "modular-arithmetic"
+    ],
+    "patterns": [
+      "ring-buffer",
+      "bounded-copy"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own project brief, code, tests and rubric for a ring buffer for the gate log, examples, code, quiz and explanations; no text from any site, book or course.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-projects",
+      "module": "C",
+      "position": 1
+    }
+  ],
+  "language": "c",
+  "est_hours": 3,
+  "brief": "The hostel gate's entry terminal has very little memory, so it keeps only the newest N log lines and quietly drops the oldest. Build that log as a ring buffer in C: a fixed block of memory, two counters and modular arithmetic, with no shifting of entries and no unbounded copies.",
+  "requirements": [
+    "INIT allocates room for N entries once (1 ≤ N ≤ 1000).",
+    "PUSH stores the text (cut to 47 characters); when full it overwrites the oldest entry.",
+    "LAST k prints up to k entries, newest first.",
+    "COUNT reports how many entries are kept and how many were ever pushed; CLEAR empties the log but keeps the pushed total."
+  ],
+  "io_protocol": "| Command | Prints |\n|---|---|\n| `INIT <n>` | `log of <n> entries` |\n| `PUSH <text>` | `ok <total pushed>` |\n| `LAST <k>` | `<i>: <entry>` for the newest k entries, newest first, or `empty` |\n| `COUNT` | `<kept> kept, <pushed> pushed` |\n| `CLEAR` | `cleared` |\n\nBefore INIT every command prints `error: no log yet`; anything else prints `error: bad command <line>`.",
+  "milestones": [
+    {
+      "id": "m1",
+      "title": "Push and read back",
+      "instructions": "Implement `ring_push` and `ring_newest`. Never move entries: only `start` and `count` change.",
+      "hints": [
+        "The next free slot is (start + count) % capacity.",
+        "When full, the slot to write is start, and start moves forward by one.",
+        "The k-th newest is at (start + count - 1 - k) % capacity."
+      ]
+    },
+    {
+      "id": "m2",
+      "title": "Clear",
+      "instructions": "Implement `ring_clear` without freeing memory; the pushed total stays.",
+      "hints": [
+        "Resetting start and count is enough: old text is simply never read again."
+      ]
+    }
+  ],
+  "files": [
+    {
+      "path": "ring.h",
+      "content": "#ifndef RING_H\n#define RING_H\n\n#define ENTRY_LEN 48\n\n/* A fixed-size log that keeps the newest `capacity` entries, overwriting the oldest. */\ntypedef struct {\n    char (*entries)[ENTRY_LEN];\n    int capacity;\n    int start;     /* index of the oldest entry */\n    int count;     /* entries in use */\n    long total;    /* entries ever pushed */\n} Ring;\n\nint ring_init(Ring *r, int capacity);          /* 0 on success, -1 if out of memory */\nvoid ring_free(Ring *r);\nvoid ring_push(Ring *r, const char *text);     /* copies at most ENTRY_LEN - 1 characters */\n/* The k-th newest entry (k = 0 is the newest), or NULL if k >= count. */\nconst char *ring_newest(const Ring *r, int k);\nvoid ring_clear(Ring *r);\n\n#endif\n",
+      "role": "header",
+      "editable": false
+    },
+    {
+      "path": "ring.c",
+      "content": "#include <stdlib.h>\n#include <string.h>\n#include \"ring.h\"\n\nint ring_init(Ring *r, int capacity) {\n    r->entries = malloc((size_t)capacity * sizeof *r->entries);\n    if (r->entries == NULL) return -1;\n    r->capacity = capacity;\n    r->start = r->count = 0;\n    r->total = 0;\n    return 0;\n}\n\nvoid ring_free(Ring *r) {\n    free(r->entries);\n    r->entries = NULL;\n}\n\nvoid ring_push(Ring *r, const char *text) {\n    /* Milestone 1: write after the newest entry; when full, overwrite the oldest and move start. */\n    (void)r; (void)text;\n}\n\nconst char *ring_newest(const Ring *r, int k) {\n    /* Milestone 1: the newest is at (start + count - 1) % capacity. */\n    (void)r; (void)k;\n    return NULL;\n}\n\nvoid ring_clear(Ring *r) {\n    (void)r;   /* Milestone 2 */\n}\n",
+      "role": "source"
+    },
+    {
+      "path": "main.c",
+      "content": "#include <stdio.h>\n#include <string.h>\n#include \"ring.h\"\n\nint main(void) {\n    Ring log;\n    int ready = 0;\n    char line[256], cmd[16];\n    while (fgets(line, sizeof line, stdin) != NULL) {\n        line[strcspn(line, \"\\n\")] = '\\0';\n        if (sscanf(line, \"%15s\", cmd) != 1) continue;\n        int n;\n        if (strcmp(cmd, \"INIT\") == 0 && sscanf(line, \"%*s %d\", &n) == 1 && n >= 1 && n <= 1000 && !ready) {\n            if (ring_init(&log, n) != 0) return 1;\n            ready = 1;\n            printf(\"log of %d entries\\n\", n);\n        } else if (!ready) {\n            printf(\"error: no log yet\\n\");\n        } else if (strcmp(cmd, \"PUSH\") == 0 && strlen(line) > 5) {\n            ring_push(&log, line + 5);\n            printf(\"ok %ld\\n\", log.total);\n        } else if (strcmp(cmd, \"LAST\") == 0 && sscanf(line, \"%*s %d\", &n) == 1 && n >= 1) {\n            if (log.count == 0) printf(\"empty\\n\");\n            for (int k = 0; k < n && ring_newest(&log, k) != NULL; k++) printf(\"%d: %s\\n\", k + 1, ring_newest(&log, k));\n        } else if (strcmp(cmd, \"COUNT\") == 0) {\n            printf(\"%d kept, %ld pushed\\n\", log.count, log.total);\n        } else if (strcmp(cmd, \"CLEAR\") == 0) {\n            ring_clear(&log);\n            printf(\"cleared\\n\");\n        } else {\n            printf(\"error: bad command %s\\n\", line);\n        }\n    }\n    if (ready) ring_free(&log);\n    return 0;\n}\n",
+      "role": "driver",
+      "editable": false
+    }
+  ],
+  "solution_files": [
+    {
+      "path": "ring.c",
+      "content": "#include <stdlib.h>\n#include <string.h>\n#include \"ring.h\"\n\nint ring_init(Ring *r, int capacity) {\n    r->entries = malloc((size_t)capacity * sizeof *r->entries);\n    if (r->entries == NULL) return -1;\n    r->capacity = capacity;\n    r->start = r->count = 0;\n    r->total = 0;\n    return 0;\n}\n\nvoid ring_free(Ring *r) {\n    free(r->entries);\n    r->entries = NULL;\n}\n\nvoid ring_push(Ring *r, const char *text) {\n    int slot = (r->start + r->count) % r->capacity;\n    if (r->count == r->capacity) {\n        slot = r->start;                          /* overwrite the oldest */\n        r->start = (r->start + 1) % r->capacity;\n    } else {\n        r->count++;\n    }\n    strncpy(r->entries[slot], text, ENTRY_LEN - 1);\n    r->entries[slot][ENTRY_LEN - 1] = '\\0';\n    r->total++;\n}\n\nconst char *ring_newest(const Ring *r, int k) {\n    if (k < 0 || k >= r->count) return NULL;\n    return r->entries[(r->start + r->count - 1 - k) % r->capacity];\n}\n\nvoid ring_clear(Ring *r) {\n    r->start = r->count = 0;\n}\n",
+      "role": "source"
+    }
+  ],
+  "bundle_order": [
+    "ring.h",
+    "ring.c",
+    "main.c"
+  ],
+  "tests": [
+    {
+      "id": "push-and-last",
+      "input": "INIT 3\nPUSH gate open\nPUSH aditi in\nLAST 5\n",
+      "expected": "log of 3 entries\nok 1\nok 2\n1: aditi in\n2: gate open\n",
+      "hidden": false,
+      "milestone": "m1"
+    },
+    {
+      "id": "wraps-around",
+      "input": "INIT 3\nPUSH e1\nPUSH e2\nPUSH e3\nPUSH e4\nPUSH e5\nLAST 3\nCOUNT\n",
+      "expected": "log of 3 entries\nok 1\nok 2\nok 3\nok 4\nok 5\n1: e5\n2: e4\n3: e3\n3 kept, 5 pushed\n",
+      "hidden": false,
+      "milestone": "m1"
+    },
+    {
+      "id": "one-slot",
+      "input": "INIT 1\nPUSH first\nPUSH second\nLAST 2\nCOUNT\n",
+      "expected": "log of 1 entries\nok 1\nok 2\n1: second\n1 kept, 2 pushed\n",
+      "hidden": true,
+      "milestone": "m1"
+    },
+    {
+      "id": "long-text",
+      "input": "INIT 2\nPUSH this line is much longer than forty seven characters and must be cut\nLAST 1\n",
+      "expected": "log of 2 entries\nok 1\n1: this line is much longer than forty seven chara\n",
+      "hidden": true,
+      "milestone": "m1"
+    },
+    {
+      "id": "clear",
+      "input": "INIT 2\nPUSH a\nPUSH b\nCLEAR\nLAST 1\nCOUNT\nPUSH c\nLAST 2\n",
+      "expected": "log of 2 entries\nok 1\nok 2\ncleared\nempty\n0 kept, 2 pushed\nok 3\n1: c\n",
+      "hidden": true,
+      "milestone": "m2"
+    },
+    {
+      "id": "many-wraps",
+      "input": "INIT 4\nPUSH visitor 1\nPUSH visitor 2\nPUSH visitor 3\nPUSH visitor 4\nPUSH visitor 5\nPUSH visitor 6\nPUSH visitor 7\nPUSH visitor 8\nPUSH visitor 9\nPUSH visitor 10\nPUSH visitor 11\nPUSH visitor 12\nPUSH visitor 13\nPUSH visitor 14\nPUSH visitor 15\nPUSH visitor 16\nPUSH visitor 17\nPUSH visitor 18\nPUSH visitor 19\nPUSH visitor 20\nPUSH visitor 21\nPUSH visitor 22\nLAST 4\nCOUNT\n",
+      "expected": "log of 4 entries\nok 1\nok 2\nok 3\nok 4\nok 5\nok 6\nok 7\nok 8\nok 9\nok 10\nok 11\nok 12\nok 13\nok 14\nok 15\nok 16\nok 17\nok 18\nok 19\nok 20\nok 21\nok 22\n1: visitor 22\n2: visitor 21\n3: visitor 20\n4: visitor 19\n4 kept, 22 pushed\n",
+      "hidden": true,
+      "milestone": "m1"
+    },
+    {
+      "id": "before-init",
+      "input": "PUSH x\nLAST 1\nINIT 0\nINIT 2\nINIT 3\nLAST 1\n",
+      "expected": "error: no log yet\nerror: no log yet\nerror: no log yet\nlog of 2 entries\nerror: bad command INIT 3\nempty\n",
+      "hidden": true,
+      "milestone": "m1"
+    },
+    {
+      "id": "bad-commands",
+      "input": "INIT 2\nPUSH\nLAST 0\nLAST x\nPOP\nCOUNT\n",
+      "expected": "log of 2 entries\nerror: bad command PUSH\nerror: bad command LAST 0\nerror: bad command LAST x\nerror: bad command POP\n0 kept, 0 pushed\n",
+      "hidden": true,
+      "milestone": "m2"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "tests",
+      "criterion": "Hidden tests pass: every command prints exactly the expected output.",
+      "weight": 65,
+      "checked_by": "tests"
+    },
+    {
+      "id": "structure",
+      "criterion": "Entries are never shifted; all writes are bounded by ENTRY_LEN; malloc is checked and freed once.",
+      "weight": 20,
+      "checked_by": "review"
+    },
+    {
+      "id": "feedback",
+      "criterion": "Readable names, small functions and clear error handling (AI feedback, advice only).",
+      "weight": 15,
+      "checked_by": "ai-feedback"
+    }
+  ],
+  "extensions": [
+    "Add LAST-MATCH <word> that prints the newest entry containing the word.",
+    "Store a timestamp with each entry."
+  ]
+}
