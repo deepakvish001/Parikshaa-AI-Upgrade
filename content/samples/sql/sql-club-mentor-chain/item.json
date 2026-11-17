@@ -1,0 +1,91 @@
+{
+  "schema": "parikshaa.content/sql-problem@1",
+  "slug": "sql-club-mentor-chain",
+  "version": 1,
+  "title": "Mentoring trees in the coding club",
+  "tier": "premium",
+  "text_language": "en",
+  "difficulty": "hard",
+  "level": "L3",
+  "tags": { "topics": ["recursive-cte", "hierarchies"], "patterns": ["tree-closure", "parent-pointer-walk"], "extra": ["self-join"] },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own coding club story, datasets, queries and editorial; no text from any problem site.",
+    "review": { "state": "self-checked" }
+  },
+  "placement": [{ "track": "samples-sql", "module": "Hard", "position": 1 }],
+  "dialect": "sqlite",
+  "stem": "In the college coding club, every new member is mentored by an existing member. The founders have no mentor. Before elections, the club wants to know each member's place in the mentoring trees.\n\n**Table** `members`\n\n| Column | Type | Meaning |\n|---|---|---|\n| `member_id` | INTEGER, primary key | Not in joining order |\n| `name` | TEXT, not null | Names can repeat |\n| `mentor_id` | INTEGER | The member's mentor; **NULL for a founder**. There are no cycles. |\n| `joined_on` | TEXT, not null | ISO date |\n\nA member's **depth** is the number of mentor links from them up to their founder (a founder has depth 0). A member's **juniors** are all the members below them in the mentoring tree, directly or through others, not counting the member themself.\n\n**Task:** for every member return `member_id`, `name`, `depth` and `juniors`. Sort by `depth`, then `member_id`, both ascending. There may be several founders.",
+  "schema_sql": "CREATE TABLE members (\n  member_id INTEGER PRIMARY KEY,\n  name TEXT NOT NULL,\n  mentor_id INTEGER REFERENCES members(member_id),\n  joined_on TEXT NOT NULL\n);",
+  "datasets": [
+    {
+      "id": "sample-1",
+      "hidden": false,
+      "purpose": "sample",
+      "rows_sql": "INSERT INTO members VALUES (1, 'Anvi', NULL, '2026-01-10'), (2, 'Bharat', 1, '2026-02-01'), (3, 'Chhavi', 1, '2026-02-03'), (4, 'Dinesh', 2, '2026-03-11'), (5, 'Eela', 2, '2026-03-15'), (6, 'Faraz', 4, '2026-07-20'), (7, 'Gargi', NULL, '2026-04-02'), (8, 'Hiten', 7, '2026-05-09');",
+      "expected": "1\tAnvi\t0\t5\n7\tGargi\t0\t1\n2\tBharat\t1\t3\n3\tChhavi\t1\t0\n8\tHiten\t1\t0\n4\tDinesh\t2\t1\n5\tEela\t2\t0\n6\tFaraz\t3\t0\n",
+      "explanation": "Anvi's tree: Bharat and Chhavi (depth 1), Dinesh and Eela under Bharat (depth 2), Faraz under Dinesh (depth 3), so Anvi has 5 juniors and Bharat 3. Gargi founded a second tree with Hiten."
+    },
+    {
+      "id": "sample-2",
+      "hidden": false,
+      "purpose": "sample",
+      "rows_sql": "INSERT INTO members VALUES (40, 'Ishita', NULL, '2026-01-01'), (12, 'Jairaj', 40, '2026-01-05'), (31, 'Kirti', 12, '2026-01-09'), (5, 'Lohit', 31, '2026-01-12');",
+      "expected": "40\tIshita\t0\t3\n12\tJairaj\t1\t2\n31\tKirti\t2\t1\n5\tLohit\t3\t0\n",
+      "explanation": "One straight chain, Ishita > Jairaj > Kirti > Lohit. Ids are not in joining order, so the output is sorted by depth first."
+    },
+    { "id": "empty", "hidden": true, "purpose": "empty", "rows_sql": "" },
+    {
+      "id": "all-founders",
+      "hidden": true,
+      "purpose": "null",
+      "rows_sql": "INSERT INTO members VALUES (3, 'Mehul', NULL, '2026-02-02'), (1, 'Nupur', NULL, '2026-02-01'), (2, 'Ojas', NULL, '2026-02-03');"
+    },
+    {
+      "id": "same-depth",
+      "hidden": true,
+      "purpose": "ties",
+      "rows_sql": "INSERT INTO members VALUES (50, 'Prisha', NULL, '2026-01-01'), (9, 'Prisha', 50, '2026-01-02'), (70, 'Quasar', 50, '2026-01-03'), (21, 'Rohan', 50, '2026-01-04'), (8, 'Sia', 70, '2026-01-05'), (90, 'Sia', 21, '2026-01-06'), (2, 'Tejas', 9, '2026-01-07');"
+    },
+    {
+      "id": "long-chain",
+      "hidden": true,
+      "purpose": "edge",
+      "gen": { "src": "import sys\nn = int(sys.stdin.readline())\nrows = [f\"({k}, 'Link {k}', {'NULL' if k == 1 else k - 1}, '2026-06-01')\" for k in range(1, n + 1)]\nprint('INSERT INTO members VALUES\\n' + ',\\n'.join(rows) + ';')\n", "args": "300" }
+    },
+    {
+      "id": "one-member",
+      "hidden": true,
+      "purpose": "fewer-rows",
+      "rows_sql": "INSERT INTO members VALUES (77, 'Uday', NULL, '2026-08-15');"
+    },
+    { "id": "big-club", "hidden": true, "purpose": "many-rows", "gen": { "src": { "$file": "gen.py" }, "args": "29 700" } }
+  ],
+  "order_matters": true,
+  "reference": { "$file": "reference.sql" },
+  "alternatives": [{ "$file": "alt-ancestors.sql" }],
+  "wrong": [
+    { "src": { "$file": "wrong-direct-only.sql" }, "why": "Counts only direct mentees, not the whole subtree." },
+    { "src": { "$file": "wrong-counts-self.sql" }, "why": "Forgets to subtract the member themself, so every junior count is one too high." },
+    { "src": { "$file": "wrong-anchor-skips-founders.sql" }, "why": "Starts the depth walk from members who have a mentor, so founders vanish from the result." }
+  ],
+  "starter": "-- member_id, name, depth, juniors for every member.\n-- Sorted by depth, then member_id.\nSELECT member_id, name, 0 AS depth, 0 AS juniors\nFROM members\nORDER BY member_id;",
+  "hints": [
+    "Draw the sample as a tree. How would you find depth by hand, level by level, starting from the founders?",
+    "A recursive CTE repeats a join until no new rows appear: anchor = founders with depth 0, step = members whose mentor is already found, depth + 1. For juniors, start one walk at every member.",
+    "WITH RECURSIVE below(top_id, member_id): anchor (id, id) for every member; step joins members whose mentor_id is below.member_id, keeping top_id. Juniors = COUNT(*) - 1 per top_id."
+  ],
+  "approaches": [
+    { "name": "Fixed self-joins", "summary": "Join members to itself a few times. Only correct up to the depth you wrote joins for, so it fails on long chains." },
+    { "name": "Walk down twice", "summary": "One recursive CTE from the founders for depth, one from every member for the subtree; count the subtree rows minus one." },
+    { "name": "Walk up once", "summary": "From every member follow mentor links upward as (member, ancestor, steps); depth is the largest steps, juniors the rows naming you as ancestor." }
+  ],
+  "editorial": { "$file": "editorial.md" },
+  "editorial_length": { "form": "standard", "target_words": 1560 },
+  "revision_card": {
+    "front": "A table with parent_id. Depth of every node and the size of its whole subtree, any depth?",
+    "back": "WITH RECURSIVE: depth = anchor roots (parent_id IS NULL, 0), step child.parent_id = known.id with depth + 1. Subtree: anchor (id, id) for every node, step adds children keeping the top id; size = COUNT(*) - 1. Closure size = sum of (depth + 1): up to n^2/2 on a chain."
+  },
+  "related": ["sql-hostel-complaints-open", "sql-monthly-growth-with-gaps"]
+}

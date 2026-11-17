@@ -220,29 +220,24 @@ saath); 0.85 se pehle jo PASS tha wo commit + push kiya. Pehla part A agent bhi 
   version + alag hash: draft kabhi publish nahi hua to badlo, publish ho chuka to "raise the version"; same hash skip;
   chhota version mana).
 - [x] Samples: `content/samples/manifest.json` (tracks), `content/samples/aptitude/` 10: **10/10 PASS**.
-- [x] **SQL 8/10 PASS** (`content/samples/sql/<slug>/`: `item.json` + `editorial.md`, `reference.sql`, `alt-*.sql`,
-  `wrong-*.sql`, `gen.py` `$file` se): canteen anti-join (`NOT IN` + NULL jaal), hostel `LEFT JOIN` + `COUNT(col)`,
-  metro `WHERE` vs `HAVING` (premium, 3 variant sets), library fines (dates, `COALESCE`, clip), branch `DENSE_RANK`,
-  cab running total (`ROWS` frame, premium), latest status per complaint (`ROW_NUMBER` + ties), chai stall gaps and
-  islands (hard). 6 public, 2 premium; easy 3, medium 4, hard 1.
+- [x] **SQL 10/10 PASS** (`content/samples/sql/<slug>/`: `item.json` + `editorial.md`, `reference.sql`, `alt-*.sql`,
+  `wrong-*.sql`, `gen.py` `$file` se; har ek me 7–9 datasets, 2–4 galat queries jo kisi dataset par fail): canteen
+  anti-join (`NOT IN` + NULL jaal), hostel `LEFT JOIN` + `COUNT(col)`, metro `WHERE` vs `HAVING` (premium, 3 variant
+  sets), library fines (dates, `COALESCE`, clip), branch `DENSE_RANK`, cab running total (`ROWS` frame, premium), latest
+  status per complaint (`ROW_NUMBER` + ties), chai stall gaps and islands, club mentor tree (recursive CTE, premium),
+  monthly growth with calendar fill (`LAG`, premium). 6 public, 4 premium; easy 3, medium 4, hard 3. 2 par "under the
+  target" warning (85% se upar, isliye PASS): mentor-chain 1,494/1,560, monthly-growth 1,368/1,560.
 
 **Baaki (agla session, isi kram me):**
-1. **SQL ke 2 bache** (dono hard, premium, `target_words` 1,560, `content/samples/sql/` jaisa dhaancha):
-   `sql-club-mentor-chain` (recursive CTE: coding club `members(member_id, name, mentor_id NULL)`, har member ki
-   `depth` aur `juniors` (seedhe + aage ke); galat: sirf seedhe juniors, khud ko ginna, roots chhootna; many-rows ~600
-   members, correlated subquery waale alternative ki speed dekho) aur `sql-monthly-growth-with-gaps` (print shop ki
-   monthly revenue, khaali mahine 0 ke saath recursive calendar CTE se, `LAG` se growth % `ROUND(...,1)`, pehla mahina
-   aur 0 se growth NULL; galat: calendar nahi bharna, integer division, sirf `%m` se group (saal mil jaate)). Manifest
-   me 3 premium + 1 hard aur ho jaayega.
-2. Phir: DSA 10 (5 public, 5 premium; easy/medium/hard; editorial INSTRUCTIONS §4 ki lambai; 5 bhasha ke reference,
+1. **DSA 10** (5 public, 5 premium; easy/medium/hard; editorial INSTRUCTIONS §4 ki lambai; 5 bhasha ke reference,
    brute, 2+ galat `expect` ke saath, generators, validator; `$file` se `content/samples/dsa/<slug>/`; har 2 ke baad push)
    → lessons 10 (CN, OS, DBMS, LLD, OOD × 2) → language lessons 10 (C, C++, Python, Java, JS × 2) → projects 10 (har
    bhasha 2) → system design 10 (5 HLD, 5 LLD). Har type ke baad `node scripts/content-validate.mjs content/samples`
    sab PASS, phir push.
-3. **Dhyaan:** DSA, project aur LLD raaste abhi sirf smoke tak jaanche; pehle sample par `bundleFiles` aur wrong-solution
+2. **Dhyaan:** DSA, project aur LLD raaste abhi sirf smoke tak jaanche; pehle sample par `bundleFiles` aur wrong-solution
    verdicts debug karo. `content-kit.test.ts` do jagah (repo + kisi worktree) ek saath chale to runner kabhi-kabhi
    `unshare: sigprocmask unblock failed` (RE) deta; akela chalane par 3/3 hara.
-4. Phir tracker row 141 ka part A ✅ (70 samples poore hone par) aur owner se F6 manzoori.
+3. Phir tracker row 141 ka part A ✅ (70 samples poore hone par) aur owner se F6 manzoori.
 
 **Kaise chalayein:** `npm run build` (runner ka dist), phir `node scripts/content-validate.mjs content/samples`
 (`--no-run` sirf schema + niyam, `--only mcq,sql-problem`, `--mutate`, `--pack bundle.json`). Machine par gcc, g++, javac,
@@ -699,7 +694,7 @@ par ja sakta hai.
 
 ## 7. Log (naya upar)
 
-- 17 Nov 2026 (row 141 part A, doosra agent): validator ke producing kadam runner par (`fullOutput`), SQL ke 8 samples (sab PASS), CONTENT-FORMAT §2a owner ke version faisle ke hisaab se. 5 ghante ki limit (10:13 par 0.65, tez) se pehle push; agla: SQL ke 2 bache, phir DSA (§5 "Row 141 content kit, part A").
+- 17 Nov 2026 (row 141 part A, doosra agent): validator ke producing kadam runner par (`fullOutput`), SQL ke 10 samples (sab PASS), CONTENT-FORMAT §2a owner ke version faisle ke hisaab se. Agla: DSA (§5 "Row 141 content kit, part A").
 - 17 Nov 2026 (row 141 part A agent): content kit: format + schemas (`2062822`), 6 prompts, INSTRUCTIONS, validator + test, aptitude ke 10 samples (PASS). 5 ghante ki limit (0.74, 0.85 ke paas) par ruka; baaki 60 samples aur kram §5 "Row 141 content kit, part A" me.
 - 17 Nov 2026 (row 141 part B agent): bulk upload ka design §5 "Row 141" me; runner ka `fullOutput` (tests ke saath) push. 5 ghante ki limit (part A saath) par ruka; agla session §5 ke kram 1–11 se.
 - 10 Nov 2026 (session 4 aage, K2-8 agent): owner "K2-8 shuru karo". Draft #93 par: owner ke staging wale dono sandesh theek (band/na-maujood site par sign-in/up aur page ab saaf kehte "band hai ya maujood nahi"), tests ke saath. Aptitude ka code nahi: 5 ghante ki limit 0.85 ke paas; poora plan §5 K2-8 me.

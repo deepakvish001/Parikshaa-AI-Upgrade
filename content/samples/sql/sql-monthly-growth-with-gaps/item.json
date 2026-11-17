@@ -1,0 +1,96 @@
+{
+  "schema": "parikshaa.content/sql-problem@1",
+  "slug": "sql-monthly-growth-with-gaps",
+  "version": 1,
+  "title": "Print shop revenue, month by month, gaps included",
+  "tier": "premium",
+  "text_language": "en",
+  "difficulty": "hard",
+  "level": "L3",
+  "tags": { "topics": ["window-functions", "recursive-cte", "dates"], "patterns": ["calendar-fill", "period-over-period"], "extra": ["lag", "integer-division"] },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own print shop story, datasets, queries and editorial; no text from any problem site.",
+    "review": { "state": "self-checked" }
+  },
+  "placement": [{ "track": "samples-sql", "module": "Hard", "position": 2 }],
+  "dialect": "sqlite",
+  "stem": "The campus print shop wants a monthly report for its owner: revenue for **every month** from the month of its first job to the month of its last job, and each month's **growth** over the month before.\n\n**Table** `prints`\n\n| Column | Type | Meaning |\n|---|---|---|\n| `job_id` | INTEGER, primary key | |\n| `printed_on` | TEXT, not null | ISO date |\n| `pages` | INTEGER, not null | |\n| `rate` | INTEGER, not null | Rupees per page |\n| `student` | TEXT | NULL for a staff job (it still counts) |\n\nA job earns `pages × rate`. A month with no jobs has revenue 0 and **must still appear**. Months of different years are different months.\n\n**Task:** return `month` (as `'YYYY-MM'`), `revenue` and `growth_pct` = (revenue − previous month's revenue) / previous month's revenue × 100, **rounded to 1 decimal**. `growth_pct` is NULL for the first month and for a month whose previous month had revenue 0. Sort by month. If there are no jobs, return no rows.",
+  "schema_sql": "CREATE TABLE prints (\n  job_id INTEGER PRIMARY KEY,\n  printed_on TEXT NOT NULL,\n  pages INTEGER NOT NULL,\n  rate INTEGER NOT NULL,\n  student TEXT\n);",
+  "datasets": [
+    {
+      "id": "sample-1",
+      "hidden": false,
+      "purpose": "sample",
+      "rows_sql": "INSERT INTO prints VALUES (1, '2026-01-05', 100, 2, 'Asha'), (2, '2026-01-20', 40, 5, NULL), (3, '2026-02-02', 250, 2, 'Bunty'), (4, '2026-04-11', 60, 5, 'Chetna'), (5, '2026-05-03', 110, 3, NULL);",
+      "expected": "2026-01\t400\tNULL\n2026-02\t500\t25.0\n2026-03\t0\t-100.0\n2026-04\t300\tNULL\n2026-05\t330\t10.0\n",
+      "explanation": "March had no jobs, so it shows 0 (a 100% fall from February). April's growth is NULL because March was 0. May grew from 300 to 330, 10.0%."
+    },
+    {
+      "id": "sample-2",
+      "hidden": false,
+      "purpose": "sample",
+      "rows_sql": "INSERT INTO prints VALUES (1, '2026-08-14', 150, 2, 'Dhaval'), (2, '2026-09-09', 200, 2, 'Ekta');",
+      "expected": "2026-08\t300\tNULL\n2026-09\t400\t33.3\n",
+      "explanation": "From 300 to 400 is 33.333...%, printed with one decimal as 33.3."
+    },
+    { "id": "empty", "hidden": true, "purpose": "empty", "rows_sql": "" },
+    {
+      "id": "staff-jobs",
+      "hidden": true,
+      "purpose": "null",
+      "rows_sql": "INSERT INTO prints VALUES (1, '2026-10-01', 70, 1, NULL), (2, '2026-10-31', 30, 1, NULL), (3, '2026-11-15', 90, 1, NULL);"
+    },
+    {
+      "id": "flat-months",
+      "hidden": true,
+      "purpose": "ties",
+      "rows_sql": "INSERT INTO prints VALUES (1, '2026-02-10', 50, 2, 'Asha'), (2, '2026-03-10', 100, 1, 'Bunty'), (3, '2026-04-10', 20, 5, 'Chetna'), (4, '2026-05-10', 7, 3, 'Dhaval');"
+    },
+    {
+      "id": "across-years",
+      "hidden": true,
+      "purpose": "edge",
+      "rows_sql": "INSERT INTO prints VALUES (1, '2025-11-30', 300, 1, 'Ekta'), (2, '2025-12-01', 200, 2, NULL), (3, '2026-01-31', 7, 1, 'Asha'), (4, '2026-04-01', 9, 2, 'Bunty'), (5, '2026-12-15', 100, 5, 'Chetna'), (6, '2026-11-02', 3, 1, NULL);"
+    },
+    {
+      "id": "one-month",
+      "hidden": true,
+      "purpose": "fewer-rows",
+      "rows_sql": "INSERT INTO prints VALUES (1, '2026-07-07', 10, 2, 'Dhaval'), (2, '2026-07-21', 5, 5, NULL);"
+    },
+    {
+      "id": "same-day-rush",
+      "hidden": true,
+      "purpose": "duplicates",
+      "rows_sql": "INSERT INTO prints VALUES (1, '2026-03-15', 10, 1, 'Asha'), (2, '2026-03-15', 10, 1, 'Asha'), (3, '2026-03-15', 10, 1, 'Asha'), (4, '2026-05-15', 10, 1, 'Asha');"
+    },
+    { "id": "two-years", "hidden": true, "purpose": "many-rows", "gen": { "src": { "$file": "gen.py" }, "args": "8 4000" } }
+  ],
+  "order_matters": true,
+  "reference": { "$file": "reference.sql" },
+  "alternatives": [{ "$file": "alt-self-join.sql" }],
+  "wrong": [
+    { "src": { "$file": "wrong-no-calendar.sql" }, "why": "No calendar: a month without jobs vanishes, and the month after it is compared with the month before the gap." },
+    { "src": { "$file": "wrong-integer-division.sql" }, "why": "Integer division truncates before ROUND, so 33.3% prints as 33.0." },
+    { "src": { "$file": "wrong-month-number-only.sql" }, "why": "Groups by the month number without the year, so the same month of two years is merged." }
+  ],
+  "starter": "-- month ('YYYY-MM'), revenue, growth_pct for every month from the first job to the last.\n-- Sorted by month.\nSELECT strftime('%Y-%m', printed_on) AS month, SUM(pages * rate) AS revenue, NULL AS growth_pct\nFROM prints\nGROUP BY 1\nORDER BY 1;",
+  "hints": [
+    "GROUP BY can only make months that have jobs. Where does a month with no jobs come from?",
+    "Build a calendar with a recursive CTE from date(MIN(printed_on), 'start of month') to the last month, stepping date(m, '+1 month'), and LEFT JOIN the monthly totals to it.",
+    "On the filled calendar, LAG(revenue) OVER (ORDER BY m) is the previous month. Growth = ROUND(100.0 * (revenue - prev) / prev, 1) when prev > 0, else NULL. Key months by the full date, not strftime('%m')."
+  ],
+  "approaches": [
+    { "name": "Calendar + correlated sums + self-join", "summary": "A recursive calendar, each month's revenue from a correlated SUM over its date range, and the previous month from a self-join on date(m, '-1 month')." },
+    { "name": "Calendar + LEFT JOIN + LAG", "summary": "A recursive calendar LEFT JOINed to monthly totals (COALESCE to 0), then LAG over the filled months for the growth, computed in real arithmetic." }
+  ],
+  "editorial": { "$file": "editorial.md" },
+  "editorial_length": { "form": "standard", "target_words": 1560 },
+  "revision_card": {
+    "front": "Month-over-month growth when some months have no rows. Three traps?",
+    "back": "1) Build a calendar (recursive CTE from the first to the last month) and LEFT JOIN totals, COALESCE 0; else gaps vanish and LAG compares the wrong months. 2) 100.0 * before dividing (integer division truncates). 3) Keep the year in the month key."
+  },
+  "related": ["sql-cab-running-fare", "sql-chai-stall-longest-streak"]
+}
