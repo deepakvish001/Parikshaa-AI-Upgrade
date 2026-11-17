@@ -231,7 +231,28 @@ node, python3.
 
 ### Row 141, part B: console me bulk upload (17 Nov 2026, `session_01CxKYSJpaMfGb259ZWTqTDB`, part B agent)
 
-**Kyun ruka:** 5 ghante ki limit (06:39 UTC par 0.88; part A saath chal raha tha). Part A (`docs/content/`,
+**Abhi yahan ruka (17 Nov, 10:35 UTC, doosra part B agent):** 5 ghante ki limit 0.94 (0.85 ke upar). `claude/learn-v2`
+par kadam 1 + 2 (neeche). **Kadam 3 + 4 ka code likha hua hai, par poora check nahi hua**, isliye snapshot branch
+`autosave/claude/learn-v2--partb-wip` (commit `1cc0869`, `claude/learn-v2` ke `5d4be44` ke upar) me hai, `claude/learn-v2`
+me nahi. Usme: `content-gates.ts` (gates 3–11, fake runner ke saath `content-gates.test.ts` 19/19), `content-uploads.ts`
+(intake: gate 1–2 + duplicate + version niyam turant; worker ek-ek item claim karke `runGates`, phir projection ki jaanch
+`validateQuestion` se; Publish + tracks), `content-publish.ts` (projection), `content-routes.ts` (4 routes, audit
+`practice.content_uploaded` / `practice.content_published`), `PracticeService.judgeRun`/`judging`, `assemble.ts` + `server.ts` +
+`testing/harness.ts` me wiring (`Wiring.contentUploads`, tests `idle(org)` se worker ka intezaar), route test
+`content-uploads.test.ts` 5/5 (upload → draft Learn par nahi → Publish → problems, lesson, quiz, hands-on, track `os-basics`
+Learn API par; version niyam; permission; 413; starter pack ka slug). tsc saaf. Console ka kachcha draft
+`wip/row141b/BulkUpload.tsx` + `api-snippet.ts` (ConsoleClient ke methods + types), abhi juda nahi, test nahi.
+**Agla session, isi kram me:** (1) `git fetch origin autosave/claude/learn-v2--partb-wip` aur uski `packages/` files
+`claude/learn-v2` par lao (`wip/` nahi). (2) `packages/console/src/components/actions.test.ts` fail hota hai: console me
+`practice.content_uploaded` aur `practice.content_published` ke shabd jodo. (3) `npm run openapi`, `docs/openapi.json`
+commit. (4) `npm run check` **akela** chalao: saath me koi aur vitest chale to runner ke tests (root ka RLIMIT_NPROC) aur
+store ke kuch timing tests jhoothe fail hote. (5) commit "slices 3–4", handoff + tracker, push. (6) Kadam 5 console: draft
+ko `components/BulkUpload.tsx` me, Practice panel me tab "Bulk upload" (`exam:write` par upload/Publish, `exam:read_key`
+par report), axe test (`kit.test.tsx` ka `violations` jaisa); `build:clients` + `budget`. (7) Kadam 6 e2e
+`packages/e2e/tests/content-upload.spec.ts` (fixtures `testing/content-fixtures.ts` ke programs asli hain; DSA ke 5
+bhasha, SQL, MCQ, lesson).
+
+**Pehle kyun ruka tha:** 5 ghante ki limit (06:39 UTC par 0.88; part A saath chal raha tha). Part A (`docs/content/`,
 `content/samples/`, `scripts/content-validate.mjs`) usi working tree me; unke files mat chhuo. Part A ka validator
 abhi expected outputs local `python3` se banata hai (runner 4 KB par kaatta tha); `fullOutput` ab hai, to wo bhi runner
 par ja sakta hai.
@@ -697,7 +718,7 @@ par ja sakta hai.
 ## 7. Log (naya upar)
 
 - 17 Nov 2026 (row 141 part A agent): content kit: format + schemas (`2062822`), 6 prompts, INSTRUCTIONS, validator + test, aptitude ke 10 samples (PASS). 5 ghante ki limit (0.74, 0.85 ke paas) par ruka; baaki 60 samples aur kram §5 "Row 141 content kit, part A" me.
-- 17 Nov 2026 (row 141 part B, doosra agent, worktree): kadam 1 (`ac64b33`: migration 0075 + `ContentStore`) aur kadam 2 (`262dd93`: bundle padhna, schema, niyam) push, tests ke saath; agla kadam 3–4, §5 "Row 141, part B".
+- 17 Nov 2026 (row 141 part B, doosra agent, worktree): kadam 1 (`ac64b33`: migration 0075 + `ContentStore`) aur kadam 2 (`262dd93`: bundle padhna, schema, niyam) push, tests ke saath. Kadam 3–4 ka code (gates, worker, routes, publish; targeted tests hare) snapshot `autosave/claude/learn-v2--partb-wip` (`1cc0869`) me, poora check baaki. 5 ghante ki limit 0.94 par ruka; agla kram §5 "Row 141, part B" ke "Abhi yahan ruka" me.
 - 17 Nov 2026 (row 141 part B agent): bulk upload ka design §5 "Row 141" me; runner ka `fullOutput` (tests ke saath) push. 5 ghante ki limit (part A saath) par ruka; agla session §5 ke kram 1–11 se.
 - 10 Nov 2026 (session 4 aage, K2-8 agent): owner "K2-8 shuru karo". Draft #93 par: owner ke staging wale dono sandesh theek (band/na-maujood site par sign-in/up aur page ab saaf kehte "band hai ya maujood nahi"), tests ke saath. Aptitude ka code nahi: 5 ghante ki limit 0.85 ke paas; poora plan §5 K2-8 me.
 - 10 Nov 2026 (session 4 aage): #87 (K2-7 SQL, #85 ke baad ka CI fix, private repo se deploy) `main` me merge (`94eea54`); `main` par deploy-api aur deploy-web hare, staging par SQL bhi. Staging DB me abhi koi practice site nahi: owner ko admin-cli + console se site + starter packs ka tareeka diya. Agla: K2-8 (owner ki haan par).
