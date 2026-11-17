@@ -198,11 +198,9 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
 
 ### Row 141 content kit, part A (17 Nov 2026, `session_01CxKYSJpaMfGb259ZWTqTDB`, part A agents)
 
-**Kyun ruka (doosra part A agent, 10:24 UTC):** 5 ghante ki limit 0.86 par pahunchi (10:23; parent + part B saath chal rahe
-the). Jo PASS tha wo commit + push. Pehla part A agent bhi limit par ruka tha (06:37, 0.74).
-
-**Theek kahan ruka:** DSA ka pehla sample `hostel-water-meter` (public, easy L1, prefix sums, 2,505 shabd) PASS aur push;
-DSA ka doosra abhi shuru nahi hua. Agla kaam: DSA sample 2 se (neeche "Baaki" 1).
+**Teesra daur (17 Nov, 15:49 UTC se, wahi agent, limit reset ke baad):** coordinator ne kaha **DSA 2–10 abhi nahi**
+(owner se DSA editorial ki lambai par sawaal poocha gaya hai; jawab aane tak). Kram: CS lessons → language lessons →
+projects (pehle par `bundleFiles` debug) → system design. `hostel-water-meter` ka `related` ab maujood SQL slugs par.
 
 **Ho gaya (push):**
 - [x] Format: [content/CONTENT-FORMAT.md](content/CONTENT-FORMAT.md) + `docs/content/schema/*.schema.json` (common, dsa-problem,
@@ -241,8 +239,17 @@ DSA ka doosra abhi shuru nahi hua. Agla kaam: DSA sample 2 se (neeche "Baaki" 1)
   ab aisi batch 3 baar tak dobara chalti (`sandboxFailed` in `scripts/content-validate.mjs`). Phir bhi poore samples ka
   run jab doosre test suites saath chal rahe hon, timing ki wajah se flaky ho sakta; akela chalao.
 
+- [x] **CS lessons 10/10 PASS** (`content/samples/lessons/<slug>/item.json`, `fddab55`, `0a3b9bf`, `efc09ad`): CN
+  `cn-tcp-handshake`, `cn-dns-resolution` (premium); OS `os-paging-address-translation`, `os-deadlock-conditions`
+  (premium, **Hinglish**); DBMS `dbms-normal-forms` (SQL example), `dbms-transaction-isolation` (premium); LLD
+  `lld-single-responsibility`, `lld-strategy-pattern` (premium); OOD `ood-encapsulation-invariants`,
+  `ood-composition-over-inheritance` (premium). Har lesson me why → concept (visual: mermaid/table/timeline) → example
+  (runner par chalne wala Python/SQL, `expected_output`) → misconception → interview (4 qa) → summary, quiz 4.
+  4 par "under the 1,200 aim" warning (800 se upar, PASS): LLD 1,177 / 1,110, OOD 981 / 965.
+
 **Baaki (agla session, isi kram me):**
-1. **DSA ke 9 bache** (kul 5 public, 5 premium; 1 public easy ho gaya; editorial INSTRUCTIONS §4 ki lambai: public easy
+1. **DSA ke 9 bache: ruke hue** jab tak owner editorial ki lambai par jawab na de (coordinator 17 Nov). Uske baad
+   (kul 5 public, 5 premium; 1 public easy ho gaya; editorial INSTRUCTIONS §4 ki lambai: public easy
    2,500, medium 3,500, hard 5,000; premium 7,000 / 7,500 / 8,000; 5 bhasha ke reference, brute, 2+ galat `expect` ke
    saath, generators, validator; `hostel-water-meter` jaisa dhaancha; har 2 ke baad push). `hostel-water-meter` ke
    `related` me `metro-turnstile-window` (sliding window) aur `canteen-bill-split-subarray` (prefix sum + hash map) ke
@@ -747,6 +754,7 @@ par ja sakta hai.
 
 ## 7. Log (naya upar)
 
+- 17 Nov 2026 (row 141 part A, limit reset ke baad): CS lessons 10/10 PASS (CN, OS, DBMS, LLD, OOD × 2; ek Hinglish); `hostel-water-meter` ka `related` maujood slugs par. DSA 2–10 owner ke jawab tak ruke. Agla: language lessons.
 - 17 Nov 2026 (row 141 part A, doosra agent): validator ke producing kadam runner par (`fullOutput`) + sandbox ki gadbad par retry, SQL ke 10 samples aur DSA ka pehla (`hostel-water-meter`), sab PASS; CONTENT-FORMAT §2a owner ke version faisle ke hisaab se. 5 ghante ki limit 0.86 (10:23) par ruka; agla: DSA sample 2 (§5 "Row 141 content kit, part A").
 - 17 Nov 2026 (row 141 part A agent): content kit: format + schemas (`2062822`), 6 prompts, INSTRUCTIONS, validator + test, aptitude ke 10 samples (PASS). 5 ghante ki limit (0.74, 0.85 ke paas) par ruka; baaki 60 samples aur kram §5 "Row 141 content kit, part A" me.
 - 17 Nov 2026 (row 141 part B, doosra agent, worktree): kadam 1 (`ac64b33`: migration 0075 + `ContentStore`) aur kadam 2 (`262dd93`: bundle padhna, schema, niyam) push, tests ke saath. Kadam 3–4 ka code (gates, worker, routes, publish; targeted tests hare) snapshot `autosave/claude/learn-v2--partb-wip` (`1cc0869`) me, poora check baaki. 5 ghante ki limit 0.94 par ruka; agla kram §5 "Row 141, part B" ke "Abhi yahan ruka" me.
