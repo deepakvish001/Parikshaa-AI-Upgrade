@@ -42,3 +42,4 @@ export * from "./proxy-store.js";
 export * from "./review-store.js";
 export * from "./department-store.js";
 export * from "./ai-interview-store.js";
+export * from "./content-store.js";
