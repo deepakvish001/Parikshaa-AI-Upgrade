@@ -68,13 +68,27 @@ Payment callbacks are the second hard part. Three cases:
 
 Menus are cached for a few seconds. Kitchen screens subscribe to a **push channel** (WebSocket or server-sent events) and receive orders as they are confirmed, grouped by slot, so nobody polls the database every second. A small notification service tells students when their order is ready.
 
-## 8. What can go wrong
+## 8. The data model, and why each constraint is there
+
+The tables are small, but every constraint in them does a job:
+
+- `items.stock_today` is **decremented by conditional updates only**. No code path reads it, does arithmetic in the application and writes it back.
+- `slots(canteen_id, slot_start)` holds `capacity` and `used`. A check constraint `used <= capacity` is a second safety net: if a future bug ever tries to overfill a slot, the database refuses the write instead of letting the kitchen drown.
+- `orders.idempotency_key` is **unique**. A retried `POST /orders` with the same key returns the existing order instead of creating a second one. Without it, a student on weak campus Wi-Fi who taps twice could hold two biryanis and pay for one.
+- `payments.txn_id` is **unique**, which is what makes duplicate callbacks harmless.
+- `orders.state` moves only forward: HELD → PAID → COLLECTED, or HELD → CANCELLED. Every transition is written as `UPDATE ... WHERE state = <expected>`, so two processes that race (the expiry worker and a late callback) cannot both win.
+
+An index on `(state, hold_expires_at)` keeps the expiry worker's query cheap, and an index on `(canteen_id, slot_start, state)` serves the kitchen screen.
+
+For an interview, saying **which constraint protects which rule** is worth more than listing tables. It shows you know where correctness actually lives: in the database's guarantees, not in hopeful application code.
+
+## 9. What can go wrong
 
 - **The gateway slows down at lunch.** Holds expire and stock returns automatically; the reconciliation job and refund path handle late successes.
 - **The expiry worker stops.** Items look sold out while unpaid holds pile up. We alert on "held orders past expiry" so it is noticed within minutes.
 - **The database fails.** Ordering pauses; menus can still be shown from cache with an "ordering paused" banner. A standby replica can be promoted.
 
-## 9. Wrap-up
+## 10. Wrap-up
 
 We chose the simplest store that is **correct**: one relational database with conditional updates and transactions, because the numbers are small. We made the slow, unreliable step (payment) safe with **holds that expire** and **idempotent callbacks**. And we kept the heavy read traffic away from the order path with a short-lived cache.
 

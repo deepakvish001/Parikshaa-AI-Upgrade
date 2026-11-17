@@ -1,0 +1,285 @@
+{
+  "schema": "parikshaa.content/system-design@1",
+  "slug": "hld-notice-short-links",
+  "version": 1,
+  "title": "Short links for university notices",
+  "tier": "public",
+  "text_language": "en",
+  "mode": "hld",
+  "difficulty": "easy",
+  "tags": {
+    "topics": [
+      "key-value-stores",
+      "caching"
+    ],
+    "patterns": [
+      "id-generation",
+      "redirect"
+    ],
+    "extra": [
+      "base62"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own short-link design case, examples, code, quiz and explanations; no text from any site, book or course.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-system-design",
+      "module": "HLD",
+      "position": 2
+    }
+  ],
+  "time_minutes": 45,
+  "scenario": "The university sends exam notices by SMS, and SMS messages are short and charged per 160 characters. The IT cell wants a short-link service: `uni.in/x7Kq2` redirects to the long notice URL. Departments create links; students click them. Design it.",
+  "clarifying_questions": [
+    {
+      "q": "Who creates links, and how many?",
+      "a": "About 200 staff accounts create around 2,000 links a day."
+    },
+    {
+      "q": "How many clicks?",
+      "a": "A notice sent to 1 lakh students gets most of its clicks in the first hour; about 20 lakh clicks a day overall."
+    },
+    {
+      "q": "Do links expire?",
+      "a": "Optionally, a creator sets an expiry; default is 2 years."
+    },
+    {
+      "q": "Custom short codes?",
+      "a": "Allowed for staff (uni.in/results-2026), checked for clashes."
+    },
+    {
+      "q": "Do we need click counts?",
+      "a": "Yes, per link per day, but a few minutes of delay is fine."
+    }
+  ],
+  "requirements": {
+    "functional": [
+      "Create a short code for a long URL, optionally custom and with expiry",
+      "Redirect a short code to its URL",
+      "Count clicks per link per day",
+      "Disable a link (wrong notice sent)"
+    ],
+    "non_functional": [
+      {
+        "name": "Redirect latency",
+        "target": "p99 under 50 ms at the server"
+      },
+      {
+        "name": "Peak redirects",
+        "target": "about 300 per second, bursts of 2,000"
+      },
+      {
+        "name": "Availability",
+        "target": "99.9%; redirects matter more than link creation"
+      },
+      {
+        "name": "Code length",
+        "target": "at most 7 characters"
+      }
+    ]
+  },
+  "estimates": [
+    {
+      "id": "peak-redirects",
+      "question": "Peak redirects per second if one notice to 1 lakh students gets 60% of its clicks in the first 10 minutes?",
+      "answer": 100,
+      "tolerance_pct": 20,
+      "unit": "redirects per second",
+      "working": "1,00,000 × 0.6 = 60,000 clicks in 600 s = 100 per second for one notice; several notices at once multiply it.",
+      "solver": "print(round(100_000 * 0.6 / 600))\n"
+    },
+    {
+      "id": "codes-in-7",
+      "question": "How many distinct codes do 7 base-62 characters give, in billions (rounded)?",
+      "answer": 3522,
+      "tolerance_pct": 20,
+      "unit": "billion",
+      "working": "62^7 ≈ 3.52 × 10^12 = about 3,522 billion: at 2,000 links a day that lasts far beyond any need.",
+      "solver": "print(round(62 ** 7 / 1e9))\n"
+    },
+    {
+      "id": "storage-10y",
+      "question": "Storage for 10 years of links at 500 bytes per link, in GB?",
+      "answer": 3.65,
+      "tolerance_pct": 20,
+      "unit": "GB",
+      "working": "2,000 × 365 × 10 = 73 lakh links × 500 B ≈ 3.65 GB.",
+      "solver": "print(round(2000 * 365 * 10 * 500 / 1e9, 2))\n"
+    }
+  ],
+  "expected_components": [
+    {
+      "name": "Redirect service (stateless)",
+      "why": "Looks up a code and answers with an HTTP redirect; the hot path.",
+      "must": true
+    },
+    {
+      "name": "Key-value store or relational table for code → URL",
+      "why": "Single-key lookups; a primary key index answers in one read.",
+      "must": true
+    },
+    {
+      "name": "Cache in front of the store",
+      "why": "A few popular notices take most clicks, so caching hot codes removes most reads.",
+      "must": true
+    },
+    {
+      "name": "Code generator",
+      "why": "Produces short, unique codes without clashes: a counter encoded in base 62, or random codes with a uniqueness check.",
+      "must": true
+    },
+    {
+      "name": "Asynchronous click counting",
+      "why": "Writing a counter on every redirect would slow the hot path; log clicks to a queue and aggregate later.",
+      "must": true
+    },
+    {
+      "name": "Admin API with authentication",
+      "why": "Only staff create or disable links.",
+      "must": true
+    },
+    {
+      "name": "Abuse checks on target URLs",
+      "why": "Stops the short domain being used to disguise phishing links.",
+      "must": false
+    }
+  ],
+  "api": [
+    "POST /links {url, custom_code?, expires_at?} → {code} (staff only)",
+    "GET /{code} → 301/302 to the URL, 404 if unknown, 410 if disabled or expired",
+    "POST /links/{code}/disable (staff only)",
+    "GET /links/{code}/stats → clicks per day"
+  ],
+  "data_model": "links(code PRIMARY KEY, url, created_by, created_at, expires_at, disabled); clicks_daily(code, day, count) built from a click log by a periodic job.",
+  "diagram": {
+    "id": "shortlink-architecture",
+    "kind": "mermaid",
+    "alt": "Students' browsers hit the redirect service, which reads a cache and then the links table; each click is logged to a queue that an aggregator turns into daily counts; staff use an admin API that writes links with codes from a generator.",
+    "data": {
+      "source": "flowchart LR\n  B[Student browser] --> R[Redirect service]\n  R --> C[(Hot code cache)]\n  C --> L[(links table)]\n  R -->|click event| Q[Queue]\n  Q --> AG[Aggregator] --> D[(clicks_daily)]\n  S[Staff] --> A[Admin API] --> G[Code generator]\n  A --> L"
+    }
+  },
+  "deep_dives": [
+    {
+      "topic": "Generating codes",
+      "body": "Option 1: a database sequence gives 1, 2, 3 ... and we write the number in base 62 (digits, lower case, upper case). Codes are short and never clash, but they are guessable: anyone can try the next code and read unpublished notices. Option 2: random 7-character codes, inserted with the code as primary key; on the rare clash (about 73 lakh used out of 3.5 trillion) retry. Codes are unguessable. For notices that may be sent before they are public, **random codes are the safer choice**."
+    },
+    {
+      "topic": "301 or 302",
+      "body": "A 301 (permanent) redirect is cached by browsers, so repeat clicks never reach us: cheaper, but we lose those clicks in the counts and cannot disable a link the browser has cached. A 302 (temporary) brings every click to us. Because counts and the ability to disable a wrongly sent notice matter here, **use 302** and cache on our side instead."
+    }
+  ],
+  "trade_offs": [
+    "Random codes cost a uniqueness check on creation but stop people guessing unpublished links.",
+    "302 redirects cost more traffic than 301 but keep counts accurate and links disable-able.",
+    "Counting clicks asynchronously makes stats a few minutes late but keeps redirects fast."
+  ],
+  "failure_modes": [
+    "The links store is down: the cache still serves hot codes; new links cannot be created until it returns.",
+    "The click queue is down: redirects continue and click events are dropped or buffered locally; counts are slightly low.",
+    "A wrong notice was sent: disable the link and purge it from the cache, so new clicks get 410."
+  ],
+  "rubric": [
+    {
+      "id": "scope",
+      "criterion": "Clarifies read/write ratio, custom codes, expiry and counting needs.",
+      "weight": 10,
+      "checked_by": "review"
+    },
+    {
+      "id": "numbers",
+      "criterion": "Estimates peak redirects, code space and storage.",
+      "weight": 15,
+      "checked_by": "auto"
+    },
+    {
+      "id": "codes",
+      "criterion": "Chooses a code scheme and explains uniqueness and guessability.",
+      "weight": 25,
+      "checked_by": "review"
+    },
+    {
+      "id": "hot-path",
+      "criterion": "Keeps the redirect path to a cache read and a redirect; counting off the hot path.",
+      "weight": 30,
+      "checked_by": "review"
+    },
+    {
+      "id": "operations",
+      "criterion": "Covers disabling, expiry, abuse and failures.",
+      "weight": 10,
+      "checked_by": "review"
+    },
+    {
+      "id": "communication",
+      "criterion": "Clear structure and trade-offs (AI feedback, advice only).",
+      "weight": 10,
+      "checked_by": "ai-feedback"
+    }
+  ],
+  "concept_checks": [
+    {
+      "stem": "Why might sequential base-62 codes be a problem for exam notices?",
+      "options": [
+        "They are too long",
+        "They are guessable, so unpublished notices can be found by trying the next code",
+        "They clash",
+        "Base 62 is slow"
+      ],
+      "correct": 1,
+      "explanation": "Sequential codes reveal neighbours; random codes do not."
+    },
+    {
+      "stem": "Which redirect status keeps every click visible to the service?",
+      "options": [
+        "301",
+        "302",
+        "200",
+        "404"
+      ],
+      "correct": 1,
+      "explanation": "Browsers cache 301s; 302s come back to the server each time."
+    },
+    {
+      "stem": "How many codes do 6 base-62 characters give, roughly?",
+      "options": [
+        "5.7 crore",
+        "56.8 billion",
+        "3.5 trillion",
+        "62 lakh"
+      ],
+      "correct": 1,
+      "explanation": "62^6 ≈ 5.68 × 10^10, about 56.8 billion."
+    },
+    {
+      "stem": "Why count clicks through a queue instead of updating a counter in the redirect request?",
+      "options": [
+        "Queues are free",
+        "It keeps the redirect fast and avoids contention on a hot counter row",
+        "Counters cannot be updated",
+        "To lose data"
+      ],
+      "correct": 1,
+      "explanation": "A popular link's counter row would become a write hotspot on the critical path."
+    }
+  ],
+  "follow_ups": [
+    "How would you show the target URL as a preview before redirecting, to build trust?",
+    "How would you shard the links table if it grew to billions of rows?",
+    "How would you detect a flood of clicks from bots?"
+  ],
+  "revision_card": {
+    "front": "Short-link service: hot path, code scheme, redirect code?",
+    "back": "Hot path: cache → table lookup → 302 redirect; counting via a queue. Codes: random base-62 (unguessable) with a uniqueness retry, or sequence + base 62 (guessable). 302 keeps counts and disabling possible; 301 is cached by browsers."
+  },
+  "reference_solution": {
+    "$file": "reference.md"
+  }
+}
