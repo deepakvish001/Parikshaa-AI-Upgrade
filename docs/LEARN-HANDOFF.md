@@ -196,6 +196,39 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
 
 ## 5. Abhi chal raha / agla kadam
 
+### Row 141 content kit, part A (17 Nov 2026, `session_01CxKYSJpaMfGb259ZWTqTDB`, part A agent)
+
+**Kyun ruka:** 5 ghante ki limit (06:37 UTC par 0.74, 0.85 ke paas; part B saath chal raha tha). Jo bana wo push.
+
+**Ho gaya (push):**
+- [x] Format: [content/CONTENT-FORMAT.md](content/CONTENT-FORMAT.md) + `docs/content/schema/*.schema.json` (common, dsa-problem,
+  sql-problem, mcq, lesson, project, system-design, bundle). Har field par `x-db` (aaj kahan store) ya `x-needs-platform`;
+  §12 me part B ke liye "needs platform support" ki poori list; §8 project files jodne ke niyam (runner ek file leta hai).
+- [x] Prompts: `docs/content/prompts/` (`_shared-rules.md` + dsa-problem, sql-problem, mcq, lesson, project, system-design);
+  [content/INSTRUCTIONS.md](content/INSTRUCTIONS.md): kadam, originality, validator ke errors, har type ki checklist,
+  editorial lambai ke targets (owner badal sakte), review niyam (premium poora, public 10 me 1).
+- [x] Validator `scripts/content-validate.mjs` (Node, koi nayi dependency nahi; apna chhota JSON Schema checker):
+  schema → niyam (headings, shabd, Notes, test groups, bahar ke links, mana shabd, rubric) → runner par gates
+  (`packages/runner/dist/main.js`, `RUNNER_ISOLATION=unsafe-none`). Producing (generators, Python reference ka expected,
+  SQL rows, MCQ solver) local `python3` se, kyunki runner 4 KB ke baad output kaatta hai; part B ka `fullOutput` aane par
+  ye runner par ja sakta hai. Test: `packages/api/src/content-kit.test.ts` (4).
+- [x] Samples: `content/samples/manifest.json` (tracks), `content/samples/aptitude/` 10 (quant 5 jisme 3 variants ke saath,
+  logical 3, verbal 2; 1 Hinglish): **10/10 PASS**. Validator ne likhte waqt 2 galat key pakdi (seating, ages).
+
+**Baaki (agla session, isi kram me):**
+1. Samples, har type ke baad `node scripts/content-validate.mjs content/samples` sab PASS, phir push: SQL 10 → DSA 10
+   (long editorial ~7,000 shabd, 5 bhasha ke reference, brute, 2 galat, generators, validator; `$file` se alag files
+   `content/samples/dsa/<slug>/`) → lessons 10 (CN, OS, DBMS, LLD, OOD × 2) → language lessons 10 (C, C++, Python, Java,
+   JS × 2) → projects 10 (har bhasha 2) → system design 10 (5 HLD, 5 LLD).
+2. **Dhyaan:** validator ke MCQ aur lesson raaste asli inputs par chale (lesson test fixture par). DSA, SQL, project aur
+   LLD raaste abhi sirf runner smoke tak jaanche; pehle sample par inhe debug karna (khaaskar `bundleFiles` aur
+   wrong-solution verdicts).
+3. Phir tracker row 141 ka part A ✅ (samples poore hone par) aur owner se F6 manzoori.
+
+**Kaise chalayein:** `npm run build` (runner ka dist), phir `node scripts/content-validate.mjs content/samples`
+(`--no-run` sirf schema + niyam, `--only mcq,sql-problem`, `--mutate`, `--pack bundle.json`). Machine par gcc, g++, javac,
+node, python3.
+
 ### Abhi yahan ho (21 Oct 2026, naya session pehle ye padhe)
 
 - **Sabse taaza (24 Oct 2026, session 4, doosra account, `session_01CxKYSJpaMfGb259ZWTqTDB`, ultracode):** **Kadam 0
@@ -572,6 +605,7 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
 
 ## 7. Log (naya upar)
 
+- 17 Nov 2026 (row 141 part A agent): content kit: format + schemas (`2062822`), 6 prompts, INSTRUCTIONS, validator + test, aptitude ke 10 samples (PASS). 5 ghante ki limit (0.74, 0.85 ke paas) par ruka; baaki 60 samples aur kram §5 "Row 141 content kit, part A" me.
 - 10 Nov 2026 (session 4 aage, K2-8 agent): owner "K2-8 shuru karo". Draft #93 par: owner ke staging wale dono sandesh theek (band/na-maujood site par sign-in/up aur page ab saaf kehte "band hai ya maujood nahi"), tests ke saath. Aptitude ka code nahi: 5 ghante ki limit 0.85 ke paas; poora plan §5 K2-8 me.
 - 10 Nov 2026 (session 4 aage): #87 (K2-7 SQL, #85 ke baad ka CI fix, private repo se deploy) `main` me merge (`94eea54`); `main` par deploy-api aur deploy-web hare, staging par SQL bhi. Staging DB me abhi koi practice site nahi: owner ko admin-cli + console se site + starter packs ka tareeka diya. Agla: K2-8 (owner ki haan par).
 - 10 Nov 2026 (session 4 aage, K2-7): owner "continue". #85 (dependabot dev group) ke baad `main` ka CI laal tha: jsdom 31 chhupe tab ke field ko focus nahi deta (console test ab Questions tab kholta), axe 4.14 ka `label-content-name-mismatch` (Learn logo ka Hindi naam "Parikshaa Learn, आज"), Playwright 1.65.0 ka Firefox axe par crash (`@playwright/test` 1.64.1 par pin, tracker Faisle). Alag commit `c82a575`. Phir K2-7 SQL poora (autosave wala kaam, e2e/visual chalakar), usi draft #87 me. Local: Playwright 1.64 ko `chromium_headless_shell-1248` wrapper (1.65 ke liye `-1254` bhi bana, repo me kuch nahi). Agla: K2-8.

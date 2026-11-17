@@ -1,0 +1,63 @@
+{
+  "schema": "parikshaa.content/mcq@1",
+  "slug": "apt-verbal-sentence-correction",
+  "version": 1,
+  "title": "Sentence correction: agreement and parallelism",
+  "tier": "public",
+  "text_language": "en",
+  "difficulty": "easy",
+  "section": "aptitude-verbal",
+  "topic": "sentence-correction",
+  "tags": {
+    "topics": [
+      "sentence-correction"
+    ],
+    "patterns": [
+      "subject-verb-agreement"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: own numbers, story and explanation; no text from any question bank.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-aptitude",
+      "module": "Verbal",
+      "position": 1
+    }
+  ],
+  "kind": "mcq",
+  "stem": "Choose the correct version of the underlined part.\n\n\"The list of documents for the scholarship interview **include the mark sheets, an income certificate and to bring two photographs**.\"",
+  "options": [
+    "include the mark sheets, an income certificate and to bring two photographs",
+    "includes the mark sheets, an income certificate and two photographs",
+    "includes the mark sheets, an income certificate and bringing two photographs",
+    "include the mark sheets, an income certificate, and two photographs"
+  ],
+  "correct": 1,
+  "explanation": "### Understand\nTwo things can go wrong in this sentence: the verb must agree with its subject, and the items in the list must have the same form.\n\n### Plan\nFind the true subject (ignore the phrase after \"of\"), then make the three list items the same kind of word (nouns).\n\n### Solve\n1. Subject: \"The list\" (singular). \"of documents for the scholarship interview\" only describes it. So the verb is **includes**.\n2. The list: \"the mark sheets\", \"an income certificate\", \"to bring two photographs\". The third is an action, not a thing. Make it a noun phrase: \"two photographs\".\n3. Correct: **\"includes the mark sheets, an income certificate and two photographs\"**.\n\n### Check\nThe first option keeps both errors. The third fixes the verb but keeps an action (\"bringing\") in a list of things. The fourth fixes the list but keeps \"include\", agreeing with \"documents\" instead of \"list\".",
+  "distractors": [
+    {
+      "option": 0,
+      "mistake": "left both errors in place"
+    },
+    {
+      "option": 2,
+      "mistake": "fixed agreement but not the list's parallel form"
+    },
+    {
+      "option": 3,
+      "mistake": "made the verb agree with \"documents\", the nearest noun, not the subject \"list\""
+    }
+  ],
+  "time_target_sec": 45,
+  "revision_card": {
+    "front": "Subject-verb agreement trap?",
+    "back": "Ignore the phrase after \"of\": \"The list of documents includes\". Lists keep one form: nouns with nouns, -ing with -ing."
+  }
+}

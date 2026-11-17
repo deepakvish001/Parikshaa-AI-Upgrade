@@ -1,0 +1,65 @@
+{
+  "schema": "parikshaa.content/mcq@1",
+  "slug": "apt-quant-train-crossing-platform",
+  "version": 1,
+  "title": "A train crossing a platform",
+  "tier": "public",
+  "text_language": "en",
+  "difficulty": "easy",
+  "section": "aptitude-quant",
+  "topic": "speed-distance",
+  "tags": {
+    "topics": [
+      "speed-distance"
+    ],
+    "patterns": [
+      "relative-length"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: own numbers, story and explanation; no text from any question bank.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-aptitude",
+      "module": "Quant",
+      "position": 2
+    }
+  ],
+  "kind": "mcq",
+  "stem": "The Deccan Queen, 300 m long, runs at 72 km/h. It crosses a platform completely in 25 seconds. How long is the platform?",
+  "options": [
+    "200 m",
+    "300 m",
+    "500 m",
+    "1,800 m"
+  ],
+  "correct": 0,
+  "explanation": "### Understand\n\"Crosses completely\" means from the engine reaching the platform to the last coach leaving it, so the train covers its own length **plus** the platform's.\n\n### Plan\nDistance = speed × time, in metres and seconds. 72 km/h × 5/18 = 20 m/s.\n\n### Solve\n1. Distance in 25 s: 20 × 25 = 500 m.\n2. That is train + platform: 500 − 300 = **200 m**.\n\n### Check\nAt 20 m/s the 300 m train alone needs 15 s to pass a point; 10 s more for 200 m of platform fits. 300 m assumes the platform equals the train; 500 m forgets to subtract the train; 1,800 m used 72 km/h as 72 m/s.",
+  "distractors": [
+    {
+      "option": 1,
+      "mistake": "assumed the platform is as long as the train"
+    },
+    {
+      "option": 2,
+      "mistake": "forgot to subtract the train's own length"
+    },
+    {
+      "option": 3,
+      "mistake": "did not convert km/h to m/s (72 × 25)"
+    }
+  ],
+  "shortcut": "km/h to m/s: × 5/18 (72 → 20).",
+  "time_target_sec": 45,
+  "solver": "import json, sys\njson.load(sys.stdin)\nspeed = 72 * 1000 // 3600\nprint(json.dumps({\"answer\": f\"{speed * 25 - 300} m\"}))\n",
+  "revision_card": {
+    "front": "Train crossing a platform: what distance?",
+    "back": "Train length + platform length. Convert km/h × 5/18 to m/s first."
+  }
+}

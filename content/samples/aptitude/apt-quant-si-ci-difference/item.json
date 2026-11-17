@@ -1,0 +1,77 @@
+{
+  "schema": "parikshaa.content/mcq@1",
+  "slug": "apt-quant-si-ci-difference",
+  "version": 1,
+  "title": "Simple and compound interest, two years",
+  "tier": "public",
+  "text_language": "en",
+  "difficulty": "medium",
+  "section": "aptitude-quant",
+  "topic": "interest",
+  "tags": {
+    "topics": [
+      "interest"
+    ],
+    "patterns": [
+      "ci-minus-si"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: own numbers, story and explanation; no text from any question bank.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-aptitude",
+      "module": "Quant",
+      "position": 3
+    }
+  ],
+  "variants": {
+    "params": [
+      {
+        "name": "p",
+        "description": "principal in rupees"
+      },
+      {
+        "name": "r",
+        "description": "rate per year in percent"
+      }
+    ],
+    "sets": [
+      {
+        "p": 25000,
+        "r": 8
+      },
+      {
+        "p": 40000,
+        "r": 5
+      },
+      {
+        "p": 16000,
+        "r": 10
+      },
+      {
+        "p": 50000,
+        "r": 6
+      }
+    ]
+  },
+  "kind": "numeric",
+  "stem": "Asha keeps ₹{{p}} in a bank for 2 years at {{r}}% a year. How many rupees more does she earn if interest is compounded yearly instead of simple? Type the number.",
+  "answer": 160,
+  "tolerance": 0,
+  "unit": "rupees",
+  "explanation": "### Understand\nSame principal, rate and time; only the way interest is counted differs. We want CI − SI for 2 years.\n\n### Plan\nIn year 2, compound interest also earns interest on year 1's interest. So for 2 years, CI − SI = P × (r/100)².\n\n### Solve\n1. Year-1 interest: {{p}} × {{r}}/100 = {{i1}}.\n2. Interest on that in year 2: {{i1}} × {{r}}/100 = {{d}}.\n3. CI − SI = **{{d}}** rupees.\n\n### Check\nP(r/100)² = {{p}} × {{r}}² / 10,000 = {{d}}. The difference is small next to the interest itself ({{i1}} a year), as it should be for 2 years.",
+  "shortcut": "2 years: CI − SI = P(r/100)². 3 years: P(r/100)²(3 + r/100).",
+  "time_target_sec": 60,
+  "solver": "import json, sys\nfrom fractions import Fraction as F\np = json.load(sys.stdin)\nP, r = p[\"p\"], p[\"r\"]\ni1 = F(P * r, 100); d = i1 * r / 100\nf = lambda x: int(x) if x.denominator == 1 else float(x)\nprint(json.dumps({\"answer\": f(d), \"values\": {\"i1\": f(i1), \"d\": f(d)}}))\n",
+  "revision_card": {
+    "front": "CI − SI for 2 years?",
+    "back": "P × (r/100)². It is the interest earned on year 1's interest."
+  }
+}

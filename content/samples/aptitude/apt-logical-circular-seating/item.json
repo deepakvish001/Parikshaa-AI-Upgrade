@@ -1,0 +1,64 @@
+{
+  "schema": "parikshaa.content/mcq@1",
+  "slug": "apt-logical-circular-seating",
+  "version": 1,
+  "title": "Six friends at a round table",
+  "tier": "premium",
+  "text_language": "en",
+  "difficulty": "medium",
+  "section": "aptitude-logical",
+  "topic": "seating-arrangement",
+  "tags": {
+    "topics": [
+      "seating-arrangement"
+    ],
+    "patterns": [
+      "circular"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: own numbers, story and explanation; no text from any question bank.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-aptitude",
+      "module": "Logical reasoning",
+      "position": 1
+    }
+  ],
+  "kind": "mcq",
+  "stem": "Six friends, Anil, Bina, Chetan, Divya, Esha and Farooq, sit around a round table, all facing the centre.\n\n- Anil sits second to the right of Divya.\n- Bina is not next to Divya.\n- Chetan sits opposite Anil.\n- Esha sits immediately to the left of Chetan.\n\nWho sits immediately to the right of Anil?",
+  "options": [
+    "Bina",
+    "Divya",
+    "Esha",
+    "Farooq"
+  ],
+  "correct": 0,
+  "explanation": "### Understand\nA round table of six, everyone facing the centre. Four clues fix the order up to rotation; we need Anil's right-hand neighbour.\n\n### Plan\nDraw the table from above and number the seats clockwise 0–5, Divya at seat 0. For a person facing the centre, **right is counter-clockwise on the drawing** (seat − 1) and left is clockwise (seat + 1). Place the people the clues pin, then fill the rest.\n\n### Solve\n1. Anil is second to the right of Divya: 0 − 2 → seat 4.\n2. Chetan sits opposite Anil: 4 + 3 → seat 1.\n3. Esha is immediately left of Chetan: 1 + 1 → seat 2.\n4. Seats 3 and 5 remain. Seat 5 is next to Divya, and Bina is not, so Bina takes seat 3 and Farooq seat 5.\n5. Anil's right is seat 4 − 1 = seat 3: **Bina**.\n\n### Check\nEvery clue holds, and the solver finds no other arrangement. Farooq is Anil's **left**: the answer you get by flipping right and left. Divya and Esha are each two seats from Anil, not next to him.",
+  "distractors": [
+    {
+      "option": 1,
+      "mistake": "Divya is two seats from Anil, not next to him"
+    },
+    {
+      "option": 2,
+      "mistake": "Esha is two seats from Anil, beside Chetan"
+    },
+    {
+      "option": 3,
+      "mistake": "flipped right and left for people facing the centre (Farooq is on Anil's left)"
+    }
+  ],
+  "time_target_sec": 150,
+  "solver": "import json, sys\nfrom itertools import permutations\njson.load(sys.stdin)\nnames = [\"Anil\", \"Bina\", \"Chetan\", \"Divya\", \"Esha\", \"Farooq\"]\nfound = set()\nfor rest in permutations([n for n in names if n != \"Divya\"]):\n    seat = {\"Divya\": 0}\n    for i, n in enumerate(rest):\n        seat[n] = i + 1\n    right = lambda s, k=1: (s - k) % 6\n    left = lambda s, k=1: (s + k) % 6\n    if seat[\"Anil\"] != right(seat[\"Divya\"], 2): continue\n    if (seat[\"Bina\"] - seat[\"Divya\"]) % 6 in (1, 5): continue\n    if (seat[\"Chetan\"] - seat[\"Anil\"]) % 6 != 3: continue\n    if seat[\"Esha\"] != left(seat[\"Chetan\"]): continue\n    who = {v: k for k, v in seat.items()}\n    found.add(who[right(seat[\"Anil\"])])\nassert len(found) == 1, found\nprint(json.dumps({\"answer\": found.pop()}))\n",
+  "revision_card": {
+    "front": "Circular seating, facing the centre: which way is right?",
+    "back": "Draw it. Facing the centre, your right is counter-clockwise on the drawing. Fix one person, place the pinned ones, fill the rest, check every clue."
+  }
+}

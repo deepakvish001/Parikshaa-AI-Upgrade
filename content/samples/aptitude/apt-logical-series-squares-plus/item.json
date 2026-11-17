@@ -1,0 +1,64 @@
+{
+  "schema": "parikshaa.content/mcq@1",
+  "slug": "apt-logical-series-squares-plus",
+  "version": 1,
+  "title": "The next number in a series",
+  "tier": "public",
+  "text_language": "en",
+  "difficulty": "easy",
+  "section": "aptitude-logical",
+  "topic": "number-series",
+  "tags": {
+    "topics": [
+      "number-series"
+    ],
+    "patterns": [
+      "differences"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: own numbers, story and explanation; no text from any question bank.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-aptitude",
+      "module": "Logical reasoning",
+      "position": 0
+    }
+  ],
+  "kind": "mcq",
+  "stem": "What comes next? 3, 4, 8, 17, 33, ?",
+  "options": [
+    "50",
+    "58",
+    "62",
+    "66"
+  ],
+  "correct": 1,
+  "explanation": "### Understand\nFive terms are given; we need the sixth. Nothing in the stem says what rule, so we test the common ones.\n\n### Plan\nLook at the differences first. If they form a pattern we know (squares, cubes, a constant ratio), we extend it.\n\n### Solve\n1. Differences: 4 − 3 = 1, 8 − 4 = 4, 17 − 8 = 9, 33 − 17 = 16.\n2. These are 1², 2², 3², 4²; the next is 5² = 25.\n3. 33 + 25 = **58**.\n\n### Check\nThe rule fits all four gaps, and the answer keeps the series growing faster each step. 50 adds 17 (a difference of differences slip), 62 doubles the last gap and subtracts 3, 66 doubles 33.",
+  "distractors": [
+    {
+      "option": 0,
+      "mistake": "added 17, the previous term, instead of the next square"
+    },
+    {
+      "option": 2,
+      "mistake": "doubled the last gap (16 × 2 = 32) and adjusted"
+    },
+    {
+      "option": 3,
+      "mistake": "assumed the series doubles"
+    }
+  ],
+  "time_target_sec": 40,
+  "solver": "import json, sys\njson.load(sys.stdin)\ns = [3, 4, 8, 17, 33]\nd = [b - a for a, b in zip(s, s[1:])]\nassert d == [k * k for k in range(1, 5)]\nprint(json.dumps({\"answer\": str(s[-1] + 25)}))\n",
+  "revision_card": {
+    "front": "Series feels random?",
+    "back": "Take differences; then differences of differences; look for squares, cubes, primes or a ratio."
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "schema": "parikshaa.content/mcq@1",
+  "slug": "apt-quant-ages-hinglish",
+  "version": 1,
+  "title": "Pita aur beti ki umar",
+  "tier": "public",
+  "text_language": "hi-Latn",
+  "difficulty": "easy",
+  "section": "aptitude-quant",
+  "topic": "ages",
+  "tags": {
+    "topics": [
+      "ages"
+    ],
+    "patterns": [
+      "linear-equations"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: own numbers, story and explanation; no text from any question bank.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-aptitude",
+      "module": "Quant",
+      "position": 4
+    }
+  ],
+  "kind": "mcq",
+  "stem": "Aaj Rakesh ki umar apni beti Pooja ki umar ki 4 guna hai. 6 saal baad wo Pooja ki umar ka 2.5 guna hoga. Aaj Pooja kitne saal ki hai?",
+  "options": [
+    "6 saal",
+    "9 saal",
+    "12 saal",
+    "24 saal"
+  ],
+  "correct": 0,
+  "explanation": "### Samjho\nDo baatein di hain: aaj ka rishta (4 guna) aur 6 saal baad ka (2.5 guna). Poocha hai Pooja ki **aaj** ki umar.\n\n### Plan\nPooja ki aaj ki umar x maano; Rakesh 4x. 6 saal baad dono me 6 judega. Ek equation banegi.\n\n### Hal\n1. 6 saal baad: Rakesh 4x + 6, Pooja x + 6.\n2. 4x + 6 = 2.5 (x + 6) = 2.5x + 15.\n3. 4x − 2.5x = 15 − 6, yaani 1.5x = 9.\n4. x = 9 ÷ 1.5 = **6 saal**.\n\n### Jaancho\nAaj: Pooja 6, Rakesh 24 (4 guna ✓). 6 saal baad: 12 aur 30, aur 30 = 2.5 × 12 ✓. 9 saal wo number hai jo 1.5x = 9 me dikhta hai (x nahi); 12 saal Pooja ki 6 saal **baad** ki umar hai; 24 saal Rakesh ki aaj ki umar hai.",
+  "distractors": [
+    {
+      "option": 1,
+      "mistake": "1.5x = 9 me 9 ko hi x maan liya"
+    },
+    {
+      "option": 2,
+      "mistake": "Pooja ki 6 saal baad ki umar di, aaj ki nahi"
+    },
+    {
+      "option": 3,
+      "mistake": "Rakesh ki umar di, Pooja ki nahi"
+    }
+  ],
+  "time_target_sec": 60,
+  "solver": "import json, sys\njson.load(sys.stdin)\nfor x in range(1, 100):\n    if 4 * x + 6 == 2.5 * (x + 6):\n        print(json.dumps({\"answer\": f\"{x} saal\"}))\n        break\n",
+  "revision_card": {
+    "front": "Umar ke sawaal ka tareeka?",
+    "back": "Aaj ki umar x maano, dono rishton se ek equation, phir dono shartein jaancho."
+  }
+}

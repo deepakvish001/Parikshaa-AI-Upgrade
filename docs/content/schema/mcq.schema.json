@@ -56,7 +56,7 @@
     "shortcut": { "type": "string", "description": "A faster way, when one is honest (aptitude)." },
     "time_target_sec": { "type": "integer", "minimum": 10, "maximum": 900 },
     "solver": {
-      "description": "Python 3. Reads a JSON object of parameter values on stdin ({} when there are no variants). Prints one line of JSON: {\"answer\": <the right option's text or the number>, \"options\": [...] } (options only for an mcq with variants).",
+      "description": "Python 3. Reads a JSON object of parameter values on stdin ({} when there are no variants). Prints one line of JSON: {\"answer\": <the right option's exact text, or the number>, \"values\": {<derived numbers the stem, options or explanation show as {{name}}>}}. With variants, the options and explanation use {{name}} for what changes per set.",
       "type": "string",
       "minLength": 10
     },

@@ -203,7 +203,7 @@ Aptitude (quant, logical, verbal), CS quizzes (CN, OS, DBMS, OOP, LLD), language
 | `stem`, `passage` | Passage for reading comprehension or data sets several questions share (same `id`) |
 | `explanation` | EDITORIAL-STYLE §5 aptitude: `### Understand`, `### Plan`, `### Solve`, `### Check` (why each wrong option is wrong) |
 | `distractors` | For each wrong option, the mistake that leads to it |
-| `solver` | Python 3: reads a JSON object of parameter values (`{}` without variants), prints `{"answer": ...}` (and `options` for a variant MCQ). **Required for quant and for logical items that can be computed** (LEARN-V2 §3a: every quant item has a solver); the gate holds the key to it |
+| `solver` | Python 3: reads a JSON object of parameter values (`{}` without variants), prints `{"answer": ..., "values": {...}}`: `values` are derived numbers that the stem, options or explanation show as `{{name}}` (so a variant's options and worked solution are its own). **Required for quant and for logical items that can be computed** (LEARN-V2 §3a: every quant item has a solver); the gate holds the key to it |
 | `time_target_sec` | What a prepared learner needs |
 | `images` | `{file, alt}`; alt says what matters in the picture |
 
@@ -275,10 +275,11 @@ EDITORIAL-STYLE §5), `concept_checks` (3+ MCQs), `follow_ups`, `revision_card`.
   numbers in an aptitude stem. Names and stories may change too.
 - `sets[0]` is the default. For each set the validator substitutes `{{name}}` everywhere and runs the full gates:
   DSA and SQL recompute every expected output from the reference for that set (literal `expected` values are checked
-  for `sets[0]` only); an MCQ's `solver` must produce the key (and, for an MCQ, four or five distinct options
-  containing it) for each set.
-- The editorial is written for `sets[0]` and shown with the learner's own values substituted. Keep worked numbers in
-  explanations to `sets[0]`-only places, or write them with placeholders.
+  for `sets[0]` only); an MCQ's `solver` runs for each set; its `values` fill the remaining `{{name}}` in the stem, options and
+  explanation; the options must stay distinct and the keyed one must equal the solver's answer, in every set.
+- The editorial is written for `sets[0]` and shown with the learner's own values substituted. In an MCQ, write every
+  number that changes as a placeholder (a parameter, or a value the solver prints); in a DSA or SQL editorial, keep
+  worked numbers to the example of `sets[0]` and say so.
 - **Stored as** (needs platform support): one materialised copy per set; a learner gets set
   `hash(learner id, slug) mod sets.length`; the same learner always gets the same set.
 

@@ -1,0 +1,95 @@
+{
+  "schema": "parikshaa.content/mcq@1",
+  "slug": "apt-quant-price-rise-then-fall",
+  "version": 1,
+  "title": "A price that rises, then falls",
+  "tier": "public",
+  "text_language": "en",
+  "difficulty": "easy",
+  "section": "aptitude-quant",
+  "topic": "percentages",
+  "tags": {
+    "topics": [
+      "percentages"
+    ],
+    "patterns": [
+      "successive-change"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: own numbers, story and explanation; no text from any question bank.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-aptitude",
+      "module": "Quant",
+      "position": 0
+    }
+  ],
+  "variants": {
+    "params": [
+      {
+        "name": "up",
+        "description": "the rise, in percent"
+      },
+      {
+        "name": "down",
+        "description": "the fall, in percent"
+      }
+    ],
+    "sets": [
+      {
+        "up": 20,
+        "down": 20
+      },
+      {
+        "up": 25,
+        "down": 20
+      },
+      {
+        "up": 10,
+        "down": 30
+      },
+      {
+        "up": 40,
+        "down": 25
+      }
+    ]
+  },
+  "kind": "mcq",
+  "stem": "A tea stall in Pune raises the price of a cutting chai by {{up}}% in winter. In summer it cuts the new price by {{down}}%. By how much has the price changed from the original?",
+  "options": [
+    "{{o1}}",
+    "{{o2}}",
+    "{{o3}}",
+    "{{o4}}"
+  ],
+  "correct": 0,
+  "explanation": "### Understand\nTwo changes happen one after the other. The second percentage is taken on the **new** price, not the original.\n\n### Plan\nWork with multipliers. A rise of r% multiplies by (1 + r/100); a fall of f% multiplies by (1 − f/100). Multiply the two.\n\n### Solve\n1. Rise: × (1 + {{up}}/100) = × {{m1}}.\n2. Fall: × (1 − {{down}}/100) = × {{m2}}.\n3. Together: {{m1}} × {{m2}} = {{m}}.\n4. So the price is {{m}} times the original: **{{o1}}**.\n\n### Check\nA rise followed by an equal fall always ends lower, because the fall is on a larger base. The option {{o2}} simply subtracts the two percentages; {{o3}} adds the product instead of subtracting it; {{o4}} takes the fall on the original price.",
+  "distractors": [
+    {
+      "option": 1,
+      "mistake": "subtracted the percentages (+up − down) as if both were on the original price"
+    },
+    {
+      "option": 2,
+      "mistake": "used up − down + up·down/100: the sign of the product term is wrong"
+    },
+    {
+      "option": 3,
+      "mistake": "took the fall on the original price and then the rise"
+    }
+  ],
+  "shortcut": "Net change = a + b + ab/100 with a fall written as negative: {{up}} − {{down}} − {{up}}·{{down}}/100.",
+  "time_target_sec": 45,
+  "solver": "import json, sys\nfrom fractions import Fraction as F\np = json.load(sys.stdin)\nup, down = F(p[\"up\"]), F(p[\"down\"])\ndef pct(x):\n    x = F(x)\n    s = \"increase\" if x > 0 else \"decrease\" if x < 0 else \"no change\"\n    v = abs(x)\n    t = str(v.numerator) if v.denominator == 1 else f\"{float(v):g}\"\n    return \"No change\" if x == 0 else f\"{t}% {s}\"\nright = up - down - up * down / 100\nnaive = up - down\nsignflip = up - down + up * down / 100\nother = up - down - up * down / 100 + F(1)\nm1, m2 = 1 + up / 100, 1 - down / 100\nopts = [pct(right), pct(naive), pct(signflip), pct(right - 1 if right - 1 != naive and right - 1 != signflip else right - 2)]\nprint(json.dumps({\"answer\": opts[0], \"values\": {\"o1\": opts[0], \"o2\": opts[1], \"o3\": opts[2], \"o4\": opts[3], \"m1\": f\"{float(m1):g}\", \"m2\": f\"{float(m2):g}\", \"m\": f\"{float(m1*m2):g}\"}}))\n",
+  "revision_card": {
+    "front": "Price up a%, then down b%: net change?",
+    "back": "Multiply (1 + a/100)(1 − b/100). Net % = a − b − ab/100. Equal up and down always ends lower."
+  }
+}

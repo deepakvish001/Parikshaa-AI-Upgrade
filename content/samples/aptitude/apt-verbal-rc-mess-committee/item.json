@@ -1,0 +1,68 @@
+{
+  "schema": "parikshaa.content/mcq@1",
+  "slug": "apt-verbal-rc-mess-committee",
+  "version": 1,
+  "title": "Reading: the mess committee's experiment",
+  "tier": "public",
+  "text_language": "en",
+  "difficulty": "medium",
+  "section": "aptitude-verbal",
+  "topic": "reading-comprehension",
+  "tags": {
+    "topics": [
+      "reading-comprehension"
+    ],
+    "patterns": [
+      "inference"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: own numbers, story and explanation; no text from any question bank.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-aptitude",
+      "module": "Verbal",
+      "position": 0
+    }
+  ],
+  "kind": "mcq",
+  "passage": {
+    "id": "rc-mess-committee",
+    "title": "The mess committee's experiment",
+    "text": "Last semester the hostel mess committee at a college in Bhopal tried an experiment. Instead of a fixed menu, students voted every Sunday on the next week's dinners, choosing from twelve dishes the cooks could make well. Attendance at dinner rose from about 60 percent to 78 percent within a month, and the amount of food thrown away fell by nearly a third.\n\nNot everyone was pleased. The cooks said that voting made planning harder, because the winning dishes changed each week and some ingredients had to be bought at short notice, which cost more. A few students complained that the same four or five popular dishes won almost every time, so the menu felt less varied than before.\n\nThe committee's answer was a compromise. From this semester, students vote on four of the seven dinners; the other three are fixed by the cooks, who use them to try new dishes and to plan purchases a month ahead. The committee will compare attendance, waste and cost at the end of the semester before deciding whether to keep the scheme."
+  },
+  "stem": "Which of the following can be **inferred** from the passage?",
+  "options": [
+    "Voting on dinners lowered the mess's total cost.",
+    "The compromise is meant to address both the cooks' and some students' complaints.",
+    "Most students wanted the fixed menu back.",
+    "The cooks could not cook the dishes students voted for."
+  ],
+  "correct": 1,
+  "explanation": "### Understand\nAn inference is something the passage supports without saying it in so many words. Each option must be checked against the text, not against what seems sensible.\n\n### Plan\nFind the sentence each option leans on. Reject options that go beyond the text or contradict it.\n\n### Solve\n1. Cooks complained about planning and short-notice buying; some students about the same dishes winning.\n2. The compromise fixes three dinners chosen by cooks, who use them to plan purchases ahead (answers the cooks) and to try new dishes (answers the variety complaint).\n3. So the compromise answers both groups: **the second option**.\n\n### Check\nCost: the passage says short-notice buying cost more, so \"lowered total cost\" is unsupported. \"Most students wanted the fixed menu back\": only \"a few\" complained, and attendance rose. The cooks could cook all twelve dishes \"well\", so the last option contradicts the text.",
+  "distractors": [
+    {
+      "option": 0,
+      "mistake": "confused lower food waste with lower total cost; the passage says some buying cost more"
+    },
+    {
+      "option": 2,
+      "mistake": "generalised from \"a few students\" to \"most\""
+    },
+    {
+      "option": 3,
+      "mistake": "ignored that the twelve dishes were ones the cooks could make well"
+    }
+  ],
+  "time_target_sec": 90,
+  "revision_card": {
+    "front": "Inference questions in RC: the test?",
+    "back": "Point to the sentence that supports it. Reject options that add new facts, over-generalise (few → most) or contradict the text."
+  }
+}

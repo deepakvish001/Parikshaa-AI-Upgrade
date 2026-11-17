@@ -1,0 +1,63 @@
+{
+  "schema": "parikshaa.content/mcq@1",
+  "slug": "apt-logical-syllogism-hostel",
+  "version": 1,
+  "title": "Statements and conclusions: hostel rules",
+  "tier": "public",
+  "text_language": "en",
+  "difficulty": "medium",
+  "section": "aptitude-logical",
+  "topic": "syllogism",
+  "tags": {
+    "topics": [
+      "syllogism"
+    ],
+    "patterns": [
+      "venn"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: own numbers, story and explanation; no text from any question bank.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-aptitude",
+      "module": "Logical reasoning",
+      "position": 2
+    }
+  ],
+  "kind": "mcq",
+  "stem": "**Statements**\n1. All hostellers are students.\n2. Some students are cricketers.\n3. No cricketer is a night owl.\n\n**Conclusions**\nI. Some hostellers are cricketers.\nII. Some students are not night owls.\n\nWhich conclusions follow?",
+  "options": [
+    "Only I follows",
+    "Only II follows",
+    "Both I and II follow",
+    "Neither I nor II follows"
+  ],
+  "correct": 1,
+  "explanation": "### Understand\nA conclusion follows only if it is true in **every** picture that fits the statements, not just in a likely one.\n\n### Plan\nDraw the smallest Venn diagram the statements allow, then try to break each conclusion with another diagram that still fits.\n\n### Solve\n1. Hostellers sit inside students (statement 1).\n2. Students and cricketers overlap (statement 2), but nothing says the overlap touches hostellers. Draw cricketers overlapping only the non-hosteller part of students: every statement holds and **I fails**. So I does not follow.\n3. The students who are cricketers (some exist, statement 2) are not night owls (statement 3). So at least those students are not night owls: **II follows** in every picture.\n\n### Check\nII is a \"some ... not\" conclusion backed by a definite group (student-cricketers). I needs the hosteller circle to meet the cricketer circle, which no statement forces. \"Both\" and \"Only I\" accept the possible as certain; \"Neither\" misses the student-cricketers.",
+  "distractors": [
+    {
+      "option": 0,
+      "mistake": "treated a possible overlap (hostellers with cricketers) as certain"
+    },
+    {
+      "option": 2,
+      "mistake": "accepted I because it can be true, not because it must be"
+    },
+    {
+      "option": 3,
+      "mistake": "missed that the student-cricketers are definitely not night owls"
+    }
+  ],
+  "time_target_sec": 75,
+  "revision_card": {
+    "front": "When does a syllogism conclusion follow?",
+    "back": "Only if no Venn diagram that fits the statements breaks it. Possible is not enough; try to draw a counter-example."
+  }
+}
