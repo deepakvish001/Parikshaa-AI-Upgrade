@@ -662,7 +662,7 @@ par ja sakta hai.
     **Kahan ruka (10 Nov):** agent ~03:35 UTC par limit par ruka, ye fix commit nahi hua tha; main session ne 07:45 UTC par contrast dobara naap kar (4.38 → 5.05) commit + push kiya. Phir `e2e` me WebKit par
     `prep-flows.spec.ts` F1 laal (test plan save hone se pehle page chhod deta tha; ab saved plan ka heading dekh kar), `380918a` par CI poora
     hara. Owner ne 10 Nov 08:38 UTC par merge kiya; `main` par deploy-api aur deploy-web hare (VPS fetch ab job ke token se chalta). **Agla: K2-8** aptitude.
-  - [ ] K2-8 aptitude (maujooda MCQ par; mocks Kadam 3/4)
+  - [x] K2-8 aptitude (maujooda MCQ par; mocks Kadam 3/4). **18 Nov: poora** (screen, pack F6 ke peeche, unit + API + e2e + visual; `3c033a2` + e2e/docs commits; neeche "18 Nov").
     **Owner ka faisla (10 Nov):** screen + naya aptitude starter pack (~60 sawaal: quant, reasoning, verbal, har ek ke saath samjhaav),
     `starter-packs.ts` me baaki packs ki tarah; staging/launch par owner ki manzoori (F6) ke baad. Tracker "Faisle" me darj.
     **K2-8 ke saath theek karna (owner ne staging par 10 Nov ko pakda):** (1) band ya na-maujood practice site par Learn ka sign-up/sign-in
@@ -695,6 +695,45 @@ par ja sakta hai.
        lock, misses, axe); e2e `tests/learn-aptitude.spec.ts` + `learn-day.ts` me `seedLearnAptitude` (naya site, CS pack
        `POST /api/practice-admin/starter-packs/cs-fundamentals`, `seedLearnSql` jaisa); visual `learn-aptitude-{hub,set}-{1440,390}-
        {dark,light}` apni site par (purani images wahi). Phir tracker row 140 ✅/🟡 + Build log, DESIGN-SYSTEM §10, ye entry, #93 ka title/body.
+    **18 Nov (K2-8 agent, PR [#99](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/99), coordinator `session_01CxKYSJpaMfGb259ZWTqTDB`): kadam 1–3 ✅, kadam 4 me unit ✅, e2e/visual baaki.**
+    - Screen `learn/LearnAptitude.tsx` + `learn-aptitude.css` (lazy chunk `LearnAptitude-*.js` 7.3/8, `.css` 1.5/2): routes `aptitude`,
+      `aptitude/<topic>` (topic slug = section + topic), `aptitude/misses` (`screens.ts` `SUB_ROUTE`, `LearnApp.tsx`, `data.tsx` `safeNext`).
+      Section = tags[0], topic = tags[1] ?? tags[0]; `aptitude-quant/logical/verbal` ke naam (aur content kit ke `cs-*`), baaki tag ke shabd.
+      Hub: section card (icon + naam + "x me se y sahi"), topic rows (Meter + link), upar "N me se x sahi · z abhi galat" + galtiyan ka link,
+      signed out notice, Empty. Set: palette (sahi/try kiya/abhi, `aria-current="step"`, shabd `aria-label` me + legend), sawaal (`useProblem`,
+      passage + stem brand ke Markdown me), Check (`client.submit`, phir `["practice", site]` invalidate), sirf chuna option sahi/galat
+      (galat par sahi option kabhi nahi), samjhaav `editorial` ya taala "(N/3)" / contest me band, pichhle jawab (A, B…), Sahayak
+      (`setHere` + galat par `why: true`), Pichhla/Aage, heading par focus. Galtiyan: set khulte waqt ke `attempted`; sign out par `SignedOut`.
+    - Jawab ka field `learn/choice.tsx` (`ChoiceField`, `statementBody`, `letterOf`, `answerText`), workspace ka `AnswerPane` bhi yahi;
+      radio ka naam option ka text hi (akshar `aria-hidden`, nishaan `aria-describedby`). CSS `.ln-choice*` ab `learn.css` me (workspace se
+      `.lw-option*` hata). Naya saajha chunk `choice-*.js` 1.2 KB: budget **2** (1 nahi: field + `statementBody` + do icon 1.2 KB ke).
+    - Pack: `api/src/content/aptitude-starter.ts` (`node scripts/aptitude-pack.mjs` se, 10 samples bulk upload ki `project()` se), track
+      `aptitude-starter` (Quantitative aptitude 5, Logical reasoning 3, Verbal ability 2). **F6 gate:** `starter-packs.ts` `PENDING_PACKS`
+      (list me nahi, route ka enum `PACKS` hi, isliye 400; `import` bhi `not_found`); `StarterPacks({ pending: true })` sirf test
+      (`wire(..., { pendingPacks: true })`, harness ab `starterPacks` lautata). Manzoori par naam `PACKS` me + `npm run openapi`.
+    - Bulk upload ki MCQ projection (`content-publish.ts`): tags me section + topic **pehle** (lesson me course pehle), taaki screen use
+      group kare; aur **bug fix**: shortcut `original` se padha jaata tha, isliye variant ka `{{up}}` kachcha chhapta; ab default set se.
+    - Tests: `LearnAptitude.test.tsx` 13 (hub, signed out, khaali, loading/failed/offline, galat, sahi, contest, palette + focus, sign in,
+      na-maujood topic, galtiyan, koi galti nahi; axe), `aptitude-starter.test.ts` 4 (har sawaal sample se dobara bana kar milta, valid paper,
+      F6 gate, offer hone par track + jawab), `content-gates.test.ts` +2 expect (tags ka kram, shortcut bhara).
+    - Jaanch: `npm run check` (akela), `build:clients`, `budget`, `lint:css` hare; route/schema nahi badla (`npm run openapi` se `docs/openapi.json` wahi).
+    - Content ka dhyan (owner ko bataya): 9 MCQ me 5 ka sahi jawab option A; pack samples jaisa hi rakha.
+    **18 Nov dopahar (container restart + limit reset ke baad, wahi agent): e2e + visual ✅.** `tests/learn-day.ts` `seedLearnAptitude`
+    (apni site; pack ke 10 sawaal bank + `practice-admin/problems` se, kyunki pack F6 tak band; e2e unhe `@parikshaa/api/aptitude-pack`
+    export se padhta; learner ka ek sahi, ek galat), `tests/learn-aptitude.spec.ts` 2 (laptop dark: hub → Percentages → galat par sirf
+    chuna option "sahi nahi", taala 1/3 → 2/3 → sahi → samjhaav + shortcut, axe; phone light: galtiyan, RC ka passage, kuch side me nahi,
+    axe): Chromium 2/2, saath me `learn-workspace` + `learn-aaj` 5/5. Visual `learn-aptitude-{hub,set}-{1440,390}-{dark,light}` (8 nayi
+    images, `npm run visual:update -w @parikshaa/e2e -- -g aptitude --reporter=line visual/learn.visual.ts`; flag pehle, warna
+    `--update-snapshots` file ka naam kha jaata); poora `learn.visual.ts` 73/73, purani images wahi. Local tareeka: Postgres 16 `main`
+    (`pg_ctlcluster 16 main start`), roles ka local password, `PGPASSWORD=<wahi>`; visual ke liye `/etc/fonts` ki copy bina
+    `12-unhinted-grayscale.conf` aur `56-prefer-inter.conf` + `FONTCONFIG_FILE`/`FONTCONFIG_PATH` (bina iske SQL ki purani image 12,600 px alag).
+    Pichhli date `.ln-dated` me (mask). DESIGN-SYSTEM §10 me K2-8 ki line. **Agla:** K2-9 contests (owner ki haan par).
+    *Pehle ka "kahan ruka" (subah ~07:55 UTC, limit 0.85), ab poora ho chuka:*
+    (a) `packages/e2e/tests/learn-day.ts` me `seedLearnAptitude` (apni site; bank + `practice-admin/problems` se pack ke 3–4 sawaal, tags
+    pack jaise `["aptitude-quant","percentages",…]`, editorial pack ka; ya plan ke mutabiq CS pack), `tests/learn-aptitude.spec.ts` (laptop:
+    hub → topic → galat → taala (1/3) → sahi → samjhaav + shortcut, axe; phone light: galtiyan, kuch bahar na phisle), (b) `visual/learn.visual.ts`
+    me `learn-aptitude-{hub,set}-{1440,390}-{dark,light}` apni site par, `npm run visual:update -w @parikshaa/e2e` (sirf naye 8; purane wahi),
+    (c) DESIGN-SYSTEM §10 me K2-8 ki line, tracker row 140/§3 ko ✅, ye entry `[x]`.
   - [ ] K2-9 contests
   - [ ] K2-10 profile B + share
   - [ ] K2-11 Plus
@@ -809,6 +848,7 @@ par ja sakta hai.
 
 ## 7. Log (naya upar)
 
+- 18 Nov 2026 (K2-8 agent, #99): aptitude Learn me (hub, topic ka set, galtiyan; `learn/LearnAptitude.tsx`, saajha `learn/choice.tsx`) + aptitude starter pack 10 samples se, `PENDING_PACKS` se band (F6); bulk upload ki MCQ projection me tags ka kram aur shortcut ka bug theek. Unit + API tests, check/build:clients/budget hare. Dopahar limit reset ke baad e2e (`learn-aptitude.spec.ts` 2) + visual (8 images) bhi; K2-8 poora. Agla: K2-9 (owner ki haan par).
 - 18 Nov 2026 (row 141 part B, console + e2e agent, worktree): kadam 5 (`4431a8d`: console ka Bulk upload tab, 11 unit + axe) aur kadam 6 (`6ad3d37`: e2e `content-upload.spec.ts`, local Chromium par pass) push; `npm run check`, `build:clients`, `budget`, openapi pass. Part B poora; deferred gates §5 "Row 141, part B" me.
 - 17 Nov 2026 (row 141 part A): system design 10/10 PASS (5 HLD, 5 LLD kata Python + Java); kul 61/70 PASS. Bache: DSA 2–10 (owner ke lambai ke jawab tak ruke). Phir row 141 part A ✅ aur owner ki F6 manzoori.
 - 17 Nov 2026 (row 141 part A): projects 10/10 PASS (har bhasha 2); `bundleFiles` paanchon bhasha me sahi. Agla: system design (5 HLD, 5 LLD).
