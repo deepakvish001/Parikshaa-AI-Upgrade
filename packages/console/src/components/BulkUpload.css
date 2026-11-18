@@ -1,0 +1,52 @@
+/* --- the bulk content upload (plan row 141, part B) ------------------------------ */
+
+.content-report .chips {
+  margin: var(--space-3) 0;
+}
+.content-items {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.content-item {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.content-item-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: space-between;
+}
+.content-item-name {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.content-item-meta {
+  margin: var(--space-1) 0 0;
+  overflow-wrap: anywhere;
+}
+.content-item .problems {
+  margin-top: var(--space-2);
+}
+.content-item details {
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+}
+.content-item details ul {
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-5);
+}
+.content-publish {
+  margin-top: var(--space-4);
+}
+.content-uploads tr[aria-current="true"] td {
+  background: var(--surface-sunken);
+}

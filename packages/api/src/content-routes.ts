@@ -50,7 +50,14 @@ const itemReport = z.object({
   warnings: z.array(z.string()).readonly().describe("For the reviewer: what to look at, and what was not checked yet."),
   checkedAt: z.string().nullable(),
   current: z
-    .object({ version: z.number(), hash: z.string(), state: z.enum(["draft", "published"]), publishedVersion: z.number().nullable(), uploadId: z.string() })
+    .object({
+      version: z.number(),
+      hash: z.string(),
+      state: z.enum(["draft", "published"]),
+      publishedVersion: z.number().nullable(),
+      publishedHash: z.string().nullable().describe("The live version's hash: which content of that version learners see."),
+      uploadId: z.string(),
+    })
     .nullable()
     .describe("What is kept under this slug now: the current version, and which version is live."),
 });

@@ -72133,6 +72133,13 @@
                                       "null"
                                     ]
                                   },
+                                  "publishedHash": {
+                                    "description": "The live version's hash: which content of that version learners see.",
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
                                   "uploadId": {
                                     "type": "string"
                                   }
@@ -72142,6 +72149,7 @@
                                   "hash",
                                   "state",
                                   "publishedVersion",
+                                  "publishedHash",
                                   "uploadId"
                                 ],
                                 "additionalProperties": false
@@ -72903,6 +72911,13 @@
                                       "null"
                                     ]
                                   },
+                                  "publishedHash": {
+                                    "description": "The live version's hash: which content of that version learners see.",
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
                                   "uploadId": {
                                     "type": "string"
                                   }
@@ -72912,6 +72927,7 @@
                                   "hash",
                                   "state",
                                   "publishedVersion",
+                                  "publishedHash",
                                   "uploadId"
                                 ],
                                 "additionalProperties": false

@@ -19,6 +19,8 @@ import { Lessons, PlusAdmin, ProblemOfTheDay, Tracks, TutorEvals } from "./PrepA
 const Sales = lazy(() => import("./Sales.tsx").then((m) => ({ default: m.Sales })));
 const Campus = lazy(() => import("./Campus.tsx").then((m) => ({ default: m.Campus })));
 const Analytics = lazy(() => import("./PrepAnalytics.tsx").then((m) => ({ default: m.PrepAnalyticsPanel })));
+// The bulk content upload (plan row 141, part B): a few times a term.
+const BulkUpload = lazy(() => import("./BulkUpload.tsx").then((m) => ({ default: m.BulkUpload })));
 
 /**
  * A practice site (ROADMAP §15): the organisation's problems at
@@ -27,7 +29,24 @@ const Analytics = lazy(() => import("./PrepAnalytics.tsx").then((m) => ({ defaul
  * nothing published.
  */
 
-type Tab = "site" | "analytics" | "problems" | "tracks" | "lessons" | "potd" | "plus" | "sales" | "campus" | "companies" | "experiences" | "stories" | "store" | "contests" | "learners" | "discussion";
+type Tab =
+  | "site"
+  | "analytics"
+  | "problems"
+  | "tracks"
+  | "lessons"
+  | "upload"
+  | "potd"
+  | "plus"
+  | "sales"
+  | "campus"
+  | "companies"
+  | "experiences"
+  | "stories"
+  | "store"
+  | "contests"
+  | "learners"
+  | "discussion";
 
 export interface PracticeCan {
   readonly manage: boolean;
@@ -48,6 +67,7 @@ export function PracticePanel({ client, can }: { client: ConsoleClient; can: Pra
     ["problems", "Problems"],
     ["tracks", "Tracks"],
     ["lessons", "Lessons"],
+    ["upload", "Bulk upload"],
     ["potd", "Problem of the day"],
     ["plus", "Plus"],
     ...(can.manage ? ([["sales", "Coupons and sales"]] as [Tab, string][]) : []),
@@ -83,6 +103,11 @@ export function PracticePanel({ client, can }: { client: ConsoleClient; can: Pra
         </>
       ) : null}
       {tab === "lessons" ? <Lessons client={client} canWrite={can.write} /> : null}
+      {tab === "upload" ? (
+        <Suspense fallback={<p className="notice">Loading…</p>}>
+          <BulkUpload client={client} canWrite={can.write} />
+        </Suspense>
+      ) : null}
       {tab === "potd" ? <ProblemOfTheDay client={client} canWrite={can.write} /> : null}
       {tab === "plus" ? (
         <>

@@ -94,6 +94,7 @@ function stub() {
       google: { enabled: true, clientId: "id.apps.googleusercontent.com", secretSet: true },
       redirectUri: "https://exam.test/api/practice/nit-practice/auth/google/callback",
     })),
+    contentUploads: vi.fn(async () => []),
     practiceSimilarity: vi.fn(async () => ({
       problem: { id: "p3", title: "Sum of a list" },
       compared: 3,
@@ -200,6 +201,20 @@ describe("the practice panel", () => {
     expect(draft.problemIds).toEqual(["p1"]);
     expect(Date.parse(draft.endsAt) - Date.parse(draft.startsAt)).toBe(3_600_000);
     expect(await screen.findByText("A. Stable sort")).toBeInTheDocument();
+  });
+
+  it("opens the bulk upload, where a writer may upload and anyone may read the reports", async () => {
+    const client = stub();
+    const { unmount } = show(client);
+    await userEvent.click(screen.getByRole("tab", { name: "Bulk upload" }));
+    expect(await screen.findByLabelText("Content bundle (JSON or ZIP)")).toBeInTheDocument();
+    expect(await screen.findByText(/No bundles uploaded yet/)).toBeInTheDocument();
+    unmount();
+
+    show(stub(), { manage: false, write: false, readLearners: false });
+    await userEvent.click(screen.getByRole("tab", { name: "Bulk upload" }));
+    expect(await screen.findByRole("region", { name: "Uploads" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Content bundle (JSON or ZIP)")).not.toBeInTheDocument();
   });
 
   it("lists learners, and moderates the discussion", async () => {

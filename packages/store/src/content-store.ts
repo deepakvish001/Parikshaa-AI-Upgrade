@@ -107,7 +107,15 @@ export interface UploadItemReport {
    * The slug's draft or published item as it stands now, if it has one: which
    * version is current and which is live. Null when nothing is kept under it.
    */
-  readonly current: { readonly version: number; readonly hash: string; readonly state: "draft" | "published"; readonly publishedVersion: number | null; readonly uploadId: string } | null;
+  readonly current: {
+    readonly version: number;
+    readonly hash: string;
+    readonly state: "draft" | "published";
+    readonly publishedVersion: number | null;
+    /** The live version's hash: which content of that version Learn shows. */
+    readonly publishedHash: string | null;
+    readonly uploadId: string;
+  } | null;
 }
 
 export interface UploadDetail extends UploadSummary {
@@ -397,10 +405,12 @@ export class ContentStore {
         c_hash: string | null;
         c_state: "draft" | "published" | null;
         c_published_version: number | null;
+        c_published_hash: string | null;
         c_upload_id: string | null;
       }>(
         `SELECT i.position, i.namespace, i.slug, i.type, i.version, i.hash, i.title, i.status, i.problems, i.warnings, i.checked_at,
-                c.version AS c_version, c.hash AS c_hash, c.state AS c_state, c.published_version AS c_published_version, c.upload_id AS c_upload_id
+                c.version AS c_version, c.hash AS c_hash, c.state AS c_state, c.published_version AS c_published_version,
+                c.published_hash AS c_published_hash, c.upload_id AS c_upload_id
            FROM content_upload_items i
            LEFT JOIN content_items c ON c.org_id = i.org_id AND c.namespace = i.namespace AND c.slug = i.slug
           WHERE i.org_id = $1 AND i.upload_id = $2
@@ -431,6 +441,7 @@ export class ContentStore {
                   hash: i.c_hash ?? "",
                   state: i.c_state ?? "draft",
                   publishedVersion: i.c_published_version === null ? null : Number(i.c_published_version),
+                  publishedHash: i.c_published_hash,
                   uploadId: i.c_upload_id ?? "",
                 },
         })),

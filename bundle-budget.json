@@ -81,6 +81,8 @@
     "Operator-*.css": 1,
     "Library-*.js": 4,
     "Library-*.css": 1,
+    "BulkUpload-*.js": 5,
+    "BulkUpload-*.css": 1,
     "refresh-cw-*.js": 1,
     "ProxyCheck-*.js": 2,
     "hindi-*.js": 4,

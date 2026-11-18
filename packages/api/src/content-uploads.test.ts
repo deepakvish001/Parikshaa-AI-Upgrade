@@ -99,7 +99,7 @@ describe("a bulk upload", () => {
 
     const after = (await call("GET", owner, `/practice-admin/content/uploads/${done.id}`)).json();
     expect(after.published).toBe(4);
-    expect(after.items[3].current).toMatchObject({ state: "published", publishedVersion: 1 });
+    expect(after.items[3].current).toMatchObject({ state: "published", publishedVersion: 1, publishedHash: after.items[3].hash });
     expect(JSON.stringify((await call("GET", owner, "/audit")).json().entries)).toContain("practice.content_published");
     // Publishing again changes nothing.
     expect((await call("POST", owner, "/practice-admin/content/publish", { upload: done.id })).json().refused).toHaveLength(4);
@@ -116,7 +116,7 @@ describe("a bulk upload", () => {
 
     const second = await upload([mcqItem({ version: 2, title: "Two piles of ripe mangoes" })]);
     expect(statuses(second)).toEqual([["apt-quant-two-numbers", "passed"]]);
-    expect(second.items[0].current).toMatchObject({ version: 2, state: "draft", publishedVersion: 1 });
+    expect(second.items[0].current).toMatchObject({ version: 2, state: "draft", publishedVersion: 1, publishedHash: first.items[0].hash });
     // Version 1 stays live until version 2 is published.
     expect((await call("GET", null, "/practice/learn/problems/apt-quant-two-numbers")).json().title).toBe("Two piles of mangoes");
     // The first upload cannot publish over the newer draft.

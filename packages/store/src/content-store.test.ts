@@ -149,7 +149,7 @@ describe("uploads", () => {
     const detail = await store.upload(A, id);
     expect(detail).toMatchObject({ state: "done", counts: { passed: 1, failed: 1, pending: 0, checking: 0 } });
     expect(detail?.items[1]).toMatchObject({ status: "failed", warnings: ["mutation: not checked yet"], current: null });
-    expect(detail?.items[0]?.current).toMatchObject({ version: 1, state: "draft", publishedVersion: null, uploadId: id });
+    expect(detail?.items[0]?.current).toMatchObject({ version: 1, state: "draft", publishedVersion: null, publishedHash: null, uploadId: id });
     expect(await store.item(A, "problem", "apt-one")).toMatchObject({ type: "mcq", version: 1, state: "draft", uploadId: id, item: { slug: "apt-one" } });
     expect(await store.item(A, "problem", "apt-two")).toBeNull();
   });
