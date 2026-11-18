@@ -48,8 +48,11 @@ const LESSON_BODY_MAX = 200_000;
 
 const FENCE: Record<string, string> = { c: "c", cpp: "cpp", java: "java", python: "python", javascript: "javascript", sql: "sql" };
 
-/** Topics, patterns and extra labels, once each: a problem's tags. */
-const tagsOf = (tags: Tags, more: readonly string[] = []) => [...new Set([...tags.topics, ...(tags.patterns ?? []), ...(tags.extra ?? []), ...more])];
+/**
+ * A problem's tags, once each: `first` (an MCQ's section and topic, a lesson's course), then the item's topics, patterns
+ * and extra labels. Learn's aptitude screen groups choice questions by the first two (section, then topic).
+ */
+const tagsOf = (tags: Tags, first: readonly string[] = []) => [...new Set([...first, ...tags.topics, ...(tags.patterns ?? []), ...(tags.extra ?? [])])];
 
 const fenced = (lang: string, src: string) => {
   const ticks = src.includes("```") ? "````" : "```";
@@ -150,7 +153,8 @@ function mcq(original: McqItem, built: Built): ProblemProjection {
     item.kind === "numeric"
       ? { id: questionId(item.slug), kind: "numeric", stem, maxScore: 1, rubric: [], expected: item.answer ?? 0, tolerance: item.tolerance ?? 0, ...passage }
       : { id: questionId(item.slug), kind: "mcq", stem, maxScore: 1, rubric: [], options: (item.options ?? []).map(fill), correctIndex: item.correct ?? 0, ...passage };
-  const shortcut = (original as { shortcut?: string }).shortcut;
+  // From the default set, like every other text: a shortcut may name a variant parameter ({{up}}).
+  const shortcut = (item as { shortcut?: string }).shortcut;
   return {
     slug: item.slug,
     title: item.title,

@@ -152,6 +152,8 @@ let hashed: Promise<string> | null = null;
 const passwordHash = () => (hashed ??= hashPassword(PASSWORD));
 
 export interface Wiring {
+  /** The starter packs (with `pendingPacks`, also those waiting for the owner's approval). */
+  readonly starterPacks: StarterPacks;
   readonly handlers: ReturnType<typeof buildIntegrations>["handlers"] & {
     readonly staff_email: ItemHandler;
     readonly learner_email: ItemHandler;
@@ -191,6 +193,8 @@ export async function wire(
     readonly greenhouseHosts?: readonly string[];
     /** Where staff mail (password resets) goes. */
     readonly mailer?: Mailer;
+    /** Starter packs may offer the packs still waiting for the owner's approval (PENDING_PACKS). */
+    readonly pendingPacks?: boolean;
     readonly push?: PushSender;
     /** Results may go by WhatsApp too, as when the server has it set up. */
     readonly whatsapp?: boolean;
@@ -359,6 +363,7 @@ export async function wire(
     ...(options.now === undefined ? {} : { now: options.now }),
   });
   prepService.usePeople((orgId, ids) => prepCommunity.people(orgId, ids));
+  const starterPacks = new StarterPacks({ practice: new PracticeStore(sql), prep: new PrepStore(sql), service: prepService, pending: options.pendingPacks === true });
   const prepEngage = new PrepEngage({
     store: new PrepEngageStore(sql),
     practiceStore: new PracticeStore(sql),
@@ -532,7 +537,7 @@ export async function wire(
     practice,
     practiceIdentity,
     prep: prepService,
-    starterPacks: new StarterPacks({ practice: new PracticeStore(sql), prep: new PrepStore(sql), service: prepService }),
+    starterPacks,
     contentUploads,
     prepCommunity,
     prepEngage,
@@ -552,6 +557,7 @@ export async function wire(
   });
   await app.ready();
   return {
+    starterPacks,
     store,
     identity,
     service,

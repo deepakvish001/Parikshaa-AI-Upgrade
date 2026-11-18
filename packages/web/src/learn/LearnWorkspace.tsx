@@ -4,8 +4,9 @@ import { Empty, FocusBar, PaneHead, Panes, usePanes, type KitLink } from "@parik
 import { Markdown } from "@parikshaa/brand/markdown";
 import type { CandidateCodeQuestion, CandidateQuestion } from "@parikshaa/core/browser";
 import { ApiError, type RunOutcome } from "../api.ts";
-import { argumentsOf, LANGUAGE_NAMES, memory, readCodeAnswer, splitStem, starterIn } from "../components/code-meta.ts";
+import { argumentsOf, LANGUAGE_NAMES, memory, readCodeAnswer, starterIn } from "../components/code-meta.ts";
 import { approachesOf, type Problem, type Submission, type TutorAnswer, type Verdict } from "../practice/client.ts";
+import { ChoiceField, statementBody } from "./choice.tsx";
 import { ScreenLink, useLearn, type SahayakAbout } from "./context.tsx";
 import { Failed, Loading, Offline, useLearnData, useLearnQuery, useOnline, useProblem, useSubmissions, useTutor, waitingForNetwork } from "./data.tsx";
 import { BookOpen, CodeXml, Database, icon, Lightbulb, Lock, Sparkles, Table2 } from "./icons.tsx";
@@ -297,11 +298,8 @@ function saveDraft(site: string, slug: string, value: string): void {
 export const verdictWord = (status: string, sql = false): Tri =>
   sql && status === "runtime_error" ? LW.queryError : Object.hasOwn(LW, status) && /^[a-z_]+$/.test(status) ? (LW[status as keyof typeof LW] as Tri) : LW.verdictOther;
 
-/** The statement without its first paragraph when that is the title, as the bank writes it ("Title\n\nWhat to do…"). */
-export function statementBody(stem: string, title: string): string {
-  const split = splitStem(stem);
-  return split.title.trim().toLowerCase() === title.trim().toLowerCase() ? split.body : stem;
-}
+// The statement's body and the answer field are choice.tsx's, shared with the aptitude set (K2-8).
+export { statementBody };
 
 /** What the API's refusal means here, in the learner's words; null for anything else. */
 function refusal(error: unknown): Tri | null {
@@ -1345,7 +1343,7 @@ function AnswerPane({
   const q: CandidateQuestion = problem.question;
   const outcome = useRef<HTMLDivElement>(null);
   const submit = useMutation({
-    mutationFn: () => client.submit(problem.slug, value),
+    mutationFn: (answer: string) => client.submit(problem.slug, answer),
     onSuccess: async () => {
       outcome.current?.focus({ preventScroll: true });
       await queryClient.invalidateQueries({ queryKey: ["practice", site] });
@@ -1361,40 +1359,7 @@ function AnswerPane({
         <h2 className="ln-h3" id={`${id}-h`}>
           {t(LW.yourAnswer)}
         </h2>
-        {q.kind === "mcq" ? (
-          <fieldset className="lw-options">
-            <legend className="ln-sr">{t(LW.yourAnswer)}</legend>
-            {q.options.map((option, i) => {
-              const chosen = q.multiple ? value.split(",").includes(String(i)) : value === String(i);
-              return (
-                <label key={`${i}-${option}`} className={`lw-option${chosen ? " lw-on" : ""}`}>
-                  <input
-                    type={q.multiple ? "checkbox" : "radio"}
-                    name={`${id}-opt`}
-                    checked={chosen}
-                    onChange={() => {
-                      if (!q.multiple) return onChange(String(i));
-                      const now = new Set(value === "" ? [] : value.split(","));
-                      if (now.has(String(i))) now.delete(String(i));
-                      else now.add(String(i));
-                      onChange([...now].map(Number).sort((a, b) => a - b).join(","));
-                    }}
-                  />
-                  <span>{option}</span>
-                </label>
-              );
-            })}
-          </fieldset>
-        ) : (
-          <label className="ln-field">
-            <span>{t(LW.yourAnswer)}</span>
-            {q.kind === "short" ? (
-              <textarea className="ln-input" rows={5} value={value} maxLength={20_000} onChange={(event) => onChange(event.target.value)} />
-            ) : (
-              <input className="ln-input" inputMode={q.kind === "numeric" ? "decimal" : "text"} value={value} maxLength={200} onChange={(event) => onChange(event.target.value)} />
-            )}
-          </label>
-        )}
+        <ChoiceField question={q} value={value} onChange={onChange} label={t(LW.yourAnswer)} checked={submit.data === undefined ? null : { answer: submit.variables ?? "", right: submit.data.status === "passed" }} />
         <div ref={outcome} tabIndex={-1} className="lw-answer-out">
           {submit.data === undefined ? null : (
             <div className="lw-verdict" data-status={submit.data.status}>
@@ -1418,7 +1383,7 @@ function AnswerPane({
             </div>
           )}
           {!submit.isError ? null : why === null ? (
-            <Failed error={submit.error} onRetry={() => submit.mutate()} headingLevel={3} />
+            <Failed error={submit.error} onRetry={() => submit.mutate(value)} headingLevel={3} />
           ) : (
             <p className="ln-notice ln-notice-info" role="status">
               {t(why)}
@@ -1434,7 +1399,7 @@ function AnswerPane({
         )}
         <span className="ln-grow" />
         {signedIn ? (
-          <button type="button" className="ln-btn ln-btn-sm ln-btn-pri" disabled={!online || submit.isPending || value.trim() === ""} onClick={() => submit.mutate()}>
+          <button type="button" className="ln-btn ln-btn-sm ln-btn-pri" disabled={!online || submit.isPending || value.trim() === ""} onClick={() => submit.mutate(value)}>
             <Send aria-hidden="true" />
             {submit.isPending ? t(LW.judging) : t(LW.submit)}
           </button>

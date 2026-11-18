@@ -26,6 +26,8 @@ const Sheet = lazy(() => import("./LearnSheet.tsx").then((m) => ({ default: m.Sh
 const LessonReader = lazy(() => import("./LearnLesson.tsx").then((m) => ({ default: m.LessonReader })));
 const Problems = lazy(() => import("./LearnProblems.tsx").then((m) => ({ default: m.Problems })));
 const Potd = lazy(() => import("./LearnPotd.tsx").then((m) => ({ default: m.Potd })));
+// Aptitude (K2-8): the hub, a topic's set and the misses, one chunk.
+const Aptitude = lazy(() => import("./LearnAptitude.tsx").then((m) => ({ default: m.Aptitude })));
 // A problem's workspace (K2-5): a focus screen of its own; the code editor is a further chunk it loads.
 const Workspace = lazy(() => import("./LearnWorkspace.tsx").then((m) => ({ default: m.Workspace })));
 // Sahayak's panel (K2-6): its own chunk, loaded when the pane first opens.
@@ -38,6 +40,7 @@ const LAZY: Readonly<Record<string, () => ReactNode>> = {
   sheet: () => <Sheet track={null} />,
   practice: () => <Problems />,
   sql: () => <Problems sql />,
+  aptitude: () => <Aptitude topic={null} />,
   potd: () => <Potd />,
 };
 
@@ -61,7 +64,8 @@ const LAZY: Readonly<Record<string, () => ReactNode>> = {
  * `sheet/<track>`), a lesson (`lessons/<slug>`), Abhyas (the problems
  * bank) and the problem of the day with its calendar, on the site's content
  * with the learner's standing (K2-4); a problem (`problems/<slug>`) opens its
- * workspace, a focus screen without the side bar (K2-5); the others a
+ * workspace, a focus screen without the side bar (K2-5); aptitude (`aptitude`,
+ * `aptitude/<topic>`, `aptitude/misses`) on the site's choice questions (K2-8); the others a
  * placeholder until their Kadam 2 slice. Signing in and up and onboarding
  * (K2-2) are pages of their own, without the side bar ("bare", as in the
  * mock). The side bar names the signed-in learner, or offers the way to sign in.
@@ -705,7 +709,11 @@ function Page({ route, path }: { readonly route: string | null; readonly path: s
   if (route === "aaj") return <AajBody />;
   const sub = route === null ? null : SUB_ROUTE.exec(route);
   if (sub !== null) {
-    return <Suspense fallback={<Loading />}>{sub[1] === "lessons" ? <LessonReader key={sub[2]} slug={sub[2]!} /> : <Sheet key={sub[2]} track={sub[2]!} />}</Suspense>;
+    return (
+      <Suspense fallback={<Loading />}>
+        {sub[1] === "lessons" ? <LessonReader key={sub[2]} slug={sub[2]!} /> : sub[1] === "aptitude" ? <Aptitude key={sub[2]} topic={sub[2]!} /> : <Sheet key={sub[2]} track={sub[2]!} />}
+      </Suspense>
+    );
   }
   const page = route !== null && Object.hasOwn(LAZY, route) ? LAZY[route] : undefined;
   if (page !== undefined) return <Suspense fallback={<Loading />}>{page()}</Suspense>;

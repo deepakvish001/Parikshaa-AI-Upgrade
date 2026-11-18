@@ -100,6 +100,11 @@ describe("an MCQ's gates", () => {
     expect(out.built.values).toEqual({ s: 42, s1: 43, s2: 41, s3: 360 });
     const projected = project("mcq", mcqItem(), out.built);
     expect(projected.kind === "problem" && projected.problem.question).toMatchObject({ kind: "mcq", stem: expect.stringContaining("12 mangoes"), options: ["42", "43", "41", "360"], correctIndex: 0 });
+    // Section, then topic, lead: Learn's aptitude screen groups by them (K2-8).
+    expect(projected.kind === "problem" && projected.problem.tags).toEqual(["aptitude-quant", "arithmetic"]);
+    // The shortcut is filled like the rest: a variant's parameter from the default set, a derived value from the solver.
+    const short = project("mcq", mcqItem({ shortcut: "Add {{a}} and {{b}}: {{s}}." }), out.built);
+    expect(short.kind === "problem" && short.problem.editorial).toMatch(/> \*\*Shortcut:\*\* Add 12 and 30: 42\.$/);
   });
 
   it("fails a key the solver disagrees with, naming the set", async () => {
@@ -169,6 +174,8 @@ describe("the projection", () => {
     expect(projected.lesson.body).toContain("**Q:** What is a process?");
     expect(projected.quiz.map((q) => q.slug)).toEqual(["os-what-a-process-is-q1", "os-what-a-process-is-q2", "os-what-a-process-is-q3"]);
     expect(projected.handsOn.map((h) => [h.slug, h.question.kind])).toEqual([["os-what-a-process-is-add-two", "code"]]);
+    // The course leads, as an MCQ's section does.
+    expect(projected.quiz[0]!.tags).toEqual(["os", "processes"]);
     expect(projectionProblems(projected)).toEqual([]);
   });
 

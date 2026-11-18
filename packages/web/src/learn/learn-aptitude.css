@@ -1,0 +1,432 @@
+/*
+ * Aptitude (LearnAptitude.tsx, K2-8), from the mock's aptitude styles
+ * (docs/learn/mock-v3/app/src/styles/learn.css "aptitude": `.apt-topic`,
+ * `.set-top`, `.qnav`/`.qn`, `.qcard`, `.q-stem`, `.sol`; the section cards'
+ * `.tr-ic` tones). The options are choice.tsx's (`.ln-choice`, learn.css).
+ * Only that chunk loads this file.
+ */
+
+.la-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-4);
+}
+.la-head-text {
+  flex: 1 1 360px;
+  min-width: 0;
+}
+.la-sub {
+  max-width: 68ch;
+  margin: 6px 0 0;
+  color: var(--ink-2);
+}
+.la-summary {
+  margin: 8px 0 0;
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+.la-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.la-num {
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.la-small {
+  font-size: var(--text-sm);
+}
+
+/* --- the hub: a card per section, a row per topic --- */
+.la-sections {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+.la-section {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.la-section-h {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--line);
+}
+.la-section-h h2 {
+  min-width: 0;
+  margin: 0;
+}
+.la-section-ic {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r);
+}
+.la-section-ic svg {
+  width: 18px;
+  height: 18px;
+}
+.la-tone-pen {
+  color: var(--pen-text);
+  background: var(--pen-soft);
+}
+.la-tone-ai {
+  color: var(--ai-text);
+  background: var(--ai-soft);
+}
+.la-tone-teal {
+  color: var(--teal);
+  background: var(--teal-soft);
+}
+.la-tone-ink {
+  color: var(--ink-2);
+  background: var(--sunk);
+}
+.la-topics {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 6px 8px 10px;
+  list-style: none;
+}
+.la-topic {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 72px 44px 16px;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 4px 8px;
+  color: var(--ink);
+  border-radius: var(--r-sm);
+  text-decoration: none;
+}
+.la-topic:hover {
+  color: var(--pen-text);
+  background: var(--hover);
+  text-decoration: none;
+}
+.la-topic-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.la-topic .la-num {
+  text-align: right;
+}
+.la-topic-go {
+  width: 16px;
+  height: 16px;
+  color: var(--ink-3);
+}
+
+/* --- a set: the bar, the palette, the question --- */
+.la-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.la-back {
+  margin-right: auto;
+}
+.la-set-head .ln-page-h1 {
+  margin: 0;
+}
+.la-pal-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.la-pal {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.la-qn {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1.5px solid var(--line-2);
+  border-radius: var(--r);
+  cursor: pointer;
+}
+.la-qn:hover {
+  border-color: var(--ink-4);
+}
+.la-qn.la-qn-right {
+  color: var(--on-tick);
+  background: var(--tick);
+  border-color: var(--tick);
+}
+.la-qn.la-qn-tried {
+  color: var(--on-red);
+  background: var(--red);
+  border-color: var(--red);
+}
+.la-qn.la-qn-now {
+  box-shadow: 0 0 0 3px var(--pen-soft);
+  border-color: var(--pen);
+}
+.la-qn.la-qn-now:not(.la-qn-right, .la-qn-tried) {
+  color: var(--pen-text);
+}
+.la-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin: 0;
+  font-size: var(--text-xs);
+}
+.la-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.la-key {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid var(--line-2);
+  border-radius: var(--r-xs);
+}
+.la-key.la-qn-right {
+  background: var(--tick);
+  border-color: var(--tick);
+}
+.la-key.la-qn-tried {
+  background: var(--red);
+  border-color: var(--red);
+}
+.la-key.la-qn-now {
+  border-color: var(--pen);
+  box-shadow: 0 0 0 2px var(--pen-soft);
+}
+
+.la-q {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 760px;
+  padding: 24px;
+  background: var(--panel);
+  background-image: var(--sheen);
+  border: 1px solid var(--card-line);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-2);
+}
+.la-q-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.la-q-head .ln-eyebrow {
+  margin: 0;
+}
+.la-q-title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  outline: none;
+}
+.la-lvl-easy {
+  color: var(--tick-text);
+  background: var(--tick-soft);
+  border-color: var(--tick-line);
+}
+.la-lvl-medium {
+  color: var(--ink);
+  background: var(--coin-soft);
+  border-color: var(--line-2);
+}
+.la-lvl-hard {
+  color: var(--red-text);
+  background: var(--red-soft);
+  border-color: var(--red-line);
+}
+.la-passage {
+  padding: 14px 16px;
+  background: var(--panel-2);
+  border-left: 3px solid var(--line-2);
+  border-radius: var(--r-sm);
+}
+.la-passage h3 {
+  margin: 0 0 6px;
+}
+.la-stem {
+  font-size: var(--text-md);
+  line-height: 1.6;
+}
+.la-stem > :first-child {
+  margin-top: 0;
+}
+.la-stem > :last-child {
+  margin-bottom: 0;
+}
+.la-check {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.la-out {
+  outline: none;
+}
+.la-out:empty {
+  display: none;
+}
+.la-verdict {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+}
+.la-v-title {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+}
+.la-v-title > svg {
+  width: 22px;
+  height: 22px;
+}
+.la-verdict.la-ok .la-v-title {
+  color: var(--tick-text);
+}
+.la-verdict.la-bad .la-v-title {
+  color: var(--red-text);
+}
+.la-coins {
+  color: var(--ink);
+  background: var(--coin-soft);
+  border-color: var(--line-2);
+}
+.la-sol {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 16px;
+  border-top: 1.5px dashed var(--line-2);
+  animation: la-rise 0.28s var(--ease);
+}
+.la-sol-h {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: var(--text-md);
+}
+.la-sol-h > svg {
+  width: 18px;
+  height: 18px;
+  color: var(--ink-3);
+}
+/* A shortcut (the content kit's "> **Shortcut:** …") reads as the mock's highlighted note. */
+.la-sol blockquote {
+  margin: 4px 0 0;
+  padding: 12px 14px;
+  color: var(--ink);
+  background: var(--marker-soft);
+  border: 0;
+  border-radius: var(--r);
+}
+.la-locked {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  padding: 12px 14px;
+  color: var(--ink-2);
+  background: var(--panel-2);
+  border: 1.5px dashed var(--line-2);
+  border-radius: var(--r);
+}
+.la-locked > svg {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+}
+.la-sol-none {
+  margin: 0;
+}
+.la-earlier h3 {
+  margin: 0 0 6px;
+}
+.la-earlier ul {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.la-earlier li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-sm);
+}
+.la-earlier li > svg {
+  width: 16px;
+  height: 16px;
+}
+.la-earlier .la-ok > svg {
+  color: var(--tick-text);
+}
+.la-earlier .la-bad > svg {
+  color: var(--red-text);
+}
+.la-mono {
+  font-family: var(--f-mono);
+}
+.la-q-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+@keyframes la-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@media (max-width: 860px) {
+  .la-q {
+    padding: 16px;
+    border-radius: var(--r-lg);
+  }
+  .la-sections {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .la-sol {
+    animation: none;
+  }
+}

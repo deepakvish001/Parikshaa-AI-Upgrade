@@ -599,36 +599,6 @@
 .lw-answer h2 {
   margin: 0;
 }
-.lw-options {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-.lw-option {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 44px;
-  padding: 8px 12px;
-  color: var(--ink);
-  background: var(--panel);
-  border: 1px solid var(--line-2);
-  border-radius: var(--r);
-  cursor: pointer;
-}
-.lw-option.lw-on {
-  background: var(--pen-soft);
-  border-color: var(--pen);
-}
-.lw-option input {
-  width: 18px;
-  height: 18px;
-  margin: 0;
-  accent-color: var(--pen);
-}
 .lw-answer-out {
   outline: none;
 }
