@@ -196,6 +196,243 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
 
 ## 5. Abhi chal raha / agla kadam
 
+### Row 141 content kit, part A (17 Nov 2026, `session_01CxKYSJpaMfGb259ZWTqTDB`, part A agents)
+
+**Teesra daur (17 Nov, 15:49 UTC se, wahi agent, limit reset ke baad):** coordinator ne kaha **DSA 2–10 abhi nahi**
+(owner se DSA editorial ki lambai par sawaal poocha gaya hai; jawab aane tak). Kram: CS lessons → language lessons →
+projects (pehle par `bundleFiles` debug) → system design. `hostel-water-meter` ka `related` ab maujood SQL slugs par.
+
+**Ho gaya (push):**
+- [x] Format: [content/CONTENT-FORMAT.md](content/CONTENT-FORMAT.md) + `docs/content/schema/*.schema.json` (common, dsa-problem,
+  sql-problem, mcq, lesson, project, system-design, bundle). Har field par `x-db` (aaj kahan store) ya `x-needs-platform`;
+  §12 me part B ke liye "needs platform support" ki poori list; §8 project files jodne ke niyam (runner ek file leta hai).
+- [x] Prompts: `docs/content/prompts/` (`_shared-rules.md` + dsa-problem, sql-problem, mcq, lesson, project, system-design);
+  [content/INSTRUCTIONS.md](content/INSTRUCTIONS.md): kadam, originality, validator ke errors, har type ki checklist,
+  editorial lambai ke targets (owner badal sakte), review niyam (premium poora, public 10 me 1).
+- [x] Validator `scripts/content-validate.mjs` (Node, koi nayi dependency nahi; apna chhota JSON Schema checker):
+  schema → niyam (headings, shabd, Notes, test groups, bahar ke links, mana shabd, rubric) → runner par gates
+  (`packages/runner/dist/main.js`, `RUNNER_ISOLATION=unsafe-none`). Test: `packages/api/src/content-kit.test.ts` (4).
+- [x] **Producing ab runner par** (`9205728`): generators ke inputs, DSA ka input validator, Python reference ka expected,
+  SQL ke generator datasets aur reference ke rows: sab `Runner.produce()` se, `RunRequest.fullOutput: true` (poora output,
+  1 MiB tak). Local `python3` sirf MCQ aur HLD estimate ke solver ke liye (ek chhoti line; MCQ-only bundle ko runner
+  nahi chahiye). SQL ka raasta asli samples par jaancha (generator ~80 KB input). DSA ka raasta abhi bhi kisi asli sample
+  par nahi chala: pehle DSA sample par `buildDsaTests` (async, runner) aur wrong verdicts debug karna.
+- [x] CONTENT-FORMAT §2a + `common.schema.json` ka version description + INSTRUCTIONS kadam 9: owner ka faisla (same
+  version + alag hash: draft kabhi publish nahi hua to badlo, publish ho chuka to "raise the version"; same hash skip;
+  chhota version mana).
+- [x] Samples: `content/samples/manifest.json` (tracks), `content/samples/aptitude/` 10: **10/10 PASS**.
+- [x] **SQL 10/10 PASS** (`content/samples/sql/<slug>/`: `item.json` + `editorial.md`, `reference.sql`, `alt-*.sql`,
+  `wrong-*.sql`, `gen.py` `$file` se; har ek me 7–9 datasets, 2–4 galat queries jo kisi dataset par fail): canteen
+  anti-join (`NOT IN` + NULL jaal), hostel `LEFT JOIN` + `COUNT(col)`, metro `WHERE` vs `HAVING` (premium, 3 variant
+  sets), library fines (dates, `COALESCE`, clip), branch `DENSE_RANK`, cab running total (`ROWS` frame, premium), latest
+  status per complaint (`ROW_NUMBER` + ties), chai stall gaps and islands, club mentor tree (recursive CTE, premium),
+  monthly growth with calendar fill (`LAG`, premium). 6 public, 4 premium; easy 3, medium 4, hard 3. 2 par "under the
+  target" warning (85% se upar, isliye PASS): mentor-chain 1,494/1,560, monthly-growth 1,368/1,560.
+
+- [x] **DSA 1/10 PASS**: `content/samples/dsa/hostel-water-meter/` (`item.json` + `editorial.md`, `solutions/` 5 reference +
+  brute + 3 galat (Python TLE, C++ int overflow WA, Java off-by-one WA), `starters/` 5, `gen.py` (modes random/full/single/
+  zeros/max), `validator.py`; 28 tests, 8 groups). **Validator ka DSA raasta asli sample par jaancha:** generators aur
+  reference runner par (`fullOutput`, ~700 KB inputs), validator gate, brute groups, wrong verdicts. Ulte test bhi chalaye
+  (scratchpad me copy): `expect` galat ho to "fails, but not with WA", galat solution pass kare to "tests are too weak",
+  starter pass kare to "already passes the samples": teeno pakde gaye.
+- [x] Validator: runner ka sandbox bhari load par kabhi `unshare: sigprocmask unblock failed` deta (content ka dosh nahi);
+  ab aisi batch 3 baar tak dobara chalti (`sandboxFailed` in `scripts/content-validate.mjs`). Phir bhi poore samples ka
+  run jab doosre test suites saath chal rahe hon, timing ki wajah se flaky ho sakta; akela chalao.
+
+- [x] **CS lessons 10/10 PASS** (`content/samples/lessons/<slug>/item.json`, `fddab55`, `0a3b9bf`, `efc09ad`): CN
+  `cn-tcp-handshake`, `cn-dns-resolution` (premium); OS `os-paging-address-translation`, `os-deadlock-conditions`
+  (premium, **Hinglish**); DBMS `dbms-normal-forms` (SQL example), `dbms-transaction-isolation` (premium); LLD
+  `lld-single-responsibility`, `lld-strategy-pattern` (premium); OOD `ood-encapsulation-invariants`,
+  `ood-composition-over-inheritance` (premium). Har lesson me why → concept (visual: mermaid/table/timeline) → example
+  (runner par chalne wala Python/SQL, `expected_output`) → misconception → interview (4 qa) → summary, quiz 4.
+  4 par "under the 1,200 aim" warning (800 se upar, PASS): LLD 1,177 / 1,110, OOD 981 / 965.
+
+- [x] **Language lessons 10/10 PASS** (`content/samples/language-lessons/<slug>/item.json`, `5e37cfb` … `961a527`):
+  C `lang-c-pointers-and-arrays`, `lang-c-strings-null-terminator` (premium); C++ `lang-cpp-references-vs-pointers`,
+  `lang-cpp-vector-and-iterators` (premium); Python `lang-python-mutable-defaults`, `lang-python-generators` (premium);
+  Java `lang-java-equals-vs-double-equals`, `lang-java-hashmap-basics` (premium); JS `lang-javascript-closures`,
+  `lang-javascript-event-loop` (premium). Har ek me 2 runnable examples (runner par `expected_output`), ek "Planning the
+  hands-on task" trace, 4 quiz, aur ek hands-on (starter compile hota par fail, solution 4–6 tests pass; visible +
+  hidden). Sab 10 par "under the 1,200 aim" warning (lambai 931–1,128; code blocks gine nahi jaate): owner chahein to
+  isi dhaanche me 200–300 shabd aur.
+- Authoring ka tareeka (lessons): JSON ek Python builder se likha, aur `expected_output` usi waqt local chala kar bhara;
+  validator ne phir runner par jaancha. Builder repo me nahi (scratchpad), kyunki samples hi asli cheez hain.
+
+- [x] **Projects 10/10 PASS** (`content/samples/projects/<slug>/item.json`, `88aedae` … `bb867d9`): Python
+  `proj-python-canteen-cart`, `proj-python-library-ledger` (premium); JS `proj-javascript-hostel-rooms`,
+  `proj-javascript-expense-split` (premium); Java `proj-java-parking-tickets`, `proj-java-bank-ledger` (premium); C
+  `proj-c-marks-report`, `proj-c-ring-buffer-log` (premium); C++ `proj-cpp-inventory`, `proj-cpp-lru-cache` (premium).
+  Har ek me driver (`editable: false`) + 1–2 learner files, 2–3 milestones, 8–10 command-script tests (2 visible),
+  rubric 65 tests / 20 review / 15 ai-feedback. Starter har jagah build hota aur 1–2 tests hi pass karta.
+  **`bundleFiles` paanchon bhasha me asli projects par jaancha**: Python (module finder), JS (CommonJS wrapper), Java
+  (imports hoisted, sirf `Main` public), C/C++ (local `#include` hata kar headers → sources → driver): koi bug nahi mila.
+  Tests ke expected outputs validator ke hi `bundleFiles` se jode solution ko local chala kar bane; validator ne runner
+  par dobara jaanche.
+
+- [x] **System design 10/10 PASS** (`content/samples/system-design/<slug>/item.json` + `reference.md`): HLD
+  `hld-exam-results-portal`, `hld-canteen-preorder`, `hld-notice-short-links` (public), `hld-tatkal-seat-booking`,
+  `hld-campus-notifications` (premium); LLD `lld-library-hold-queue`, `lld-snakes-and-ladders` (public),
+  `lld-rate-limiter`, `lld-vending-machine`, `lld-meeting-room-booker` (premium). HLD: 3–4 estimates (solver ke saath),
+  6–9 components, API, data model, Mermaid diagram, 2–3 deep dives, trade-offs, failure modes, rubric. LLD: kata Python +
+  Java, 8 tests, change request (2 tests) jo **opt-in naya command** hai, taaki purane tests change ke baad bhi pass hon
+  (snakes-and-ladders me pehle "6 par ek aur turn" sabke liye tha, purane tests toote; ab `RULE SIX-AGAIN`). **Validator
+  ka LLD raasta asli katas par jaancha**: solution pass, starter fail, change_files purane + naye pass, purana solution
+  naye par fail. **Kami:** reference solution ki lambai INSTRUCTIONS §4 se kam (validator nahi jaanchta): HLD public
+  798–1,268 (lakshya 1,200–2,500), HLD premium 659 / 834 (lakshya 2,000–3,500), LLD 327–615 (code aur kata alag). Owner
+  chahein to isi dhaanche me deep dives aur trade-offs badhaye ja sakte.
+- **Ab tak: 61/70 PASS** (`node scripts/content-validate.mjs content/samples`: mcq 10, sql 10, dsa 1, lesson 20, project
+  10, system-design 10). Bache sirf DSA 2–10, owner ke editorial lambai ke jawab par ruke.
+
+**Baaki (agla session, isi kram me):**
+1. **DSA ke 9 bache: ruke hue** jab tak owner editorial ki lambai par jawab na de (coordinator 17 Nov). Uske baad
+   (kul 5 public, 5 premium; 1 public easy ho gaya; editorial INSTRUCTIONS §4 ki lambai: public easy
+   2,500, medium 3,500, hard 5,000; premium 7,000 / 7,500 / 8,000; 5 bhasha ke reference, brute, 2+ galat `expect` ke
+   saath, generators, validator; `hostel-water-meter` jaisa dhaancha; har 2 ke baad push). `hostel-water-meter` ke
+   `related` me `metro-turnstile-window` (sliding window) aur `canteen-bill-split-subarray` (prefix sum + hash map) ke
+   naam hain: inhi naam se bana sakte ho, warna `related` badlo
+   → lessons 10 (CN, OS, DBMS, LLD, OOD × 2) → language lessons 10 (C, C++, Python, Java, JS × 2) → projects 10 (har
+   bhasha 2) → system design 10 (5 HLD, 5 LLD). Har type ke baad `node scripts/content-validate.mjs content/samples`
+   sab PASS, phir push.
+2. **Dhyaan:** validator ke saare raaste (DSA, SQL, MCQ, lesson, project `bundleFiles` 5 bhasha, LLD kata + change
+   request) ab asli samples par jaanche hue hain. `content-kit.test.ts` do jagah (repo + kisi worktree) ek saath chale to runner kabhi-kabhi
+   `unshare: sigprocmask unblock failed` (RE) deta; akela chalane par 3/3 hara.
+3. Phir tracker row 141 ka part A ✅ (70 samples poore hone par) aur owner se F6 manzoori.
+
+**Kaise chalayein:** `npm run build` (runner ka dist), phir `node scripts/content-validate.mjs content/samples`
+(`--no-run` sirf schema + niyam, `--only mcq,sql-problem`, `--mutate`, `--pack bundle.json`). Machine par gcc, g++, javac,
+node, python3.
+
+### Row 141, part B: console me bulk upload (17 Nov 2026, `session_01CxKYSJpaMfGb259ZWTqTDB`, part B agent)
+
+**Abhi yahan ruka (18 Nov 2026, part B ka console + e2e agent, worktree se): part B poora, kadam 1–6 `claude/learn-v2`
+par, tests ke saath.** Kadam 5 (`4431a8d`): console me Practice → **Bulk upload** tab (`packages/console/src/components/
+BulkUpload.tsx` + `.css`, apna lazy chunk; ConsoleClient ke `contentUploads`, `contentUpload`, `uploadContent`,
+`publishContent` + types `api.ts` me): file chuno → "Upload and check" → `checking` me progress bar (har 2 s dobara
+padhta) → report (Passed/Failed/Skipped/Waiting ki ginti, All/Failed/Passed filter, har fail gate ke naam + saaf shabd me,
+"not checked yet" wale notes reviewer ke liye) → checkbox + "Publish selected" / "Publish all passed" (sirf `exam:write`)
+→ uploads ki history (Practice dekhne wale sab, yaani `exam:read_key`). Item ka badge: Draft, Published, Replaced (baad
+ke upload ne badla), Skipped, Failed, Waiting, Checking; project aur system design pass hokar Draft hi rehte ("Learn me
+page nahi"). Saath me item report ke `current` me `publishedHash` (store + route + `docs/openapi.json`), taaki naya
+draft aane par bhi dikhe ki live kaunsa content hai. Tests: `BulkUpload.test.tsx` (11, har haalat par axe),
+`Practice.test.tsx` me tab, store/route test me `publishedHash`, `practice.spec.ts` ki axe sweep ab ye tab bhi kholti;
+budget `BulkUpload-*.js` 5 KB, `.css` 1 KB. Kadam 6 (`6ad3d37`): `packages/e2e/tests/content-upload.spec.ts` (sirf
+Chromium; gates server ke hain): apni org + site, console me fixtures ka bundle (DSA paanch bhasha, SQL, MCQ, lesson) upload →
+progress → 4 draft, practice API par 404 → "Publish all passed (4)" → practice API par teeno problems + lesson ke quiz
+aur hands-on, learner ke Python (25/25), galat Python, SQL aur MCQ jawab asli tests par, Learn API par lesson + track,
+Learn ka lesson page sign out par bhi. Is machine par chala: Chromium 1 passed (24.5 s, local Postgres 16, E2E_RUNNER=local);
+Firefox/WebKit yahan install nahi (CI me spec unme skip hota). Jaanch: `npm run check` exit 0 (akele), `build:clients` +
+`budget` pass, `lint:css` saaf, `npm run openapi`. Owner ke do sawaal abhi bhi khule, behaviour wahi (MCQ me image: gate 2
+par saaf message ke saath fail; naya track: pehle published item ke saath live).
+**Abhi nahi jaanchte (deferred gates, report me "not checked yet"):** mutation (gate 10), TL gate (PROBLEM-STANDARD §4c) aur
+starter ka TL ke 20% me padhna, variants ke set 2..n ke DSA/SQL gates (sirf sets[0]; MCQ solver har set), project/LLD kata
+ke runner gates; design kadam 11 ki platform support list bhi baaki. **Agla:** CI me e2e hara dekhna (PR #99); phir upar
+ki deferred gates, ya part A ke DSA 2–10 (owner ke jawab ke baad). `npm run check` hamesha **akela** chalao: saath me koi
+aur vitest chale to runner ke tests (root ka RLIMIT_NPROC) aur store ke kuch timing tests jhoothe fail hote. **E2E is
+machine par:** `pg_ctlcluster 16 main start`; `parikshaa_owner` + `parikshaa_app` roles (LOGIN, ek local password) aur
+`parikshaa_e2e` database (owner `parikshaa_owner`), CI ke "Database and roles" jaisa; `npm run build && npm run
+build:clients && npm run build -w @parikshaa/e2e`; phir `packages/e2e` me `PGPASSWORD=<wahi> npx playwright test
+tests/content-upload.spec.ts --project=chromium`. Playwright 1.64.1 ka Chromium (1248) `/opt/pw-browsers` me hai;
+`playwright install` mat chalao.
+
+**Pehle kyun ruka tha:** 5 ghante ki limit (06:39 UTC par 0.88; part A saath chal raha tha). Part A (`docs/content/`,
+`content/samples/`, `scripts/content-validate.mjs`) usi working tree me; unke files mat chhuo. Part A ka validator
+abhi expected outputs local `python3` se banata hai (runner 4 KB par kaatta tha); `fullOutput` ab hai, to wo bhi runner
+par ja sakta hai.
+
+**Ho gaya (push, tests ke saath):**
+- [x] Runner `fullOutput` (`40680cc`; `packages/runner/src/execute.ts`, `judge0.ts`, `server.ts`): `RunRequest.fullOutput: true` par har
+  test ka poora stdout (1 MiB tak) wapas aata, warna pehle jaisa 4 KB. Kyun: gates reference ka output hi expected banate
+  aur generator ka output hi test input; runner abhi 4 KB par kaat deta tha. Test `execute.test.ts` "whole output" (2).
+- [x] **Kadam 1** (17 Nov, doosra part B agent, worktree se; `ac64b33`): migration `0075_content_uploads.sql` (teen table,
+  design jaisa; `content_items` me saath me `built jsonb` = gates ne jo banaya (tests + expected) aur `children jsonb` =
+  lesson ke quiz/hands-on problems ka slug → id) + `packages/store/src/content-store.ts`: `createUpload`, `uploads`,
+  `upload` (har item ki report + slug par abhi kya rakha hai), `claimNext` (`FOR UPDATE SKIP LOCKED`, 5 minute chup ho to
+  dobara), `releaseItem`, `finishItem` (claim ka saboot `claimed_at`; draft rakhte waqt version niyam dobara, transaction
+  me; aakhri item par upload `done`), `standing` (upload ke waqt version niyam ki jaanch), `item`, `markPublished` (sirf
+  wahi version + hash). `versionDecision` = Faisle wala niyam. Starter pack/console wala slug → refuse. Tests:
+  `content-store.test.ts` (10, pglite, `parikshaa_app`, doosri org aur learner kuch nahi padhte) + `migrate.test.ts`.
+- [x] **Kadam 2** (`262dd93`): `packages/api/src/content-bundle.ts` (JSON ya ZIP, fflate stream me gin kar: 20 MiB file,
+  60 MiB khula, 2,000 files, 600 items; `..`/absolute path par poori file refuse; root = sabse upar ka `manifest.json`;
+  `$file` item ke paas se, bundle ke andar hi; hash = canonical JSON ka SHA-256; gate 1 = ajv 2020 (`ajv` ab
+  `packages/api` ki dependency) generated `packages/api/src/content/schemas.ts` se; generator
+  `scripts/content-schemas.mjs` (`--check` bhi), test docs se barabari jaanchta: **part A schema badle to
+  `node scripts/content-schemas.mjs` chalao**). `content-rules.ts` = gate 2 (validator ke niyam) + gate 11 ka text index
+  (word 3-gram Jaccard). `content/types.ts`. Test fixtures `testing/content-fixtures.ts` (DSA, SQL, MCQ variants ke saath,
+  lesson + hands-on; asli programs + unhe jaanne wala fake runner). Test `content-bundle.test.ts` (12).
+- [x] **Kadam 3 + 4** (18 Nov, coordinating session; `0bf0c7b`, merge `addf352`): `content-gates.ts` (gates 3–11;
+  `content-gates.test.ts` 19), `content-uploads.ts` (intake: gate 1–2 + duplicate + version niyam turant; worker ek-ek
+  item claim karke `runGates`, phir projection ki jaanch `validateQuestion` se; Publish + tracks), `content-publish.ts`
+  (projection), `content-routes.ts` (4 routes, audit `practice.content_uploaded` / `practice.content_published`, console
+  `Home.tsx` me unke shabd), `PracticeService.judgeRun`, `assemble.ts` + `server.ts` + `testing/harness.ts` me wiring,
+  route test `content-uploads.test.ts` (upload → draft Learn par nahi → Publish → problems, lesson, quiz, hands-on, track
+  Learn API par; version niyam; permission; 413; starter pack ka slug).
+- [x] **Kadam 5** (`4431a8d`): console ka Bulk upload tab (`components/BulkUpload.tsx`), ConsoleClient methods + types,
+  `publishedHash`; tests `BulkUpload.test.tsx` (11 + axe), `Practice.test.tsx`; `build:clients` + `budget`.
+- [x] **Kadam 6** (`6ad3d37`): e2e `packages/e2e/tests/content-upload.spec.ts` (Chromium), is machine par pass.
+
+**Design (code padh kar tay; agla session yahi banaye, isi kram me):**
+1. **[x] (`ac64b33`) Migration `0075_content_uploads.sql`** (sirf jodna; RLS 0046 jaisa: `tenant_isolation` RESTRICTIVE + `<t>_staff`;
+   learner ka koi policy nahi, ye sirf staff ke table): `content_uploads` (org_id, id, bundle_id, bundle_version, title,
+   file_name, bytes, manifest jsonb, problems jsonb (bundle-level), state `checking|done`, created_by_id/name, created_at,
+   finished_at); `content_upload_items` (org_id, upload_id, position, namespace `problem|lesson`, slug, type, version,
+   hash, title, item jsonb (resolved, `$file` andar), status `pending|checking|passed|failed|skipped`, problems jsonb
+   `[{gate, message}]`, warnings jsonb, claimed_at, checked_at; PK (org_id, upload_id, position)); `content_items`
+   (org_id, namespace, slug, type, title, version, hash, item jsonb, upload_id, state `draft|published`,
+   published_version, published_hash, published_at, published_by_id/name, problem_id, lesson_id; PK (org_id,
+   namespace, slug)). Namespace: problems (DSA, SQL, MCQ, project, system design) ek, lessons alag (CONTENT-FORMAT §2a).
+   Migration test `packages/store/src/migrate.test.ts` jaisa + store test (pglite).
+2. **Draft → published:** `practice_problems.published` aur `prep_lessons.published` pehle se hain aur RLS learner ko sirf
+   published dikhata, isliye Learn/practice API me kuch nahi badalna. Draft sirf `content_items` me; **Publish** par
+   projection likho (CONTENT-FORMAT §4–§7 "Stored as"), `published = true`, `published_version/hash/at/by`. Naya version
+   upload ho to purana live rehta hai jab tak naya publish na ho.
+3. **Version niyam:** naya slug → draft; bada version → draft badlo; same version + same hash → skipped; same version +
+   alag hash: **draft abhi publish nahi hua to draft badlo** (owner ka "re-upload updates the draft"), publish ho chuka to
+   refuse "version badhao"; chhota version refuse. (CONTENT-FORMAT §2a same-version ko hamesha refuse kehta hai: part A ko
+   bata diya, report me.) Slug kisi aise problem/lesson ka jo upload se nahi aaya (starter pack, haath se) → refuse.
+4. **[x] (`262dd93`) Parse** (`packages/api/src/content-bundle.ts`): JSON (single file) ya ZIP (`fflate` pehle se dependency; `resume-worker.ts`
+   ki tarah stream me inflate gin kar: file ≤ 20 MiB, khula ≤ 60 MiB, ≤ 2,000 entries, ≤ 600 items, path me `..` nahi);
+   `$file` resolve (item ki JSON file ke relative, folder ke bahar nahi); hash = SHA-256 of canonical JSON (keys sorted).
+   Schema: `ajv` 8.20 (lockfile me pehle se fastify ke saath; `ajv/dist/2020`, MIT) ko `packages/api` ki dependency banao;
+   schemas `docs/content/schema/*.json` se ek generated module `packages/api/src/content/schemas.ts` me (Docker runtime me
+   `docs/` nahi hota), generator script + test jo docs se barabari jaanche (part A schema badle to script dobara chalao).
+   Gate 2 ke semantics (CONTENT-FORMAT §11): slug bundle me unique, difficulty↔level, test groups + totals, har bhasha ka
+   reference, editorial headings + `[[code-tabs]]` + `[[visual:id]]`, MCQ key range, rubric 100.
+5. **[x] (`0bf0c7b`) Job** (request ke andar nahi): POST upload gates 1–2 turant karke items `pending` likhta aur in-process worker kick karta;
+   worker `UPDATE … SET status='checking', claimed_at=now() WHERE status='pending' OR (status='checking' AND claimed_at <
+   now()-'5 min') … LIMIT 1 RETURNING` se ek-ek item leta (kai server/restart me bhi chale); GET status bhi worker kick
+   karta (restart ke baad). Runner judge queue se (`PracticeService` me public `judgeRun(request)` jodna, lane `practice`;
+   ek waqt me ek item, isliye queue ka ek hi slot).
+6. **[x] (`0bf0c7b`) Gates** (`packages/api/src/content-gates.ts`, fake runner ke saath unit tests): DSA: generator → inputs
+   (`fullOutput`), validator (exit 0), Python reference → expected (`fullOutput`, `literal expected` mile), har reference
+   har test pass, brute apne groups par, har wrong apne `expect` se fail, starters compile + pass nahi; SQL: `schema_sql +
+   rows_sql` input, reference → expected, alternatives same, wrong kam se kam ek dataset fail; MCQ: solver har variant set
+   par key de; lesson: `expected_output` wale code blocks, hands-on solution pass + starter fail, quiz key range.
+   Duplicate: slug (bundle + bank), text (title + statement, word 3-gram Jaccard ≥ 0.85 fail, 0.6–0.85 warning) bundle aur
+   site ke problems/lessons se, code (`@parikshaa/core` `fingerprintsOf`) Python references aapas me ≥ 0.9 warning.
+   **Abhi deferred (report me likho):** mutation (gate 10), TL gate (PROBLEM-STANDARD §4c), starter ka TL ke 20% me padhna,
+   variants ke set 2..n ke DSA/SQL gates (sirf sets[0]; MCQ solver har set), project/LLD kata ke runner gates (files jodna).
+7. **[x] (`0bf0c7b`) Routes** (`packages/api/src/content-routes.ts`, tag "Practice (staff)"): `POST /practice-admin/content/uploads`
+   (`{file: base64, name}`, bodyLimit ~28 MB, `exam:write`), `GET …/uploads` (history, `exam:read_key`), `GET
+   …/uploads/:id` (progress + har item ka report), `POST /practice-admin/content/publish` (`{upload, items?: [{namespace,
+   slug}]}`; items na ho to upload ke saare passed; `exam:write`; audit `practice.content_published`). `npm run openapi`.
+8. **[x] (`0bf0c7b`) Projection** at publish: DSA → `practice_problems` (`question` code: stem, language python, languages, starters,
+   formats, tests materialised `<group>-<n>`, checker, `limits.timeMs` = sabse bada, memoryMb; editorial me `[[code-tabs]]`
+   → har reference ka fenced block, `[[visual:id]]` → alt; hint = hints[0]; tags = topics+patterns+extra); SQL → code
+   `language sql`; MCQ → `mcq`/`numeric` (passage, explanation editorial); lesson → `prep_lessons` (sections → Markdown),
+   quiz → MCQ problems `<lesson>-q<n>` + `setLessonQuiz`, hands-on → code problems `<lesson>-<id>`; placement → track
+   (manifest ke `tracks`; track na ho to banao, ho to module me jodo; `PrepService.saveTrack` poore modules leta hai, isliye
+   merge karke bhejo). Project + system design: draft me rakho, Publish par "Learn abhi nahi dikha sakta" (Kadam 3/4).
+9. **[x] (`4431a8d`) Console** `packages/console/src/components/BulkUpload.tsx`, Practice panel ka naya tab "Bulk upload" (`exam:write`):
+   file chuno → upload → progress (poll `GET …/uploads/:id` jab tak `checking`) → report (Sab/Fail/Pass filter, har fail
+   saaf shabd me) → checkbox + "Publish selected" / "Publish all passed" → uploads ki history. Kit + `.tabs` style, axe test.
+10. **[x] (`4431a8d`, `6ad3d37`) Tests:** unit (parse, schema, gates fake runner se, version niyam, draft/publish, permission, size cap), route
+    (`harness.ts` `wire()`), console (axe), e2e `packages/e2e/tests/content-upload.spec.ts` (local runner: ek DSA, SQL, MCQ,
+    lesson → report → publish → Learn `?learn_v2=1` me lesson + practice API me problems). Console visual suite ho to baseline.
+11. **Needs platform support (Kadam 3/4 ki list):** per-item Plus lock, per-language TL, hint rungs 2–3 (content_items me),
+    variants ka per-learner assign, revision card text, related links, sketch renderer (visuals), project/LLD multi-file
+    runner aur page, HLD case page, MCQ images ZIP se `/api/media`, track ka apna `free_modules` (abhi site-wide).
+
+
 ### Abhi yahan ho (21 Oct 2026, naya session pehle ye padhe)
 
 - **Sabse taaza (24 Oct 2026, session 4, doosra account, `session_01CxKYSJpaMfGb259ZWTqTDB`, ultracode):** **Kadam 0
@@ -425,7 +662,7 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
     **Kahan ruka (10 Nov):** agent ~03:35 UTC par limit par ruka, ye fix commit nahi hua tha; main session ne 07:45 UTC par contrast dobara naap kar (4.38 → 5.05) commit + push kiya. Phir `e2e` me WebKit par
     `prep-flows.spec.ts` F1 laal (test plan save hone se pehle page chhod deta tha; ab saved plan ka heading dekh kar), `380918a` par CI poora
     hara. Owner ne 10 Nov 08:38 UTC par merge kiya; `main` par deploy-api aur deploy-web hare (VPS fetch ab job ke token se chalta). **Agla: K2-8** aptitude.
-  - [ ] K2-8 aptitude (maujooda MCQ par; mocks Kadam 3/4)
+  - [x] K2-8 aptitude (maujooda MCQ par; mocks Kadam 3/4). **18 Nov: poora** (screen, pack F6 ke peeche, unit + API + e2e + visual; `3c033a2` + e2e/docs commits; neeche "18 Nov").
     **Owner ka faisla (10 Nov):** screen + naya aptitude starter pack (~60 sawaal: quant, reasoning, verbal, har ek ke saath samjhaav),
     `starter-packs.ts` me baaki packs ki tarah; staging/launch par owner ki manzoori (F6) ke baad. Tracker "Faisle" me darj.
     **K2-8 ke saath theek karna (owner ne staging par 10 Nov ko pakda):** (1) band ya na-maujood practice site par Learn ka sign-up/sign-in
@@ -458,6 +695,45 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
        lock, misses, axe); e2e `tests/learn-aptitude.spec.ts` + `learn-day.ts` me `seedLearnAptitude` (naya site, CS pack
        `POST /api/practice-admin/starter-packs/cs-fundamentals`, `seedLearnSql` jaisa); visual `learn-aptitude-{hub,set}-{1440,390}-
        {dark,light}` apni site par (purani images wahi). Phir tracker row 140 ✅/🟡 + Build log, DESIGN-SYSTEM §10, ye entry, #93 ka title/body.
+    **18 Nov (K2-8 agent, PR [#99](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/99), coordinator `session_01CxKYSJpaMfGb259ZWTqTDB`): kadam 1–3 ✅, kadam 4 me unit ✅, e2e/visual baaki.**
+    - Screen `learn/LearnAptitude.tsx` + `learn-aptitude.css` (lazy chunk `LearnAptitude-*.js` 7.3/8, `.css` 1.5/2): routes `aptitude`,
+      `aptitude/<topic>` (topic slug = section + topic), `aptitude/misses` (`screens.ts` `SUB_ROUTE`, `LearnApp.tsx`, `data.tsx` `safeNext`).
+      Section = tags[0], topic = tags[1] ?? tags[0]; `aptitude-quant/logical/verbal` ke naam (aur content kit ke `cs-*`), baaki tag ke shabd.
+      Hub: section card (icon + naam + "x me se y sahi"), topic rows (Meter + link), upar "N me se x sahi · z abhi galat" + galtiyan ka link,
+      signed out notice, Empty. Set: palette (sahi/try kiya/abhi, `aria-current="step"`, shabd `aria-label` me + legend), sawaal (`useProblem`,
+      passage + stem brand ke Markdown me), Check (`client.submit`, phir `["practice", site]` invalidate), sirf chuna option sahi/galat
+      (galat par sahi option kabhi nahi), samjhaav `editorial` ya taala "(N/3)" / contest me band, pichhle jawab (A, B…), Sahayak
+      (`setHere` + galat par `why: true`), Pichhla/Aage, heading par focus. Galtiyan: set khulte waqt ke `attempted`; sign out par `SignedOut`.
+    - Jawab ka field `learn/choice.tsx` (`ChoiceField`, `statementBody`, `letterOf`, `answerText`), workspace ka `AnswerPane` bhi yahi;
+      radio ka naam option ka text hi (akshar `aria-hidden`, nishaan `aria-describedby`). CSS `.ln-choice*` ab `learn.css` me (workspace se
+      `.lw-option*` hata). Naya saajha chunk `choice-*.js` 1.2 KB: budget **2** (1 nahi: field + `statementBody` + do icon 1.2 KB ke).
+    - Pack: `api/src/content/aptitude-starter.ts` (`node scripts/aptitude-pack.mjs` se, 10 samples bulk upload ki `project()` se), track
+      `aptitude-starter` (Quantitative aptitude 5, Logical reasoning 3, Verbal ability 2). **F6 gate:** `starter-packs.ts` `PENDING_PACKS`
+      (list me nahi, route ka enum `PACKS` hi, isliye 400; `import` bhi `not_found`); `StarterPacks({ pending: true })` sirf test
+      (`wire(..., { pendingPacks: true })`, harness ab `starterPacks` lautata). Manzoori par naam `PACKS` me + `npm run openapi`.
+    - Bulk upload ki MCQ projection (`content-publish.ts`): tags me section + topic **pehle** (lesson me course pehle), taaki screen use
+      group kare; aur **bug fix**: shortcut `original` se padha jaata tha, isliye variant ka `{{up}}` kachcha chhapta; ab default set se.
+    - Tests: `LearnAptitude.test.tsx` 13 (hub, signed out, khaali, loading/failed/offline, galat, sahi, contest, palette + focus, sign in,
+      na-maujood topic, galtiyan, koi galti nahi; axe), `aptitude-starter.test.ts` 4 (har sawaal sample se dobara bana kar milta, valid paper,
+      F6 gate, offer hone par track + jawab), `content-gates.test.ts` +2 expect (tags ka kram, shortcut bhara).
+    - Jaanch: `npm run check` (akela), `build:clients`, `budget`, `lint:css` hare; route/schema nahi badla (`npm run openapi` se `docs/openapi.json` wahi).
+    - Content ka dhyan (owner ko bataya): 9 MCQ me 5 ka sahi jawab option A; pack samples jaisa hi rakha.
+    **18 Nov dopahar (container restart + limit reset ke baad, wahi agent): e2e + visual ✅.** `tests/learn-day.ts` `seedLearnAptitude`
+    (apni site; pack ke 10 sawaal bank + `practice-admin/problems` se, kyunki pack F6 tak band; e2e unhe `@parikshaa/api/aptitude-pack`
+    export se padhta; learner ka ek sahi, ek galat), `tests/learn-aptitude.spec.ts` 2 (laptop dark: hub → Percentages → galat par sirf
+    chuna option "sahi nahi", taala 1/3 → 2/3 → sahi → samjhaav + shortcut, axe; phone light: galtiyan, RC ka passage, kuch side me nahi,
+    axe): Chromium 2/2, saath me `learn-workspace` + `learn-aaj` 5/5. Visual `learn-aptitude-{hub,set}-{1440,390}-{dark,light}` (8 nayi
+    images, `npm run visual:update -w @parikshaa/e2e -- -g aptitude --reporter=line visual/learn.visual.ts`; flag pehle, warna
+    `--update-snapshots` file ka naam kha jaata); poora `learn.visual.ts` 73/73, purani images wahi. Local tareeka: Postgres 16 `main`
+    (`pg_ctlcluster 16 main start`), roles ka local password, `PGPASSWORD=<wahi>`; visual ke liye `/etc/fonts` ki copy bina
+    `12-unhinted-grayscale.conf` aur `56-prefer-inter.conf` + `FONTCONFIG_FILE`/`FONTCONFIG_PATH` (bina iske SQL ki purani image 12,600 px alag).
+    Pichhli date `.ln-dated` me (mask). DESIGN-SYSTEM §10 me K2-8 ki line. **Agla:** K2-9 contests (owner ki haan par).
+    *Pehle ka "kahan ruka" (subah ~07:55 UTC, limit 0.85), ab poora ho chuka:*
+    (a) `packages/e2e/tests/learn-day.ts` me `seedLearnAptitude` (apni site; bank + `practice-admin/problems` se pack ke 3–4 sawaal, tags
+    pack jaise `["aptitude-quant","percentages",…]`, editorial pack ka; ya plan ke mutabiq CS pack), `tests/learn-aptitude.spec.ts` (laptop:
+    hub → topic → galat → taala (1/3) → sahi → samjhaav + shortcut, axe; phone light: galtiyan, kuch bahar na phisle), (b) `visual/learn.visual.ts`
+    me `learn-aptitude-{hub,set}-{1440,390}-{dark,light}` apni site par, `npm run visual:update -w @parikshaa/e2e` (sirf naye 8; purane wahi),
+    (c) DESIGN-SYSTEM §10 me K2-8 ki line, tracker row 140/§3 ko ✅, ye entry `[x]`.
   - [ ] K2-9 contests
   - [ ] K2-10 profile B + share
   - [ ] K2-11 Plus
@@ -572,6 +848,17 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
 
 ## 7. Log (naya upar)
 
+- 18 Nov 2026 (K2-8 agent, #99): aptitude Learn me (hub, topic ka set, galtiyan; `learn/LearnAptitude.tsx`, saajha `learn/choice.tsx`) + aptitude starter pack 10 samples se, `PENDING_PACKS` se band (F6); bulk upload ki MCQ projection me tags ka kram aur shortcut ka bug theek. Unit + API tests, check/build:clients/budget hare. Dopahar limit reset ke baad e2e (`learn-aptitude.spec.ts` 2) + visual (8 images) bhi; K2-8 poora. Agla: K2-9 (owner ki haan par).
+- 18 Nov 2026 (row 141 part B, console + e2e agent, worktree): kadam 5 (`4431a8d`: console ka Bulk upload tab, 11 unit + axe) aur kadam 6 (`6ad3d37`: e2e `content-upload.spec.ts`, local Chromium par pass) push; `npm run check`, `build:clients`, `budget`, openapi pass. Part B poora; deferred gates §5 "Row 141, part B" me.
+- 17 Nov 2026 (row 141 part A): system design 10/10 PASS (5 HLD, 5 LLD kata Python + Java); kul 61/70 PASS. Bache: DSA 2–10 (owner ke lambai ke jawab tak ruke). Phir row 141 part A ✅ aur owner ki F6 manzoori.
+- 17 Nov 2026 (row 141 part A): projects 10/10 PASS (har bhasha 2); `bundleFiles` paanchon bhasha me sahi. Agla: system design (5 HLD, 5 LLD).
+- 17 Nov 2026 (row 141 part A): language lessons 10/10 PASS (C, C++, Python, Java, JS × 2, har ek me hands-on). Agla: projects (pehle par `bundleFiles` debug).
+- 17 Nov 2026 (row 141 part A, limit reset ke baad): CS lessons 10/10 PASS (CN, OS, DBMS, LLD, OOD × 2; ek Hinglish); `hostel-water-meter` ka `related` maujood slugs par. DSA 2–10 owner ke jawab tak ruke. Agla: language lessons.
+- 17 Nov 2026 (row 141 part A, doosra agent): validator ke producing kadam runner par (`fullOutput`) + sandbox ki gadbad par retry, SQL ke 10 samples aur DSA ka pehla (`hostel-water-meter`), sab PASS; CONTENT-FORMAT §2a owner ke version faisle ke hisaab se. 5 ghante ki limit 0.86 (10:23) par ruka; agla: DSA sample 2 (§5 "Row 141 content kit, part A").
+- 17 Nov 2026 (row 141 part A agent): content kit: format + schemas (`2062822`), 6 prompts, INSTRUCTIONS, validator + test, aptitude ke 10 samples (PASS). 5 ghante ki limit (0.74, 0.85 ke paas) par ruka; baaki 60 samples aur kram §5 "Row 141 content kit, part A" me.
+- 17 Nov 2026 (row 141 part B, doosra agent, worktree): kadam 1 (`ac64b33`: migration 0075 + `ContentStore`) aur kadam 2 (`262dd93`: bundle padhna, schema, niyam) push, tests ke saath. Kadam 3–4 ka code (gates, worker, routes, publish; targeted tests hare) snapshot `autosave/claude/learn-v2--partb-wip` (`1cc0869`) me, poora check baaki. 5 ghante ki limit 0.94 par ruka; agla kram §5 "Row 141, part B" ke "Abhi yahan ruka" me.
+- 18 Nov 2026 (row 141 part B, coordinating session): kadam 3–4 (gates, worker, routes, Publish + projection; `0bf0c7b`) snapshot se `claude/learn-v2` par, poora `npm run check` + openapi + `build:clients` + `budget` pass. Agla: kadam 5 console, kadam 6 e2e (§5 "Row 141, part B").
+- 17 Nov 2026 (row 141 part B agent): bulk upload ka design §5 "Row 141" me; runner ka `fullOutput` (tests ke saath) push. 5 ghante ki limit (part A saath) par ruka; agla session §5 ke kram 1–11 se.
 - 10 Nov 2026 (session 4 aage, K2-8 agent): owner "K2-8 shuru karo". Draft #93 par: owner ke staging wale dono sandesh theek (band/na-maujood site par sign-in/up aur page ab saaf kehte "band hai ya maujood nahi"), tests ke saath. Aptitude ka code nahi: 5 ghante ki limit 0.85 ke paas; poora plan §5 K2-8 me.
 - 10 Nov 2026 (session 4 aage): #87 (K2-7 SQL, #85 ke baad ka CI fix, private repo se deploy) `main` me merge (`94eea54`); `main` par deploy-api aur deploy-web hare, staging par SQL bhi. Staging DB me abhi koi practice site nahi: owner ko admin-cli + console se site + starter packs ka tareeka diya. Agla: K2-8 (owner ki haan par).
 - 10 Nov 2026 (session 4 aage, K2-7): owner "continue". #85 (dependabot dev group) ke baad `main` ka CI laal tha: jsdom 31 chhupe tab ke field ko focus nahi deta (console test ab Questions tab kholta), axe 4.14 ka `label-content-name-mismatch` (Learn logo ka Hindi naam "Parikshaa Learn, आज"), Playwright 1.65.0 ka Firefox axe par crash (`@playwright/test` 1.64.1 par pin, tracker Faisle). Alag commit `c82a575`. Phir K2-7 SQL poora (autosave wala kaam, e2e/visual chalakar), usi draft #87 me. Local: Playwright 1.64 ko `chromium_headless_shell-1248` wrapper (1.65 ke liye `-1254` bhi bana, repo me kuch nahi). Agla: K2-8.

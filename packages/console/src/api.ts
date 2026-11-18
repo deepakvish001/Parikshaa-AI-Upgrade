@@ -1614,6 +1614,26 @@ export class ConsoleClient {
     return this.#request(`/practice-admin/starter-packs/${encodeURIComponent(name)}`, { method: "POST" });
   }
 
+  /** Content uploads (plan row 141, part B), newest first. */
+  async contentUploads(): Promise<readonly ContentUploadSummary[]> {
+    return (await this.#request<{ uploads: ContentUploadSummary[] }>("/practice-admin/content/uploads")).uploads;
+  }
+
+  /** One upload: its progress on the code runner, and each item's report. */
+  contentUpload(id: string): Promise<ContentUpload> {
+    return this.#request(`/practice-admin/content/uploads/${encodeURIComponent(id)}`);
+  }
+
+  /** A bundle, its bytes in base64: the schema and rules are checked at once, the runner's gates after. */
+  uploadContent(name: string, file: string): Promise<ContentUpload> {
+    return this.#request("/practice-admin/content/uploads", { method: "POST", body: JSON.stringify({ name, file }) });
+  }
+
+  /** Publish an upload's drafts: those named, or every one that passed. */
+  publishContent(upload: string, items?: readonly ContentKey[]): Promise<ContentPublished> {
+    return this.#request("/practice-admin/content/publish", { method: "POST", body: JSON.stringify(items === undefined ? { upload } : { upload, items }) });
+  }
+
   async companies(): Promise<readonly StaffCompany[]> {
     return (await this.#request<{ companies: StaffCompany[] }>("/practice-admin/companies")).companies;
   }
@@ -2771,6 +2791,72 @@ export interface StarterPack {
   readonly lessons: number;
   readonly problems: number;
   readonly imported: boolean;
+}
+
+/** One thing a content upload's gates found wrong. */
+export interface ContentProblem {
+  /** The gate that found it: schema, rules, duplicate, version, generator, reference, wrong, starter, solver, runner… */
+  readonly gate: string;
+  readonly message: string;
+}
+
+/** An item of a content upload: a problem's slug and a lesson's are kept apart. */
+export interface ContentKey {
+  readonly namespace: "problem" | "lesson";
+  readonly slug: string;
+}
+
+export interface ContentUploadSummary {
+  readonly id: string;
+  readonly bundleId: string;
+  readonly bundleVersion: number;
+  readonly title: string;
+  readonly fileName: string;
+  readonly bytes: number;
+  /** checking: items still wait for, or are on, the code runner. */
+  readonly state: "checking" | "done";
+  readonly createdBy: { readonly id: string; readonly name: string };
+  readonly createdAt: string;
+  readonly finishedAt: string | null;
+  readonly counts: { readonly total: number; readonly pending: number; readonly checking: number; readonly passed: number; readonly failed: number; readonly skipped: number };
+  /** Items of this upload whose version is live on Learn now. */
+  readonly published: number;
+}
+
+export interface ContentUploadItem extends ContentKey {
+  readonly position: number;
+  /** dsa-problem, sql-problem, mcq, lesson, project or system-design. */
+  readonly type: string;
+  readonly version: number;
+  readonly hash: string;
+  readonly title: string;
+  /** passed: kept as a draft. failed: not kept. skipped: this version and content are kept already. */
+  readonly status: "pending" | "checking" | "passed" | "failed" | "skipped";
+  readonly problems: readonly ContentProblem[];
+  /** For the reviewer: what to look at, and what was not checked yet. */
+  readonly warnings: readonly string[];
+  readonly checkedAt: string | null;
+  /** What is kept under this slug now, whichever upload brought it. */
+  readonly current: {
+    readonly version: number;
+    readonly hash: string;
+    readonly state: "draft" | "published";
+    readonly publishedVersion: number | null;
+    readonly publishedHash: string | null;
+    readonly uploadId: string;
+  } | null;
+}
+
+export interface ContentUpload extends ContentUploadSummary {
+  readonly manifest: unknown;
+  /** What is wrong with the bundle as a whole. */
+  readonly problems: readonly ContentProblem[];
+  readonly items: readonly ContentUploadItem[];
+}
+
+export interface ContentPublished {
+  readonly published: readonly (ContentKey & { readonly version: number })[];
+  readonly refused: readonly (ContentKey & { readonly message: string })[];
 }
 
 export interface StaffCompany {

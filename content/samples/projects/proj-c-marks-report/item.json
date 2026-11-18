@@ -1,0 +1,187 @@
+{
+  "schema": "parikshaa.content/project@1",
+  "slug": "proj-c-marks-report",
+  "version": 1,
+  "title": "Class marks report in C",
+  "tier": "public",
+  "text_language": "en",
+  "difficulty": "easy",
+  "tags": {
+    "topics": [
+      "c",
+      "structs",
+      "arrays"
+    ],
+    "patterns": [
+      "header-and-source",
+      "sorting"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own project brief, code, tests and rubric for class marks report in c, examples, code, quiz and explanations; no text from any site, book or course.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-projects",
+      "module": "C",
+      "position": 0
+    }
+  ],
+  "language": "c",
+  "est_hours": 3,
+  "brief": "A class teacher wants a quick report from a list of marks: how many students, the average, the topper, how many got each grade, and a ranked top list. Build it in C with a struct for the class, a header that declares the operations and a source file that implements them.",
+  "requirements": [
+    "At most 100 students; marks are 0-100; a name can be added once.",
+    "STATS prints the count, the average to one decimal and the highest scorer (the first entered on a tie).",
+    "GRADES counts A (80+), B (60-79), C (40-59) and F (below 40).",
+    "TOP k lists the k best by marks, ties by name in alphabetical order."
+  ],
+  "io_protocol": "| Command | Prints |\n|---|---|\n| `ADD <name> <marks>` | `added <name>`, `error: class full`, `error: marks must be 0-100`, `error: <name> already added` or `error: name too long` |\n| `STATS` | `count <n>, average <x.x>, highest <name> <marks>` or `no students` |\n| `GRADES` | `A <n> B <n> C <n> F <n>` |\n| `TOP <k>` | `<rank>. <name> <marks>` for up to k students, or `no students` |\n\nNames are one word, at most 31 characters. Anything else: `error: bad command <line>`.",
+  "milestones": [
+    {
+      "id": "m1",
+      "title": "Adding and statistics",
+      "instructions": "Implement `class_add`, `class_average` and `class_top_index` in marks.c.",
+      "hints": [
+        "Check the three errors in the order of the return codes.",
+        "Sum into a long and divide as double for the average.",
+        "Use > (not >=) so the first student keeps a tie for the top."
+      ]
+    },
+    {
+      "id": "m2",
+      "title": "Grade counts",
+      "instructions": "Implement `class_grades` with the four bands.",
+      "hints": [
+        "Test the highest band first: 80, then 60, then 40."
+      ]
+    },
+    {
+      "id": "m3",
+      "title": "Ranking",
+      "instructions": "Implement `class_ranking`: sort indexes by marks descending, then name ascending.",
+      "hints": [
+        "Insertion sort is fine for 100 students and easy to get right.",
+        "strcmp(a, b) < 0 means a comes first alphabetically."
+      ]
+    }
+  ],
+  "files": [
+    {
+      "path": "marks.h",
+      "content": "#ifndef MARKS_H\n#define MARKS_H\n\n#define MAX_STUDENTS 100\n#define NAME_LEN 32\n\ntypedef struct {\n    char name[NAME_LEN];\n    int marks;\n} Student;\n\ntypedef struct {\n    Student list[MAX_STUDENTS];\n    int count;\n} Class;\n\n/* 0 on success; -1 class full; -2 marks outside 0-100; -3 name already added. */\nint class_add(Class *c, const char *name, int marks);\n/* Average of all marks, or 0.0 for an empty class. */\ndouble class_average(const Class *c);\n/* Index of the highest mark (the first one entered on a tie), or -1 if empty. */\nint class_top_index(const Class *c);\n/* counts[0..3] = number of A (>= 80), B (>= 60), C (>= 40), F (< 40). */\nvoid class_grades(const Class *c, int counts[4]);\n/* Fills order[0..count-1] with indexes sorted by marks high to low, then name A to Z. */\nvoid class_ranking(const Class *c, int order[]);\n\n#endif\n",
+      "role": "header",
+      "editable": false
+    },
+    {
+      "path": "marks.c",
+      "content": "#include <string.h>\n#include \"marks.h\"\n\nint class_add(Class *c, const char *name, int marks) {\n    /* Milestone 1 */\n    (void)c; (void)name; (void)marks;\n    return 0;\n}\n\ndouble class_average(const Class *c) {\n    (void)c;\n    return 0.0;   /* Milestone 1 */\n}\n\nint class_top_index(const Class *c) {\n    (void)c;\n    return -1;    /* Milestone 1 */\n}\n\nvoid class_grades(const Class *c, int counts[4]) {\n    (void)c;\n    for (int g = 0; g < 4; g++) counts[g] = 0;   /* Milestone 2 */\n}\n\nvoid class_ranking(const Class *c, int order[]) {\n    for (int i = 0; i < c->count; i++) order[i] = i;   /* Milestone 3: sort these */\n}\n",
+      "role": "source"
+    },
+    {
+      "path": "main.c",
+      "content": "#include <stdio.h>\n#include <string.h>\n#include \"marks.h\"\n\nint main(void) {\n    static Class cls;\n    char line[128], cmd[16], name[64];\n    int n;\n    while (fgets(line, sizeof line, stdin) != NULL) {\n        if (sscanf(line, \"%15s\", cmd) != 1) continue;\n        if (strcmp(cmd, \"ADD\") == 0 && sscanf(line, \"%*s %63s %d\", name, &n) == 2) {\n            int r = strlen(name) >= NAME_LEN ? -4 : class_add(&cls, name, n);\n            if (r == 0) printf(\"added %s\\n\", name);\n            else if (r == -1) printf(\"error: class full\\n\");\n            else if (r == -2) printf(\"error: marks must be 0-100\\n\");\n            else if (r == -3) printf(\"error: %s already added\\n\", name);\n            else printf(\"error: name too long\\n\");\n        } else if (strcmp(cmd, \"STATS\") == 0) {\n            int t = class_top_index(&cls);\n            if (t < 0) printf(\"no students\\n\");\n            else printf(\"count %d, average %.1f, highest %s %d\\n\", cls.count, class_average(&cls), cls.list[t].name, cls.list[t].marks);\n        } else if (strcmp(cmd, \"GRADES\") == 0) {\n            int g[4];\n            class_grades(&cls, g);\n            printf(\"A %d B %d C %d F %d\\n\", g[0], g[1], g[2], g[3]);\n        } else if (strcmp(cmd, \"TOP\") == 0 && sscanf(line, \"%*s %d\", &n) == 1 && n > 0) {\n            int order[MAX_STUDENTS];\n            class_ranking(&cls, order);\n            if (cls.count == 0) printf(\"no students\\n\");\n            for (int i = 0; i < n && i < cls.count; i++) printf(\"%d. %s %d\\n\", i + 1, cls.list[order[i]].name, cls.list[order[i]].marks);\n        } else {\n            line[strcspn(line, \"\\n\")] = '\\0';\n            printf(\"error: bad command %s\\n\", line);\n        }\n    }\n    return 0;\n}\n",
+      "role": "driver",
+      "editable": false
+    }
+  ],
+  "solution_files": [
+    {
+      "path": "marks.c",
+      "content": "#include <string.h>\n#include \"marks.h\"\n\nint class_add(Class *c, const char *name, int marks) {\n    if (c->count == MAX_STUDENTS) return -1;\n    if (marks < 0 || marks > 100) return -2;\n    for (int i = 0; i < c->count; i++)\n        if (strcmp(c->list[i].name, name) == 0) return -3;\n    Student *s = &c->list[c->count++];\n    strncpy(s->name, name, NAME_LEN - 1);\n    s->name[NAME_LEN - 1] = '\\0';\n    s->marks = marks;\n    return 0;\n}\n\ndouble class_average(const Class *c) {\n    if (c->count == 0) return 0.0;\n    long sum = 0;\n    for (int i = 0; i < c->count; i++) sum += c->list[i].marks;\n    return (double)sum / c->count;\n}\n\nint class_top_index(const Class *c) {\n    int best = -1;\n    for (int i = 0; i < c->count; i++)\n        if (best < 0 || c->list[i].marks > c->list[best].marks) best = i;\n    return best;\n}\n\nvoid class_grades(const Class *c, int counts[4]) {\n    for (int g = 0; g < 4; g++) counts[g] = 0;\n    for (int i = 0; i < c->count; i++) {\n        int m = c->list[i].marks;\n        counts[m >= 80 ? 0 : m >= 60 ? 1 : m >= 40 ? 2 : 3]++;\n    }\n}\n\nstatic int before(const Class *c, int a, int b) {\n    if (c->list[a].marks != c->list[b].marks) return c->list[a].marks > c->list[b].marks;\n    return strcmp(c->list[a].name, c->list[b].name) < 0;\n}\n\nvoid class_ranking(const Class *c, int order[]) {\n    for (int i = 0; i < c->count; i++) order[i] = i;\n    for (int i = 1; i < c->count; i++) {          /* insertion sort: at most 100 students */\n        int k = order[i], j = i - 1;\n        while (j >= 0 && before(c, k, order[j])) {\n            order[j + 1] = order[j];\n            j--;\n        }\n        order[j + 1] = k;\n    }\n}\n",
+      "role": "source"
+    }
+  ],
+  "bundle_order": [
+    "marks.h",
+    "marks.c",
+    "main.c"
+  ],
+  "tests": [
+    {
+      "id": "add-and-stats",
+      "input": "ADD aditi 78\nADD bilal 91\nADD charu 64\nSTATS\n",
+      "expected": "added aditi\nadded bilal\nadded charu\ncount 3, average 77.7, highest bilal 91\n",
+      "hidden": false,
+      "milestone": "m1"
+    },
+    {
+      "id": "ranking",
+      "input": "ADD aditi 78\nADD bilal 91\nADD charu 78\nADD dev 35\nTOP 3\n",
+      "expected": "added aditi\nadded bilal\nadded charu\nadded dev\n1. bilal 91\n2. aditi 78\n3. charu 78\n",
+      "hidden": false,
+      "milestone": "m3"
+    },
+    {
+      "id": "empty",
+      "input": "STATS\nTOP 2\nGRADES\n",
+      "expected": "no students\nno students\nA 0 B 0 C 0 F 0\n",
+      "hidden": true,
+      "milestone": "m1"
+    },
+    {
+      "id": "errors",
+      "input": "ADD om 101\nADD om -1\nADD om 50\nADD om 60\nADD averyveryveryverylongnamethatiswaytoolong 40\nSTATS\n",
+      "expected": "error: marks must be 0-100\nerror: marks must be 0-100\nadded om\nerror: om already added\nerror: name too long\ncount 1, average 50.0, highest om 50\n",
+      "hidden": true,
+      "milestone": "m1"
+    },
+    {
+      "id": "grade-bands",
+      "input": "ADD a 80\nADD b 79\nADD c 60\nADD d 59\nADD e 40\nADD f 39\nADD g 0\nADD h 100\nGRADES\n",
+      "expected": "added a\nadded b\nadded c\nadded d\nadded e\nadded f\nadded g\nadded h\nA 2 B 2 C 2 F 2\n",
+      "hidden": true,
+      "milestone": "m2"
+    },
+    {
+      "id": "tie-for-top",
+      "input": "ADD zara 88\nADD amit 88\nSTATS\nTOP 5\n",
+      "expected": "added zara\nadded amit\ncount 2, average 88.0, highest zara 88\n1. amit 88\n2. zara 88\n",
+      "hidden": true,
+      "milestone": "m1"
+    },
+    {
+      "id": "full-class",
+      "input": "ADD s000 0\nADD s001 1\nADD s002 2\nADD s003 3\nADD s004 4\nADD s005 5\nADD s006 6\nADD s007 7\nADD s008 8\nADD s009 9\nADD s010 10\nADD s011 11\nADD s012 12\nADD s013 13\nADD s014 14\nADD s015 15\nADD s016 16\nADD s017 17\nADD s018 18\nADD s019 19\nADD s020 20\nADD s021 21\nADD s022 22\nADD s023 23\nADD s024 24\nADD s025 25\nADD s026 26\nADD s027 27\nADD s028 28\nADD s029 29\nADD s030 30\nADD s031 31\nADD s032 32\nADD s033 33\nADD s034 34\nADD s035 35\nADD s036 36\nADD s037 37\nADD s038 38\nADD s039 39\nADD s040 40\nADD s041 41\nADD s042 42\nADD s043 43\nADD s044 44\nADD s045 45\nADD s046 46\nADD s047 47\nADD s048 48\nADD s049 49\nADD s050 50\nADD s051 51\nADD s052 52\nADD s053 53\nADD s054 54\nADD s055 55\nADD s056 56\nADD s057 57\nADD s058 58\nADD s059 59\nADD s060 60\nADD s061 61\nADD s062 62\nADD s063 63\nADD s064 64\nADD s065 65\nADD s066 66\nADD s067 67\nADD s068 68\nADD s069 69\nADD s070 70\nADD s071 71\nADD s072 72\nADD s073 73\nADD s074 74\nADD s075 75\nADD s076 76\nADD s077 77\nADD s078 78\nADD s079 79\nADD s080 80\nADD s081 81\nADD s082 82\nADD s083 83\nADD s084 84\nADD s085 85\nADD s086 86\nADD s087 87\nADD s088 88\nADD s089 89\nADD s090 90\nADD s091 91\nADD s092 92\nADD s093 93\nADD s094 94\nADD s095 95\nADD s096 96\nADD s097 97\nADD s098 98\nADD s099 99\nADD s100 100\nSTATS\nGRADES\n",
+      "expected": "added s000\nadded s001\nadded s002\nadded s003\nadded s004\nadded s005\nadded s006\nadded s007\nadded s008\nadded s009\nadded s010\nadded s011\nadded s012\nadded s013\nadded s014\nadded s015\nadded s016\nadded s017\nadded s018\nadded s019\nadded s020\nadded s021\nadded s022\nadded s023\nadded s024\nadded s025\nadded s026\nadded s027\nadded s028\nadded s029\nadded s030\nadded s031\nadded s032\nadded s033\nadded s034\nadded s035\nadded s036\nadded s037\nadded s038\nadded s039\nadded s040\nadded s041\nadded s042\nadded s043\nadded s044\nadded s045\nadded s046\nadded s047\nadded s048\nadded s049\nadded s050\nadded s051\nadded s052\nadded s053\nadded s054\nadded s055\nadded s056\nadded s057\nadded s058\nadded s059\nadded s060\nadded s061\nadded s062\nadded s063\nadded s064\nadded s065\nadded s066\nadded s067\nadded s068\nadded s069\nadded s070\nadded s071\nadded s072\nadded s073\nadded s074\nadded s075\nadded s076\nadded s077\nadded s078\nadded s079\nadded s080\nadded s081\nadded s082\nadded s083\nadded s084\nadded s085\nadded s086\nadded s087\nadded s088\nadded s089\nadded s090\nadded s091\nadded s092\nadded s093\nadded s094\nadded s095\nadded s096\nadded s097\nadded s098\nadded s099\nerror: class full\ncount 100, average 49.5, highest s099 99\nA 20 B 20 C 20 F 40\n",
+      "hidden": true,
+      "milestone": "m1"
+    },
+    {
+      "id": "bad-commands",
+      "input": "ADD onlyname\nREPORT\nTOP 0\nTOP x\nADD x 5\nTOP 1\n",
+      "expected": "error: bad command ADD onlyname\nerror: bad command REPORT\nerror: bad command TOP 0\nerror: bad command TOP x\nadded x\n1. x 5\n",
+      "hidden": true,
+      "milestone": "m1"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "tests",
+      "criterion": "Hidden tests pass: every command prints exactly the expected output.",
+      "weight": 65,
+      "checked_by": "tests"
+    },
+    {
+      "id": "structure",
+      "criterion": "The header declares the operations and the struct; main.c only calls them; no global variables in marks.c; buffers are bounded.",
+      "weight": 20,
+      "checked_by": "review"
+    },
+    {
+      "id": "feedback",
+      "criterion": "Readable names, small functions and clear error handling (AI feedback, advice only).",
+      "weight": 15,
+      "checked_by": "ai-feedback"
+    }
+  ],
+  "extensions": [
+    "Add REMOVE <name>.",
+    "Print the median as well as the average."
+  ]
+}

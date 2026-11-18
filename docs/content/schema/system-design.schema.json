@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "system-design.schema.json",
+  "title": "Parikshaa content: system design case (HLD or LLD)",
+  "description": "HLD: a case study with scope questions, requirements, estimates that are checked as numbers, expected components and a rubric. LLD: requirements, entities, patterns, and a design kata whose code is tested on the runner in at least two languages, with a change request. See docs/content/CONTENT-FORMAT.md section 9.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "slug", "version", "title", "tier", "text_language", "mode", "difficulty", "tags", "authoring", "scenario", "clarifying_questions", "requirements", "rubric", "reference_solution", "concept_checks"],
+  "properties": {
+    "schema": { "const": "parikshaa.content/system-design@1" },
+    "slug": { "$ref": "common.schema.json#/$defs/slug" },
+    "version": { "$ref": "common.schema.json#/$defs/version" },
+    "title": { "$ref": "common.schema.json#/$defs/title" },
+    "tier": { "$ref": "common.schema.json#/$defs/tier" },
+    "text_language": { "$ref": "common.schema.json#/$defs/text_language" },
+    "mode": { "enum": ["hld", "lld"] },
+    "difficulty": { "$ref": "common.schema.json#/$defs/difficulty" },
+    "tags": { "$ref": "common.schema.json#/$defs/tags" },
+    "authoring": { "$ref": "common.schema.json#/$defs/authoring" },
+    "placement": { "$ref": "common.schema.json#/$defs/placement" },
+    "time_minutes": { "type": "integer", "minimum": 15, "maximum": 120, "description": "Interview time box (45 is usual)." },
+    "scenario": { "$ref": "common.schema.json#/$defs/markdown", "description": "The ask, as a manager or interviewer would give it." },
+    "clarifying_questions": {
+      "type": "array",
+      "minItems": 4,
+      "items": { "type": "object", "additionalProperties": false, "required": ["q", "a"], "properties": { "q": { "type": "string", "minLength": 5 }, "a": { "type": "string", "minLength": 2 } } }
+    },
+    "requirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["functional", "non_functional"],
+      "properties": {
+        "functional": { "type": "array", "minItems": 3, "items": { "type": "string", "minLength": 5 } },
+        "non_functional": {
+          "type": "array",
+          "minItems": 2,
+          "items": { "type": "object", "additionalProperties": false, "required": ["name", "target"], "properties": { "name": { "type": "string" }, "target": { "type": "string" } } }
+        },
+        "out_of_scope": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "estimates": {
+      "description": "HLD: back-of-envelope numbers the learner works out; auto-checked within tolerance.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "question", "answer", "tolerance_pct", "unit", "working"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9-]{1,40}$" },
+          "question": { "type": "string", "minLength": 10 },
+          "answer": { "type": "number" },
+          "tolerance_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+          "unit": { "type": "string" },
+          "working": { "type": "string", "minLength": 10 },
+          "solver": { "type": "string", "description": "Optional Python 3 that prints the answer; the gate holds answer to it." }
+        }
+      },
+      "x-db": "Each estimate can be a practice_problems numeric question (kind numeric, tolerance = answer * pct / 100)."
+    },
+    "expected_components": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "why", "must"],
+        "properties": { "name": { "type": "string" }, "why": { "type": "string", "minLength": 10 }, "must": { "type": "boolean" } }
+      }
+    },
+    "api": { "type": "array", "items": { "type": "string" } },
+    "data_model": { "type": "string" },
+    "entities": {
+      "description": "LLD: the classes and what each owns.",
+      "type": "array",
+      "items": { "type": "object", "additionalProperties": false, "required": ["name", "responsibility"], "properties": { "name": { "type": "string" }, "responsibility": { "type": "string", "minLength": 10 } } }
+    },
+    "patterns": {
+      "type": "array",
+      "items": { "type": "object", "additionalProperties": false, "required": ["name", "why"], "properties": { "name": { "type": "string" }, "why": { "type": "string", "minLength": 10 } } }
+    },
+    "diagram": { "$ref": "common.schema.json#/$defs/visual", "description": "HLD architecture or LLD class diagram (kind mermaid; data.source holds the Mermaid text)." },
+    "deep_dives": {
+      "type": "array",
+      "items": { "type": "object", "additionalProperties": false, "required": ["topic", "body"], "properties": { "topic": { "type": "string" }, "body": { "$ref": "common.schema.json#/$defs/markdown" } } }
+    },
+    "trade_offs": { "type": "array", "items": { "type": "string", "minLength": 10 } },
+    "failure_modes": { "type": "array", "items": { "type": "string", "minLength": 10 } },
+    "kata": {
+      "description": "LLD: the design as code. Tests drive a driver through standard input; every language's solution passes every test; every starter fails at least one.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["io_protocol", "implementations", "tests"],
+      "properties": {
+        "io_protocol": { "$ref": "common.schema.json#/$defs/markdown" },
+        "implementations": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["language", "files", "solution_files", "bundle_order"],
+            "properties": {
+              "language": { "$ref": "common.schema.json#/$defs/code_language" },
+              "files": { "$ref": "common.schema.json#/$defs/files" },
+              "solution_files": { "$ref": "common.schema.json#/$defs/files" },
+              "change_files": { "$ref": "common.schema.json#/$defs/files", "description": "The solution after the change request (replaces solution files by path)." },
+              "bundle_order": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+            }
+          }
+        },
+        "tests": { "type": "array", "minItems": 6, "items": { "$ref": "common.schema.json#/$defs/io_test" } },
+        "change_request": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["description", "tests"],
+          "properties": {
+            "description": { "$ref": "common.schema.json#/$defs/markdown" },
+            "tests": { "type": "array", "minItems": 2, "items": { "$ref": "common.schema.json#/$defs/io_test" } }
+          },
+          "description": "A new requirement after the kata. change_files must pass the old tests and these."
+        }
+      }
+    },
+    "rubric": {
+      "type": "array",
+      "minItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "criterion", "weight", "checked_by"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9-]{1,40}$" },
+          "criterion": { "type": "string", "minLength": 10 },
+          "weight": { "type": "integer", "minimum": 1, "maximum": 100 },
+          "checked_by": { "enum": ["tests", "auto", "review", "ai-feedback"] },
+          "levels": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "description": "Weights sum to 100."
+    },
+    "reference_solution": { "$ref": "common.schema.json#/$defs/markdown", "description": "The walkthrough a learner reads after trying (EDITORIAL-STYLE section 5)." },
+    "concept_checks": { "type": "array", "minItems": 3, "maxItems": 10, "items": { "$ref": "common.schema.json#/$defs/mcq_inline" } },
+    "follow_ups": { "type": "array", "items": { "type": "string", "minLength": 10 } },
+    "revision_card": { "$ref": "common.schema.json#/$defs/revision_card" }
+  },
+  "x-needs-platform": "A design page (scenario, scope questions, estimates as numeric checks, canvas later), the LLD kata on the runner (joined by the bundling rules), rubric review. Today only estimates and concept checks map to practice_problems."
+}

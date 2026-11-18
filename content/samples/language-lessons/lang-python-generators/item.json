@@ -1,0 +1,217 @@
+{
+  "schema": "parikshaa.content/lesson@1",
+  "slug": "lang-python-generators",
+  "version": 1,
+  "title": "Python generators: values on demand",
+  "tier": "premium",
+  "text_language": "en",
+  "course": "lang-python",
+  "difficulty": "medium",
+  "tags": {
+    "topics": [
+      "generators",
+      "iterators"
+    ],
+    "patterns": [
+      "lazy-evaluation",
+      "pipeline"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own lesson text and examples on python generators: values on demand, examples, code, quiz and explanations; no text from any site, book or course.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-languages",
+      "module": "Python",
+      "position": 1
+    }
+  ],
+  "est_minutes": 13,
+  "prerequisites": [
+    "lang-python-mutable-defaults"
+  ],
+  "outcomes": [
+    "can write a generator with yield and predict when its code runs",
+    "can chain generators into a pipeline that never holds all the data",
+    "can choose between a list comprehension and a generator expression"
+  ],
+  "sections": [
+    {
+      "kind": "why",
+      "heading": "Why this matters",
+      "body": "Reading a 2 GB log file into a list crashes a small server; reading it line by line with a generator uses a few kilobytes. Generators are how Python handles data that is large, endless or expensive to produce, and they are behind `range`, file reading, `zip` and `map`. Interviewers ask about them to see whether you understand **when code actually runs**."
+    },
+    {
+      "kind": "concept",
+      "heading": "yield pauses a function",
+      "body": "A function containing `yield` is a **generator function**. Calling it does **not run its body**: it returns a generator object, paused before the first line.\n\nEach `next(gen)` resumes the body until the next `yield`, hands back that value, and pauses again, **keeping all local variables**. When the body ends, the generator raises `StopIteration`, which a `for` loop treats as \"done\".\n\nSo a generator produces values **one at a time, only when asked**. This is called **lazy evaluation**. Memory use stays constant no matter how many values it produces, because only the current state is kept.\n\n> **Note:** A generator can be consumed **only once**. After the loop finishes, iterating again gives nothing. If you need the values twice, store them in a list, or call the generator function again to get a fresh generator."
+    },
+    {
+      "kind": "example",
+      "heading": "When does the code run?",
+      "body": "The prints inside the generator show exactly when its body runs: not when it is created, but as `next` and the `for` loop ask for values.",
+      "code": [
+        {
+          "lang": "python",
+          "src": "def tokens(start, count):\n    print(\"  (generator starts)\")\n    for n in range(start, start + count):\n        print(f\"  (making token {n})\")\n        yield f\"T{n}\"\n    print(\"  (generator finished)\")\n\ngen = tokens(101, 3)\nprint(\"created, nothing has run yet\")\nprint(\"first:\", next(gen))\nfor t in gen:                       # the loop calls next() until StopIteration\n    print(\"loop got\", t)\n",
+          "runnable": true,
+          "expected_output": "created, nothing has run yet\n  (generator starts)\n  (making token 101)\nfirst: T101\n  (making token 102)\nloop got T102\n  (making token 103)\nloop got T103\n  (generator finished)\n",
+          "caption": "A generator runs only when asked for the next value"
+        }
+      ]
+    },
+    {
+      "kind": "concept",
+      "heading": "Pipelines and generator expressions",
+      "body": "Generators **compose**. One generator can consume another, so you can build a pipeline: read lines → skip comments → convert → accumulate. Each stage pulls one item from the stage before it, does its work, and passes one item on. At no point does any stage hold the whole data set.\n\nA **generator expression** is the lazy cousin of a list comprehension: `(n * n for n in nums)` with round brackets instead of square ones. Pass it straight into a function that consumes an iterable: `sum(n * n for n in range(10**6))` adds a million squares without building a million-item list.\n\n| Use | When |\n|---|---|\n| list comprehension `[...]` | you need the values more than once, need `len`, indexing or sorting |\n| generator expression `(...)` | you consume the values once, especially into `sum`, `max`, `any`, `join` |"
+    },
+    {
+      "kind": "example",
+      "heading": "A small pipeline",
+      "body": "`readings` cleans raw lines, `running_total` accumulates them, and neither knows about the other. The last line compares the size of a list of 100,000 numbers with a generator over the same numbers.",
+      "code": [
+        {
+          "lang": "python",
+          "src": "import sys\n\ndef readings(lines):\n    for line in lines:                  # one line at a time, never the whole file\n        line = line.strip()\n        if line and not line.startswith(\"#\"):\n            yield int(line)\n\ndef running_total(values):\n    total = 0\n    for v in values:\n        total += v\n        yield total\n\norders = [\"120\", \"# lunch rush\", \"80\", \"\", \"200\"]\nprint(list(running_total(readings(orders))))\nsquares = sum(n * n for n in range(1, 1_000_001))   # no million-item list is built\nprint(squares)\nprint(sys.getsizeof([n for n in range(10**5)]) > 100_000, sys.getsizeof(n for n in range(10**5)) < 1_000)\n",
+          "runnable": true,
+          "expected_output": "[120, 200, 400]\n333333833333500000\nTrue True\n",
+          "caption": "A pipeline of generators, and a generator expression"
+        }
+      ]
+    },
+    {
+      "kind": "note",
+      "heading": "Generators in real code",
+      "body": "Some places you will meet them:\n\n- **Files.** `for line in open(path):` already reads lazily, one line at a time. Wrapping it in a generator that parses and filters keeps the whole program streaming.\n- **Paginated APIs.** A generator can fetch page 1, yield its items, fetch page 2 only when the caller wants more, and stop when the server says there are no more pages. The caller just writes a `for` loop.\n- **Infinite sequences.** `itertools.count()` never ends, which is fine because nobody asks for all of it; `itertools.islice(gen, 10)` takes the first ten.\n- **`yield from other`** hands every value of another iterable through, which keeps recursive generators (walking a folder tree, say) short.\n\nOne caution: because the body runs later, errors appear later too. A generator that reads a missing file does not fail when you create it, only when the first value is requested, which can be far away in the code. Keep the place that creates a generator close to the place that consumes it.\n\nAnother caution is debugging: `print(gen)` shows only `<generator object ...>`. To see the values, convert a *small* one with `list(gen)`, remembering that this consumes it."
+    },
+    {
+      "kind": "example",
+      "heading": "Tracing the hands-on generator",
+      "body": "The task asks for `running_max(values)`, a generator that yields the best score so far after each score. Plan it with the same shape as `running_total` above: one variable of state, updated before each `yield`.\n\nTrace it on `3 7 2 9 9`:\n\n| value read | best before | best after | yielded |\n|---|---|---|---|\n| 3 | none yet | 3 | 3 |\n| 7 | 3 | 7 | 7 |\n| 2 | 7 | 7 | 7 |\n| 9 | 7 | 9 | 9 |\n| 9 | 9 | 9 | 9 |\n\nThe first value needs care: there is no \"best so far\" yet. Starting `best` at `0` would be wrong for negative scores (the running maximum of `-4` is `-4`, not `0`). Start it at `None` and take the first value as it is, or start it at `float(\"-inf\")`.\n\nNotice also what the main program passes in: `(int(x) for x in data[1:])`, a generator expression. Your generator consumes another generator, and the `join` at the end consumes yours. Not one list of scores is built anywhere in the pipeline."
+    },
+    {
+      "kind": "misconception",
+      "heading": "Common mix-ups",
+      "body": "**Many students think calling a generator function runs it.** It only creates the generator; the body starts at the first `next`.\n\n**Many students think a generator can be reused like a list.** Once exhausted it stays empty. `list(gen)` twice gives the values and then `[]`.\n\n**Many students think generators are always faster.** They save memory, not necessarily time. For a small collection used several times, a list is simpler and often quicker."
+    },
+    {
+      "kind": "interview",
+      "heading": "Interview questions",
+      "body": "Answers as a strong candidate would say them.",
+      "qa": [
+        {
+          "q": "What is the difference between return and yield?",
+          "a": "return ends the function and gives back one value. yield gives back a value and pauses the function with its local state intact, so the next request resumes right after the yield. A function with yield becomes a generator."
+        },
+        {
+          "q": "How would you process a 10 GB file of numbers in Python?",
+          "a": "Iterate the file line by line, which is already lazy, and pass the lines through generators that parse and filter, consuming the result with sum or a loop. Memory stays constant because no stage holds the whole file."
+        },
+        {
+          "q": "List comprehension versus generator expression?",
+          "a": "A list comprehension builds the whole list in memory immediately, so it supports len, indexing and repeated iteration. A generator expression produces values lazily, once, which is ideal for feeding sum, max or any over large data."
+        }
+      ]
+    },
+    {
+      "kind": "summary",
+      "heading": "Summary",
+      "body": "- `yield` turns a function into a generator; calling it runs nothing yet.\n- `next` resumes until the next `yield`; local state survives between values.\n- Generators are single-use and memory-light.\n- Chain them into pipelines; each stage pulls one item at a time.\n- `(...)` generator expressions for one-pass consumption, `[...]` lists for reuse."
+    }
+  ],
+  "quiz": [
+    {
+      "stem": "`def g(): print('A'); yield 1`. What prints after `x = g()`?",
+      "options": [
+        "A",
+        "1",
+        "Nothing",
+        "A then 1"
+      ],
+      "correct": 2,
+      "explanation": "Creating the generator runs none of its body."
+    },
+    {
+      "stem": "`gen = (n for n in range(3)); list(gen); list(gen)`. What does the second `list(gen)` return?",
+      "options": [
+        "[0, 1, 2]",
+        "[]",
+        "an error",
+        "[0, 1, 2, 0, 1, 2]"
+      ],
+      "correct": 1,
+      "explanation": "A generator is exhausted after one full pass."
+    },
+    {
+      "stem": "Which uses the least memory?",
+      "options": [
+        "sum([n for n in range(10**7)])",
+        "sum(n for n in range(10**7))",
+        "sum(list(range(10**7)))",
+        "They are the same"
+      ],
+      "correct": 1,
+      "explanation": "The generator expression never builds a list."
+    },
+    {
+      "stem": "After `yield`, what happens to the generator's local variables?",
+      "options": [
+        "They are reset",
+        "They are kept until the next value is requested",
+        "They become global",
+        "They are copied to the caller"
+      ],
+      "correct": 1,
+      "explanation": "The generator pauses with its state intact."
+    }
+  ],
+  "hands_on": [
+    {
+      "id": "running-max",
+      "title": "Best score so far",
+      "task": "Read `n`, then `n` integers (quiz scores in order). Write the generator `running_max(values)` that yields, after each score, **the highest score seen so far**. The program prints the yielded values on one line. Do not build a list inside `running_max`.",
+      "lang": "python",
+      "starter": "import sys\n\n\ndef running_max(values):\n    # Yield, after each value, the largest value seen so far.\n    # TODO: your code here\n    yield from values\n\n\ndef main():\n    data = sys.stdin.read().split()\n    values = (int(x) for x in data[1:])\n    print(\" \".join(str(m) for m in running_max(values)))\n\n\nmain()\n",
+      "solution": "import sys\n\n\ndef running_max(values):\n    best = None\n    for v in values:\n        best = v if best is None else max(best, v)\n        yield best\n\n\ndef main():\n    data = sys.stdin.read().split()\n    values = (int(x) for x in data[1:])\n    print(\" \".join(str(m) for m in running_max(values)))\n\n\nmain()\n",
+      "tests": [
+        {
+          "id": "t1",
+          "input": "5\n3 7 2 9 9\n",
+          "expected": "3 7 7 9 9\n",
+          "hidden": false
+        },
+        {
+          "id": "t2",
+          "input": "1\n-4\n",
+          "expected": "-4\n",
+          "hidden": true
+        },
+        {
+          "id": "t3",
+          "input": "4\n10 9 8 7\n",
+          "expected": "10 10 10 10\n",
+          "hidden": true
+        },
+        {
+          "id": "t4",
+          "input": "6\n-5 -2 -9 0 -1 4\n",
+          "expected": "-5 -2 -2 0 0 4\n",
+          "hidden": true
+        }
+      ]
+    }
+  ],
+  "revision_card": {
+    "front": "Generators: when does the body run, what do they save, and their limits?",
+    "back": "Body runs only on next()/iteration, pausing at each yield with state kept. Constant memory, lazy; pipelines pull one item at a time. Single use; errors show up when consumed."
+  },
+  "next": [
+    "lang-java-equals-vs-double-equals"
+  ]
+}

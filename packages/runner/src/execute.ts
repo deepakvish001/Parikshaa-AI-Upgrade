@@ -63,6 +63,13 @@ export interface RunRequest {
    * own output. See `splitResult`.
    */
   readonly resultMarker?: string;
+  /**
+   * Keep each test's whole standard output (up to the 1 MiB a stream may
+   * produce) instead of the few kilobytes a report needs: for a content upload,
+   * whose gates take a reference's output as the expected one and a generator's
+   * as a test's input.
+   */
+  readonly fullOutput?: boolean;
 }
 
 export type TestStatus =
@@ -418,7 +425,7 @@ export async function execute(request: RunRequest, options: SandboxOptions): Pro
         status,
         timeMs: outcome.timeMs,
         memoryKb: outcome.memoryKb,
-        stdout: truncate(printed),
+        stdout: request.fullOutput === true ? printed : truncate(printed),
         stderr: truncate(outcome.stderr, 2048),
         ...(marker === undefined ? {} : { result: result === null ? null : truncate(result) }),
         ...(checkerMessage === undefined || checkerMessage === "" ? {} : { checkerMessage: truncate(checkerMessage, 1024) }),

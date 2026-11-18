@@ -1,9 +1,10 @@
 import { questionId, type OrgId, type Question } from "@parikshaa/core";
 import { practiceStaff, type PracticeStore, type PrepStore } from "@parikshaa/store";
+import { APTITUDE_STARTER } from "./content/aptitude-starter.js";
 import { CS_FUNDAMENTALS } from "./content/cs-fundamentals.js";
 import { DSA_STARTER } from "./content/dsa-starter.js";
 import { DSA_BETTER, DSA_TEXT } from "./content/dsa-starter-text.js";
-import type { CsPack, DsaPack, SqlPack } from "./content/packs.js";
+import type { AptitudePack, CsPack, DsaPack, SqlPack } from "./content/packs.js";
 import { SQL_STARTER } from "./content/sql-starter.js";
 import { PracticeError, slugOf } from "./practice.js";
 import type { PrepService } from "./prep.js";
@@ -18,16 +19,32 @@ import type { PrepService } from "./prep.js";
  * - SQL: problems that run on SQLite, each with its approaches, and a track.
  * - DSA: 40 problems written for Parikshaa (the Sahayak eval's), each with a
  *   first hint, its brute force and optimal approaches, and a track by topic.
+ * - Aptitude (K2-8): quant, logical reasoning and verbal questions written for
+ *   Parikshaa, each with its worked explanation, and a track by section. It
+ *   waits for the owner's approval of its content (F6): see PENDING_PACKS.
  *
  * A pack is taken in once: its track's address says it is there. Everything
  * it adds is the site's own afterwards, to change or hide like anything else.
  */
 
+/** The packs a site is offered: the API's list and the names it takes. */
 export const PACKS = ["cs-fundamentals", "sql-starter", "dsa-starter"] as const;
 export type PackName = (typeof PACKS)[number];
 
+/**
+ * Packs written and tested but offered to no site until the owner approves
+ * their content (F6; tracker "Faisle", 10 Nov 2026): the API neither lists nor
+ * takes them. Approval moves a name into PACKS (then `npm run openapi`).
+ */
+export const PENDING_PACKS = ["aptitude-starter"] as const;
+export type PendingPack = (typeof PENDING_PACKS)[number];
+type AnyPack = PackName | PendingPack;
+
+/** A pack the API offers (not one waiting for approval). */
+export const isOffered = (pack: PackSummary): pack is PackSummary & { readonly name: PackName } => (PACKS as readonly string[]).includes(pack.name);
+
 export interface PackSummary {
-  readonly name: PackName;
+  readonly name: AnyPack;
   readonly title: string;
   readonly description: string;
   readonly lessons: number;
@@ -35,7 +52,7 @@ export interface PackSummary {
   readonly imported: boolean;
 }
 
-const TRACK: Record<PackName, { slug: string; title: string; description: string }> = {
+const TRACK: Record<AnyPack, { slug: string; title: string; description: string }> = {
   "cs-fundamentals": {
     slug: "cs-fundamentals",
     title: "CS fundamentals",
@@ -51,7 +68,24 @@ const TRACK: Record<PackName, { slug: string; title: string; description: string
     title: "SQL, from SELECT to window functions",
     description: "Queries that run: filtering, joins, grouping, subqueries and window functions, each with its approaches.",
   },
+  "aptitude-starter": {
+    slug: "aptitude-starter",
+    title: "Aptitude: quant, reasoning and verbal",
+    description: "Percentages, time and work, speed, interest, ages, series, seating, syllogisms, reading and grammar: each question with a worked explanation and a shortcut.",
+  },
 };
+
+/** The aptitude track's modules, one per section, in this order; a question goes in its section's (its first tag). */
+const APTITUDE_MODULES: readonly [string, string][] = [
+  ["aptitude-quant", "Quantitative aptitude"],
+  ["aptitude-logical", "Logical reasoning"],
+  ["aptitude-verbal", "Verbal ability"],
+];
+
+/** An aptitude question as the site stores it: one mark, no rubric, its address its id. */
+export function aptitudeQuestion(q: AptitudePack["questions"][number]): Question {
+  return { id: questionId(q.slug), maxScore: 1, rubric: [], ...q.question };
+}
 
 /** Headings in an answer go one level down, under the question's own. */
 const demote = (markdown: string) => markdown.replace(/^(#{1,5}) /gm, "#$1 ");
@@ -150,26 +184,34 @@ export class StarterPacks {
   readonly #prep: PrepStore;
   readonly #service: PrepService;
 
-  constructor(options: { practice: PracticeStore; prep: PrepStore; service: PrepService }) {
+  /** Offer the packs still waiting for the owner's approval (PENDING_PACKS): tests only, never the server. */
+  readonly #pending: boolean;
+
+  constructor(options: { practice: PracticeStore; prep: PrepStore; service: PrepService; pending?: boolean }) {
     this.#practice = options.practice;
     this.#prep = options.prep;
     this.#service = options.service;
+    this.#pending = options.pending === true;
   }
 
   async list(orgId: OrgId): Promise<readonly PackSummary[]> {
     const tracks = await this.#prep.tracks(practiceStaff(orgId));
-    const has = (name: PackName) => tracks.some((t) => t.slug === TRACK[name].slug);
+    const has = (name: AnyPack) => tracks.some((t) => t.slug === TRACK[name].slug);
     const csCount = CS_FUNDAMENTALS.subjects.reduce((n, s) => n + s.topics.reduce((m, t) => m + t.questions.length, 0), 0);
-    return [
+    const offered: PackSummary[] = [
       { name: "cs-fundamentals", ...pick(TRACK["cs-fundamentals"]), lessons: csLessons(CS_FUNDAMENTALS).length, problems: csCount, imported: has("cs-fundamentals") },
       { name: "sql-starter", ...pick(TRACK["sql-starter"]), lessons: 0, problems: SQL_STARTER.problems.length, imported: has("sql-starter") },
       { name: "dsa-starter", ...pick(TRACK["dsa-starter"]), lessons: 0, problems: DSA_STARTER.problems.length, imported: has("dsa-starter") },
     ];
+    if (!this.#pending) return offered;
+    return [...offered, { name: "aptitude-starter", ...pick(TRACK["aptitude-starter"]), lessons: 0, problems: APTITUDE_STARTER.questions.length, imported: has("aptitude-starter") }];
   }
 
-  /** Take a pack in. Refused if it is in already; problems whose address is taken get the next free one. */
-  async import(orgId: OrgId, name: PackName): Promise<{ readonly track: string; readonly lessons: number; readonly problems: number }> {
-    if ((await this.list(orgId)).find((p) => p.name === name)?.imported === true) throw new PracticeError("slug_taken", "That pack is on this site already");
+  /** Take a pack in. Refused if it is in already, or not offered yet; problems whose address is taken get the next free one. */
+  async import(orgId: OrgId, name: AnyPack): Promise<{ readonly track: string; readonly lessons: number; readonly problems: number }> {
+    const pack = (await this.list(orgId)).find((p) => p.name === name);
+    if (pack === undefined) throw new PracticeError("not_found", "That pack is not offered yet");
+    if (pack.imported) throw new PracticeError("slug_taken", "That pack is on this site already");
     const scope = practiceStaff(orgId);
     const taken = new Set((await this.#practice.problems(scope)).map((p) => p.slug));
     let position = taken.size;
@@ -213,6 +255,19 @@ export class StarterPacks {
       }
       await this.#service.saveTrack(orgId, null, { ...TRACK[name], published: true, modules });
       return { track: TRACK[name].slug, lessons, problems };
+    }
+
+    if (name === "aptitude-starter") {
+      const ids = new Map<string, string>();
+      for (const q of APTITUDE_STARTER.questions) {
+        ids.set(q.slug, await addProblem({ slug: q.slug, title: q.title, question: aptitudeQuestion(q), difficulty: q.difficulty, tags: q.tags, editorial: q.editorial }));
+      }
+      const modules = APTITUDE_MODULES.map(([section, title]) => ({
+        title,
+        items: APTITUDE_STARTER.questions.filter((q) => q.tags[0] === section).map((q) => ({ problemId: ids.get(q.slug)! })),
+      })).filter((m) => m.items.length > 0);
+      await this.#service.saveTrack(orgId, null, { ...TRACK[name], published: true, modules });
+      return { track: TRACK[name].slug, lessons: 0, problems: ids.size };
     }
 
     if (name === "dsa-starter") {

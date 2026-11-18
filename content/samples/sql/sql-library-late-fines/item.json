@@ -1,0 +1,82 @@
+{
+  "schema": "parikshaa.content/sql-problem@1",
+  "slug": "sql-library-late-fines",
+  "version": 1,
+  "title": "Library fines as of a fixed day",
+  "tier": "public",
+  "text_language": "en",
+  "difficulty": "medium",
+  "level": "L2",
+  "tags": { "topics": ["dates", "aggregation"], "patterns": ["coalesce-default", "clip-then-sum"], "extra": ["julianday", "null-handling"] },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own library story, made-up book titles, datasets, queries and editorial; no text from any problem site.",
+    "review": { "state": "self-checked" }
+  },
+  "placement": [{ "track": "samples-sql", "module": "Medium", "position": 0 }],
+  "dialect": "sqlite",
+  "stem": "The college library charges **₹5 for every day** a book is kept past its due date. The librarian wants the fines owed **as of 17 November 2026**.\n\n**Table** `loans`\n\n| Column | Type | Meaning |\n|---|---|---|\n| `loan_id` | INTEGER, primary key | |\n| `member` | TEXT, not null | Member's name (unique per member) |\n| `book` | TEXT, not null | |\n| `issued_on` | TEXT, not null | ISO date |\n| `due_on` | TEXT, not null | ISO date |\n| `returned_on` | TEXT | ISO date; **NULL if the book is still out** |\n\n**Late days** of a loan: the days from `due_on` to `returned_on`, or to `'2026-11-17'` if the book is still out. A loan returned on or before its due date (or not yet due) has 0 late days, never fewer.\n\n**Task:** for every member whose fine is above 0, return `member`, `late_loans` (the number of their loans with at least one late day) and `fine` (₹5 × their total late days, an integer). Sort by `fine` from highest to lowest, then `member` ascending. If nobody owes anything, return no rows.",
+  "schema_sql": "CREATE TABLE loans (\n  loan_id INTEGER PRIMARY KEY,\n  member TEXT NOT NULL,\n  book TEXT NOT NULL,\n  issued_on TEXT NOT NULL,\n  due_on TEXT NOT NULL,\n  returned_on TEXT\n);",
+  "datasets": [
+    {
+      "id": "sample-1",
+      "hidden": false,
+      "purpose": "sample",
+      "rows_sql": "INSERT INTO loans VALUES (1, 'Kiran', 'Monsoon Letters', '2026-10-01', '2026-10-15', '2026-10-20'), (2, 'Kiran', 'Rail Diaries', '2026-10-10', '2026-10-24', '2026-10-24'), (3, 'Meher', 'The Clay Lamp', '2026-10-20', '2026-11-03', NULL), (4, 'Meher', 'Stars over Pune', '2026-09-01', '2026-09-15', '2026-09-10'), (5, 'Nikhil', 'Pickle Jar Physics', '2026-11-01', '2026-11-15', NULL), (6, 'Nikhil', 'Old Fort Tales', '2026-10-01', '2026-10-15', '2026-10-17'), (7, 'Oviya', 'Blue Tiffin', '2026-11-10', '2026-11-24', NULL);",
+      "expected": "Meher\t1\t70\nKiran\t1\t25\nNikhil\t2\t20\n",
+      "explanation": "Meher's book due 3 Nov is still out: 14 days, ₹70 (her early return earns nothing). Kiran: one return 5 days late, ₹25; the other came back on its due date. Nikhil: two loans 2 days late each, ₹20. Oviya's book is not due until 24 Nov."
+    },
+    { "id": "empty", "hidden": true, "purpose": "empty", "rows_sql": "" },
+    {
+      "id": "all-still-out",
+      "hidden": true,
+      "purpose": "null",
+      "rows_sql": "INSERT INTO loans VALUES (1, 'Pranav', 'Book A', '2026-10-01', '2026-10-15', NULL), (2, 'Pranav', 'Book B', '2026-11-01', '2026-11-15', NULL), (3, 'Rhea', 'Book C', '2026-11-03', '2026-11-17', NULL), (4, 'Sahil', 'Book D', '2026-09-01', '2026-09-15', NULL);"
+    },
+    {
+      "id": "equal-fines",
+      "hidden": true,
+      "purpose": "ties",
+      "rows_sql": "INSERT INTO loans VALUES (1, 'Uday', 'Book E', '2026-10-01', '2026-10-15', '2026-10-18'), (2, 'Tanvi', 'Book F', '2026-10-01', '2026-10-15', '2026-10-16'), (3, 'Tanvi', 'Book G', '2026-10-05', '2026-10-19', '2026-10-21'), (4, 'Vani', 'Book H', '2026-10-01', '2026-10-15', '2026-10-18'), (5, 'Asha', 'Book I', '2026-11-01', '2026-11-15', NULL);"
+    },
+    {
+      "id": "boundaries",
+      "hidden": true,
+      "purpose": "edge",
+      "rows_sql": "INSERT INTO loans VALUES (1, 'Bilal', 'Book J', '2026-10-01', '2026-10-15', '2026-10-15'), (2, 'Bilal', 'Book K', '2026-10-01', '2026-10-15', '2026-10-16'), (3, 'Chitra', 'Book L', '2026-11-03', '2026-11-17', NULL), (4, 'Chitra', 'Book M', '2026-09-20', '2026-10-04', '2026-09-21'), (5, 'Dev', 'Book N', '2026-10-25', '2026-11-08', '2026-11-09'), (6, 'Dev', 'Book O', '2026-10-10', '2026-10-24', '2026-10-01'), (7, 'Dev', 'Book P', '2026-10-31', '2026-11-14', NULL);"
+    },
+    {
+      "id": "one-late-member",
+      "hidden": true,
+      "purpose": "fewer-rows",
+      "rows_sql": "INSERT INTO loans VALUES (1, 'Esha', 'Book Q', '2026-10-01', '2026-10-15', '2026-10-10'), (2, 'Farid', 'Book R', '2026-09-01', '2026-09-15', '2026-11-16'), (3, 'Esha', 'Book S', '2026-11-12', '2026-11-26', NULL);"
+    },
+    { "id": "busy-term", "hidden": true, "purpose": "many-rows", "gen": { "src": { "$file": "gen.py" }, "args": "3 120 2500" } }
+  ],
+  "order_matters": true,
+  "reference": { "$file": "reference.sql" },
+  "alternatives": [{ "$file": "alt-case-sum.sql" }],
+  "wrong": [
+    { "src": { "$file": "wrong-ignores-unreturned.sql" }, "why": "Subtracts returned_on directly: for a book still out the difference is NULL, so the most overdue loans vanish." },
+    { "src": { "$file": "wrong-no-clipping.sql" }, "why": "Sums raw differences, so an early return (negative days) cancels part of another loan's fine." },
+    { "src": { "$file": "wrong-on-time-is-late.sql" }, "why": "Keeps days >= 0, so a book returned on its due date counts as a late loan." }
+  ],
+  "starter": "-- member, late_loans, fine (Rs 5 per late day) as of 2026-11-17.\n-- Highest fine first, then member.\nSELECT member, 0 AS late_loans, 0 AS fine\nFROM loans\nGROUP BY member;",
+  "hints": [
+    "Work out the late days of one loan first. What date do you use when returned_on is NULL?",
+    "COALESCE(returned_on, '2026-11-17') gives the end date; julianday of two dates gives the gap in days. Which loans should you keep before you group?",
+    "Compute days per loan in a CTE (cast to INTEGER), keep days > 0, then GROUP BY member with COUNT(*) and 5 * SUM(days); sort by fine DESC, member."
+  ],
+  "approaches": [
+    { "name": "Days per loan, then group", "summary": "A CTE computes each loan's late days with COALESCE and julianday; WHERE days > 0 keeps late loans; GROUP BY member counts and sums." },
+    { "name": "One pass with CASE and MAX", "summary": "Count late loans with SUM(CASE ...), clip each loan at zero with SQLite's scalar MAX(0, x), and drop zero fines with HAVING." }
+  ],
+  "editorial": { "$file": "editorial.md" },
+  "editorial_length": { "form": "standard", "target_words": 900 },
+  "revision_card": {
+    "front": "Fine per member: late days from the due date to the return date, or to a fixed as-of date if not returned. Three traps?",
+    "back": "1) NULL return date: use COALESCE(returned_on, as_of). 2) Early returns: clip each loan at 0 before summing. 3) Due-date returns are not late: days > 0. Cast julianday differences to INTEGER."
+  },
+  "related": ["sql-metro-recharge-having", "sql-chai-stall-longest-streak"]
+}

@@ -1,0 +1,350 @@
+{
+  "schema": "parikshaa.content/system-design@1",
+  "slug": "lld-library-hold-queue",
+  "version": 1,
+  "title": "Library holds: a fair queue for popular books",
+  "tier": "public",
+  "text_language": "en",
+  "mode": "lld",
+  "difficulty": "easy",
+  "tags": {
+    "topics": [
+      "class-design",
+      "queues"
+    ],
+    "patterns": [
+      "fifo-queue",
+      "hand-over-on-return"
+    ],
+    "extra": [
+      "priority-change"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own library hold-queue design case and kata, examples, code, quiz and explanations; no text from any site, book or course.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-system-design",
+      "module": "LLD",
+      "position": 1
+    }
+  ],
+  "time_minutes": 40,
+  "scenario": "Before exams, every student wants the same few printed notes from the department library. Design and code the hold system: a student borrows a free copy if there is one, otherwise joins a fair queue for that book; when a copy comes back it goes straight to the first student waiting.",
+  "clarifying_questions": [
+    {
+      "q": "Is the queue per book or per copy?",
+      "a": "Per book: any returned copy goes to the first person waiting for that book."
+    },
+    {
+      "q": "Does the next person have to collect it?",
+      "a": "For this kata the copy is handed over at once on return."
+    },
+    {
+      "q": "Can a student hold two copies of one book, or wait while holding one?",
+      "a": "No: one copy or one place in the queue per book."
+    },
+    {
+      "q": "What if the person returning is not the holder?",
+      "a": "Refuse with an error; nothing changes."
+    }
+  ],
+  "requirements": {
+    "functional": [
+      "Add copies of a book",
+      "Borrow a free copy or join the queue, reporting the position",
+      "Return a copy, handing it to the first in the queue",
+      "Show the queue for a book"
+    ],
+    "non_functional": [
+      {
+        "name": "Fairness",
+        "target": "strict first-come, first-served per book"
+      },
+      {
+        "name": "Cost",
+        "target": "O(1) to join, hand over and borrow (queue position may be O(queue))"
+      }
+    ]
+  },
+  "entities": [
+    {
+      "name": "Book",
+      "responsibility": "Free copy count, the set of current holders, and the FIFO queue of members waiting."
+    },
+    {
+      "name": "Library",
+      "responsibility": "Finds books, applies the borrow and return rules, and decides who joins the queue where."
+    },
+    {
+      "name": "Driver (Main)",
+      "responsibility": "Parses commands and prints replies; no rules."
+    }
+  ],
+  "patterns": [
+    {
+      "name": "FIFO queue per resource",
+      "why": "Fairness is exactly first-in, first-out; a deque gives O(1) join and hand-over."
+    },
+    {
+      "name": "Policy in one method (enqueue)",
+      "why": "Where a member joins the queue is isolated in one method, so a priority rule later changes only that method."
+    }
+  ],
+  "diagram": {
+    "id": "holds-classes",
+    "kind": "mermaid",
+    "alt": "Class diagram: Library holds a map of book names to Book objects and a set of faculty; Book has a free count, a set of holders and a queue of waiting members.",
+    "data": {
+      "source": "classDiagram\n  class Library {\n    books: Map~name, Book~\n    faculty: Set\n    borrow(book, member)\n    giveBack(book, member)\n    enqueue(book, member)\n  }\n  class Book {\n    free: int\n    holders: Set\n    queue: Deque\n  }\n  Library o-- Book"
+    }
+  },
+  "kata": {
+    "io_protocol": "| Command | Prints |\n|---|---|\n| `COPIES <book> <n>` | `<book>: <n> copies` |\n| `BORROW <book> <member>` | `<member> borrows <book>`, `<member> waits for <book> (position <k>)`, `error: no book <book>` or `error: <member> already has or awaits <book>` |\n| `RETURN <book> <member>` | `<member> returns <book>`, `<member> returns <book>, now with <next>`, or `error: <member> does not have <book>` |\n| `QUEUE <book>` | `<book>: <names in order>` or `<book>: nobody waiting` |\n\nAnything else: `error: bad command <line>`.",
+    "implementations": [
+      {
+        "language": "python",
+        "files": [
+          {
+            "path": "library.py",
+            "content": "from collections import deque\n\n\nclass Book:\n    def __init__(self, copies):\n        self.free = copies\n        self.holders = set()\n        self.queue = deque()\n\n\nclass Library:\n    def __init__(self):\n        self.books = {}\n        self.faculty = set()\n\n    def add(self, book, copies):\n        self.books[book] = Book(copies)\n        return f\"{book}: {copies} copies\"\n\n    def borrow(self, book, member):\n        b = self.books.get(book)\n        if b is None:\n            return f\"error: no book {book}\"\n        if member in b.holders or member in b.queue:\n            return f\"error: {member} already has or awaits {book}\"\n        # TODO: take a free copy, or join the queue and report the position.\n        return f\"{member} borrows {book}\"\n\n    def _enqueue(self, b, member):\n        b.queue.append(member)\n\n    def give_back(self, book, member):\n        b = self.books.get(book)\n        if b is None or member not in b.holders:\n            return f\"error: {member} does not have {book}\"\n        # TODO: the copy goes to the first person waiting, if anyone is; otherwise it becomes free.\n        return f\"{member} returns {book}\"\n\n    def waiting(self, book):\n        b = self.books.get(book)\n        if b is None:\n            return f\"error: no book {book}\"\n        return f\"{book}: \" + (\", \".join(b.queue) if b.queue else \"nobody waiting\")\n",
+            "role": "source"
+          },
+          {
+            "path": "main.py",
+            "content": "import sys\n\nfrom library import Library\n\n\ndef main():\n    lib = Library()\n    for raw in sys.stdin:\n        p = raw.split()\n        if not p:\n            continue\n        if p[0] == \"COPIES\" and len(p) == 3 and p[2].isdigit() and int(p[2]) > 0:\n            print(lib.add(p[1], int(p[2])))\n        elif p[0] == \"BORROW\" and len(p) == 3:\n            print(lib.borrow(p[1], p[2]))\n        elif p[0] == \"RETURN\" and len(p) == 3:\n            print(lib.give_back(p[1], p[2]))\n        elif p[0] == \"QUEUE\" and len(p) == 2:\n            print(lib.waiting(p[1]))\n        else:\n            print(f\"error: bad command {raw.strip()}\")\n\n\nmain()\n",
+            "role": "driver",
+            "editable": false
+          }
+        ],
+        "solution_files": [
+          {
+            "path": "library.py",
+            "content": "from collections import deque\n\n\nclass Book:\n    def __init__(self, copies):\n        self.free = copies\n        self.holders = set()\n        self.queue = deque()\n\n\nclass Library:\n    def __init__(self):\n        self.books = {}\n        self.faculty = set()\n\n    def add(self, book, copies):\n        self.books[book] = Book(copies)\n        return f\"{book}: {copies} copies\"\n\n    def borrow(self, book, member):\n        b = self.books.get(book)\n        if b is None:\n            return f\"error: no book {book}\"\n        if member in b.holders or member in b.queue:\n            return f\"error: {member} already has or awaits {book}\"\n        if b.free > 0:\n            b.free -= 1\n            b.holders.add(member)\n            return f\"{member} borrows {book}\"\n        self._enqueue(b, member)\n        return f\"{member} waits for {book} (position {list(b.queue).index(member) + 1})\"\n\n    def _enqueue(self, b, member):\n        b.queue.append(member)\n\n    def give_back(self, book, member):\n        b = self.books.get(book)\n        if b is None or member not in b.holders:\n            return f\"error: {member} does not have {book}\"\n        b.holders.remove(member)\n        if b.queue:\n            nxt = b.queue.popleft()\n            b.holders.add(nxt)\n            return f\"{member} returns {book}, now with {nxt}\"\n        b.free += 1\n        return f\"{member} returns {book}\"\n\n    def waiting(self, book):\n        b = self.books.get(book)\n        if b is None:\n            return f\"error: no book {book}\"\n        return f\"{book}: \" + (\", \".join(b.queue) if b.queue else \"nobody waiting\")\n",
+            "role": "source"
+          }
+        ],
+        "change_files": [
+          {
+            "path": "library.py",
+            "content": "from collections import deque\n\n\nclass Book:\n    def __init__(self, copies):\n        self.free = copies\n        self.holders = set()\n        self.queue = deque()\n\n\nclass Library:\n    def __init__(self):\n        self.books = {}\n        self.faculty = set()\n\n    def add(self, book, copies):\n        self.books[book] = Book(copies)\n        return f\"{book}: {copies} copies\"\n\n    def borrow(self, book, member):\n        b = self.books.get(book)\n        if b is None:\n            return f\"error: no book {book}\"\n        if member in b.holders or member in b.queue:\n            return f\"error: {member} already has or awaits {book}\"\n        if b.free > 0:\n            b.free -= 1\n            b.holders.add(member)\n            return f\"{member} borrows {book}\"\n        self._enqueue(b, member)\n        return f\"{member} waits for {book} (position {list(b.queue).index(member) + 1})\"\n\n    def _enqueue(self, b, member):\n        if member not in self.faculty:\n            b.queue.append(member)\n            return\n        pos = 0                                   # faculty go behind other faculty, ahead of students\n        while pos < len(b.queue) and b.queue[pos] in self.faculty:\n            pos += 1\n        b.queue.insert(pos, member)\n\n    def give_back(self, book, member):\n        b = self.books.get(book)\n        if b is None or member not in b.holders:\n            return f\"error: {member} does not have {book}\"\n        b.holders.remove(member)\n        if b.queue:\n            nxt = b.queue.popleft()\n            b.holders.add(nxt)\n            return f\"{member} returns {book}, now with {nxt}\"\n        b.free += 1\n        return f\"{member} returns {book}\"\n\n    def waiting(self, book):\n        b = self.books.get(book)\n        if b is None:\n            return f\"error: no book {book}\"\n        return f\"{book}: \" + (\", \".join(b.queue) if b.queue else \"nobody waiting\")\n",
+            "role": "source"
+          },
+          {
+            "path": "main.py",
+            "content": "import sys\n\nfrom library import Library\n\n\ndef main():\n    lib = Library()\n    for raw in sys.stdin:\n        p = raw.split()\n        if not p:\n            continue\n        if p[0] == \"COPIES\" and len(p) == 3 and p[2].isdigit() and int(p[2]) > 0:\n            print(lib.add(p[1], int(p[2])))\n        elif p[0] == \"FACULTY\" and len(p) == 2:\n            lib.faculty.add(p[1])\n            print(f\"{p[1]} is faculty\")\n        elif p[0] == \"BORROW\" and len(p) == 3:\n            print(lib.borrow(p[1], p[2]))\n        elif p[0] == \"RETURN\" and len(p) == 3:\n            print(lib.give_back(p[1], p[2]))\n        elif p[0] == \"QUEUE\" and len(p) == 2:\n            print(lib.waiting(p[1]))\n        else:\n            print(f\"error: bad command {raw.strip()}\")\n\n\nmain()\n",
+            "role": "driver",
+            "editable": false
+          }
+        ],
+        "bundle_order": [
+          "library.py",
+          "main.py"
+        ]
+      },
+      {
+        "language": "java",
+        "files": [
+          {
+            "path": "Library.java",
+            "content": "import java.util.*;\n\nclass Book {\n    int free;\n    final Set<String> holders = new HashSet<>();\n    final LinkedList<String> queue = new LinkedList<>();\n\n    Book(int copies) { free = copies; }\n}\n\nclass Library {\n    final Map<String, Book> books = new HashMap<>();\n    final Set<String> faculty = new HashSet<>();\n\n    String add(String book, int copies) {\n        books.put(book, new Book(copies));\n        return book + \": \" + copies + \" copies\";\n    }\n\n    String borrow(String book, String member) {\n        Book b = books.get(book);\n        if (b == null) return \"error: no book \" + book;\n        if (b.holders.contains(member) || b.queue.contains(member)) return \"error: \" + member + \" already has or awaits \" + book;\n        // TODO: take a free copy, or join the queue and report the position.\n        return member + \" borrows \" + book;\n    }\n\n    void enqueue(Book b, String member) {\n        b.queue.addLast(member);\n    }\n\n    String giveBack(String book, String member) {\n        Book b = books.get(book);\n        if (b == null || !b.holders.contains(member)) return \"error: \" + member + \" does not have \" + book;\n        // TODO: the copy goes to the first person waiting, if anyone is; otherwise it becomes free.\n        return member + \" returns \" + book;\n    }\n\n    String waiting(String book) {\n        Book b = books.get(book);\n        if (b == null) return \"error: no book \" + book;\n        return book + \": \" + (b.queue.isEmpty() ? \"nobody waiting\" : String.join(\", \", b.queue));\n    }\n}\n",
+            "role": "source"
+          },
+          {
+            "path": "Main.java",
+            "content": "import java.io.*;\n\npublic class Main {\n    public static void main(String[] args) throws IOException {\n        BufferedReader in = new BufferedReader(new InputStreamReader(System.in));\n        StringBuilder out = new StringBuilder();\n        Library lib = new Library();\n        for (String raw; (raw = in.readLine()) != null; ) {\n            String[] p = raw.trim().split(\"\\\\s+\");\n            if (p[0].isEmpty()) continue;\n            String reply;\n            if (p[0].equals(\"COPIES\") && p.length == 3 && p[2].matches(\"\\\\d+\") && Integer.parseInt(p[2]) > 0) reply = lib.add(p[1], Integer.parseInt(p[2]));\n            else if (p[0].equals(\"BORROW\") && p.length == 3) reply = lib.borrow(p[1], p[2]);\n            else if (p[0].equals(\"RETURN\") && p.length == 3) reply = lib.giveBack(p[1], p[2]);\n            else if (p[0].equals(\"QUEUE\") && p.length == 2) reply = lib.waiting(p[1]);\n            else reply = \"error: bad command \" + raw.trim();\n            out.append(reply).append('\\n');\n        }\n        System.out.print(out);\n    }\n}\n",
+            "role": "driver",
+            "editable": false
+          }
+        ],
+        "solution_files": [
+          {
+            "path": "Library.java",
+            "content": "import java.util.*;\n\nclass Book {\n    int free;\n    final Set<String> holders = new HashSet<>();\n    final LinkedList<String> queue = new LinkedList<>();\n\n    Book(int copies) { free = copies; }\n}\n\nclass Library {\n    final Map<String, Book> books = new HashMap<>();\n    final Set<String> faculty = new HashSet<>();\n\n    String add(String book, int copies) {\n        books.put(book, new Book(copies));\n        return book + \": \" + copies + \" copies\";\n    }\n\n    String borrow(String book, String member) {\n        Book b = books.get(book);\n        if (b == null) return \"error: no book \" + book;\n        if (b.holders.contains(member) || b.queue.contains(member)) return \"error: \" + member + \" already has or awaits \" + book;\n        if (b.free > 0) {\n            b.free--;\n            b.holders.add(member);\n            return member + \" borrows \" + book;\n        }\n        enqueue(b, member);\n        return member + \" waits for \" + book + \" (position \" + (b.queue.indexOf(member) + 1) + \")\";\n    }\n\n    void enqueue(Book b, String member) {\n        b.queue.addLast(member);\n    }\n\n    String giveBack(String book, String member) {\n        Book b = books.get(book);\n        if (b == null || !b.holders.contains(member)) return \"error: \" + member + \" does not have \" + book;\n        b.holders.remove(member);\n        if (!b.queue.isEmpty()) {\n            String next = b.queue.removeFirst();\n            b.holders.add(next);\n            return member + \" returns \" + book + \", now with \" + next;\n        }\n        b.free++;\n        return member + \" returns \" + book;\n    }\n\n    String waiting(String book) {\n        Book b = books.get(book);\n        if (b == null) return \"error: no book \" + book;\n        return book + \": \" + (b.queue.isEmpty() ? \"nobody waiting\" : String.join(\", \", b.queue));\n    }\n}\n",
+            "role": "source"
+          }
+        ],
+        "change_files": [
+          {
+            "path": "Library.java",
+            "content": "import java.util.*;\n\nclass Book {\n    int free;\n    final Set<String> holders = new HashSet<>();\n    final LinkedList<String> queue = new LinkedList<>();\n\n    Book(int copies) { free = copies; }\n}\n\nclass Library {\n    final Map<String, Book> books = new HashMap<>();\n    final Set<String> faculty = new HashSet<>();\n\n    String add(String book, int copies) {\n        books.put(book, new Book(copies));\n        return book + \": \" + copies + \" copies\";\n    }\n\n    String borrow(String book, String member) {\n        Book b = books.get(book);\n        if (b == null) return \"error: no book \" + book;\n        if (b.holders.contains(member) || b.queue.contains(member)) return \"error: \" + member + \" already has or awaits \" + book;\n        if (b.free > 0) {\n            b.free--;\n            b.holders.add(member);\n            return member + \" borrows \" + book;\n        }\n        enqueue(b, member);\n        return member + \" waits for \" + book + \" (position \" + (b.queue.indexOf(member) + 1) + \")\";\n    }\n\n    void enqueue(Book b, String member) {\n        if (!faculty.contains(member)) {\n            b.queue.addLast(member);\n            return;\n        }\n        int pos = 0;   // faculty go behind other faculty, ahead of students\n        while (pos < b.queue.size() && faculty.contains(b.queue.get(pos))) pos++;\n        b.queue.add(pos, member);\n    }\n\n    String giveBack(String book, String member) {\n        Book b = books.get(book);\n        if (b == null || !b.holders.contains(member)) return \"error: \" + member + \" does not have \" + book;\n        b.holders.remove(member);\n        if (!b.queue.isEmpty()) {\n            String next = b.queue.removeFirst();\n            b.holders.add(next);\n            return member + \" returns \" + book + \", now with \" + next;\n        }\n        b.free++;\n        return member + \" returns \" + book;\n    }\n\n    String waiting(String book) {\n        Book b = books.get(book);\n        if (b == null) return \"error: no book \" + book;\n        return book + \": \" + (b.queue.isEmpty() ? \"nobody waiting\" : String.join(\", \", b.queue));\n    }\n}\n",
+            "role": "source"
+          },
+          {
+            "path": "Main.java",
+            "content": "import java.io.*;\n\npublic class Main {\n    public static void main(String[] args) throws IOException {\n        BufferedReader in = new BufferedReader(new InputStreamReader(System.in));\n        StringBuilder out = new StringBuilder();\n        Library lib = new Library();\n        for (String raw; (raw = in.readLine()) != null; ) {\n            String[] p = raw.trim().split(\"\\\\s+\");\n            if (p[0].isEmpty()) continue;\n            String reply;\n            if (p[0].equals(\"COPIES\") && p.length == 3 && p[2].matches(\"\\\\d+\") && Integer.parseInt(p[2]) > 0) reply = lib.add(p[1], Integer.parseInt(p[2]));\n            else if (p[0].equals(\"FACULTY\") && p.length == 2) { lib.faculty.add(p[1]); reply = p[1] + \" is faculty\"; }\n            else if (p[0].equals(\"BORROW\") && p.length == 3) reply = lib.borrow(p[1], p[2]);\n            else if (p[0].equals(\"RETURN\") && p.length == 3) reply = lib.giveBack(p[1], p[2]);\n            else if (p[0].equals(\"QUEUE\") && p.length == 2) reply = lib.waiting(p[1]);\n            else reply = \"error: bad command \" + raw.trim();\n            out.append(reply).append('\\n');\n        }\n        System.out.print(out);\n    }\n}\n",
+            "role": "driver",
+            "editable": false
+          }
+        ],
+        "bundle_order": [
+          "Library.java",
+          "Main.java"
+        ]
+      }
+    ],
+    "tests": [
+      {
+        "id": "borrow-and-wait",
+        "input": "COPIES OS-Notes 1\nBORROW OS-Notes aditi\nBORROW OS-Notes bilal\nQUEUE OS-Notes\n",
+        "expected": "OS-Notes: 1 copies\naditi borrows OS-Notes\nbilal waits for OS-Notes (position 1)\nOS-Notes: bilal\n",
+        "hidden": false
+      },
+      {
+        "id": "return-hands-over",
+        "input": "COPIES OS-Notes 1\nBORROW OS-Notes aditi\nBORROW OS-Notes bilal\nBORROW OS-Notes charu\nRETURN OS-Notes aditi\nQUEUE OS-Notes\nRETURN OS-Notes bilal\nRETURN OS-Notes charu\nQUEUE OS-Notes\n",
+        "expected": "OS-Notes: 1 copies\naditi borrows OS-Notes\nbilal waits for OS-Notes (position 1)\ncharu waits for OS-Notes (position 2)\naditi returns OS-Notes, now with bilal\nOS-Notes: charu\nbilal returns OS-Notes, now with charu\ncharu returns OS-Notes\nOS-Notes: nobody waiting\n",
+        "hidden": false
+      },
+      {
+        "id": "two-copies",
+        "input": "COPIES DBMS 2\nBORROW DBMS a\nBORROW DBMS b\nBORROW DBMS c\nRETURN DBMS a\nBORROW DBMS d\n",
+        "expected": "DBMS: 2 copies\na borrows DBMS\nb borrows DBMS\nc waits for DBMS (position 1)\na returns DBMS, now with c\nd waits for DBMS (position 1)\n",
+        "hidden": true
+      },
+      {
+        "id": "errors",
+        "input": "BORROW CN x\nCOPIES CN 1\nBORROW CN x\nBORROW CN x\nRETURN CN y\nBORROW CN y\nBORROW CN y\nQUEUE ZZ\n",
+        "expected": "error: no book CN\nCN: 1 copies\nx borrows CN\nerror: x already has or awaits CN\nerror: y does not have CN\ny waits for CN (position 1)\nerror: y already has or awaits CN\nerror: no book ZZ\n",
+        "hidden": true
+      },
+      {
+        "id": "free-after-return",
+        "input": "COPIES ML 1\nBORROW ML a\nRETURN ML a\nBORROW ML b\nQUEUE ML\n",
+        "expected": "ML: 1 copies\na borrows ML\na returns ML\nb borrows ML\nML: nobody waiting\n",
+        "hidden": true
+      },
+      {
+        "id": "long-queue",
+        "input": "COPIES TOC 1\nBORROW TOC p\nBORROW TOC q\nBORROW TOC r\nBORROW TOC s\nRETURN TOC p\nRETURN TOC q\nQUEUE TOC\n",
+        "expected": "TOC: 1 copies\np borrows TOC\nq waits for TOC (position 1)\nr waits for TOC (position 2)\ns waits for TOC (position 3)\np returns TOC, now with q\nq returns TOC, now with r\nTOC: s\n",
+        "hidden": true
+      },
+      {
+        "id": "bad-commands",
+        "input": "COPIES X 0\nCOPIES X two\nRESERVE X a\nQUEUE\n",
+        "expected": "error: bad command COPIES X 0\nerror: bad command COPIES X two\nerror: bad command RESERVE X a\nerror: bad command QUEUE\n",
+        "hidden": true
+      },
+      {
+        "id": "not-holder",
+        "input": "COPIES AI 1\nBORROW AI a\nBORROW AI b\nRETURN AI b\nQUEUE AI\n",
+        "expected": "AI: 1 copies\na borrows AI\nb waits for AI (position 1)\nerror: b does not have AI\nAI: b\n",
+        "hidden": true
+      }
+    ],
+    "change_request": {
+      "description": "Faculty members need books for lectures. Add `FACULTY <member>` (prints `<member> is faculty`). A faculty member who joins a queue goes **behind any faculty already waiting but ahead of all students**.",
+      "tests": [
+        {
+          "id": "faculty-first",
+          "input": "COPIES OS 1\nFACULTY prof\nBORROW OS s1\nBORROW OS s2\nBORROW OS prof\nQUEUE OS\nRETURN OS s1\n",
+          "expected": "OS: 1 copies\nprof is faculty\ns1 borrows OS\ns2 waits for OS (position 1)\nprof waits for OS (position 1)\nOS: prof, s2\ns1 returns OS, now with prof\n",
+          "hidden": false
+        },
+        {
+          "id": "faculty-order",
+          "input": "COPIES OS 1\nFACULTY f1\nFACULTY f2\nBORROW OS s0\nBORROW OS s1\nBORROW OS f1\nBORROW OS f2\nBORROW OS s2\nQUEUE OS\n",
+          "expected": "OS: 1 copies\nf1 is faculty\nf2 is faculty\ns0 borrows OS\ns1 waits for OS (position 1)\nf1 waits for OS (position 1)\nf2 waits for OS (position 2)\ns2 waits for OS (position 4)\nOS: f1, f2, s1, s2\n",
+          "hidden": true
+        }
+      ]
+    }
+  },
+  "rubric": [
+    {
+      "id": "tests",
+      "criterion": "Kata tests pass, including the faculty change.",
+      "weight": 45,
+      "checked_by": "tests"
+    },
+    {
+      "id": "model",
+      "criterion": "Book owns its copies, holders and queue; Library owns the rules; the driver only parses.",
+      "weight": 20,
+      "checked_by": "review"
+    },
+    {
+      "id": "fairness",
+      "criterion": "Hand-over on return goes to the queue head; no member can hold and wait for the same book.",
+      "weight": 15,
+      "checked_by": "review"
+    },
+    {
+      "id": "change",
+      "criterion": "The faculty rule changes only where members join the queue.",
+      "weight": 10,
+      "checked_by": "review"
+    },
+    {
+      "id": "feedback",
+      "criterion": "Naming and clarity (AI feedback, advice only).",
+      "weight": 10,
+      "checked_by": "ai-feedback"
+    }
+  ],
+  "concept_checks": [
+    {
+      "stem": "One copy; aditi holds it; bilal then charu wait. aditi returns. Who has the book?",
+      "options": [
+        "Nobody: it becomes free",
+        "bilal",
+        "charu",
+        "aditi again"
+      ],
+      "correct": 1,
+      "explanation": "The returned copy goes straight to the head of the queue."
+    },
+    {
+      "stem": "Which structure gives O(1) join at the back and O(1) take from the front?",
+      "options": [
+        "A sorted array",
+        "A deque (double-ended queue)",
+        "A hash set",
+        "A stack"
+      ],
+      "correct": 1,
+      "explanation": "A deque supports both ends in constant time."
+    },
+    {
+      "stem": "After the change, the queue is [f1, s1, s2] with f1 faculty. Faculty f2 joins. What is the queue?",
+      "options": [
+        "[f2, f1, s1, s2]",
+        "[f1, f2, s1, s2]",
+        "[f1, s1, s2, f2]",
+        "[f1, s1, f2, s2]"
+      ],
+      "correct": 1,
+      "explanation": "Behind waiting faculty, ahead of students."
+    },
+    {
+      "stem": "Why isolate 'where a member joins the queue' in one method?",
+      "options": [
+        "It runs faster",
+        "A new priority rule then changes one method instead of every borrow path",
+        "Java requires it",
+        "To avoid using a deque"
+      ],
+      "correct": 1,
+      "explanation": "Policy in one place keeps changes local."
+    }
+  ],
+  "follow_ups": [
+    "Give the next member 24 hours to collect a held copy before it passes on.",
+    "Notify a member by SMS when the book is handed to them.",
+    "Cap a member at 3 books across the library."
+  ],
+  "revision_card": {
+    "front": "Hold queue for scarce copies: data structure, return rule, and where priority goes?",
+    "back": "Per book: free count, holders set, FIFO deque. Return: if queue non-empty, hand the copy to queue head, else free++. Priority (faculty) lives in the one enqueue method."
+  },
+  "reference_solution": {
+    "$file": "reference.md"
+  }
+}

@@ -1,0 +1,187 @@
+{
+  "schema": "parikshaa.content/lesson@1",
+  "slug": "lld-strategy-pattern",
+  "version": 1,
+  "title": "The strategy pattern: swap the rule, keep the code",
+  "tier": "premium",
+  "text_language": "en",
+  "course": "lld",
+  "difficulty": "medium",
+  "tags": {
+    "topics": [
+      "design-patterns",
+      "class-design"
+    ],
+    "patterns": [
+      "strategy",
+      "open-closed"
+    ],
+    "extra": [
+      "polymorphism"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own canteen pricing example of the strategy pattern, examples, code, quiz and explanations; no text from any site, book or course.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-cs-core",
+      "module": "Low-level design",
+      "position": 1
+    }
+  ],
+  "est_minutes": 12,
+  "prerequisites": [
+    "lld-single-responsibility"
+  ],
+  "outcomes": [
+    "can recognise an if-else chain that should become strategies",
+    "can implement the strategy pattern with an interface and plug strategies into a context",
+    "can explain how strategy supports the open-closed principle and when a plain function is enough"
+  ],
+  "sections": [
+    {
+      "kind": "why",
+      "heading": "Why this matters",
+      "body": "Almost every LLD question has a rule that varies: fares in a parking lot, pricing in a food app, matching in a ride app. If the varying rule lives in an `if-else` chain inside the main class, every new rule edits that class. The **strategy pattern** puts each rule in its own small class behind one interface, so new rules are **added, not edited in**. Interviewers expect you to reach for it the moment they say \"and later we'll add another type\"."
+    },
+    {
+      "kind": "concept",
+      "heading": "The problem: a growing if-else",
+      "body": "The canteen first charges everyone the menu price. Then staff pay 20% more (the subsidy is for students), guests pay 50% more plus ₹10, and during festivals some customers get ₹5 off each item. The first version usually looks like this, inside `Checkout.bill()`:\n\n```python\nif kind == \"student\":\n    price = base\nelif kind == \"staff\":\n    price = round(base * 1.2)\nelif kind == \"guest\":\n    price = round(base * 1.5) + 10\n# festival? another flag, another branch, inside every branch...\n```\n\nEvery new customer type means editing `bill()`, and the festival discount has to be repeated inside every branch. **The varying part (how to price) is tangled with the stable part (how to add up a tray).**"
+    },
+    {
+      "kind": "concept",
+      "heading": "The pattern",
+      "body": "Strategy has three pieces:\n\n- **Strategy interface:** one method that captures the varying rule, here `price(base)`.\n- **Concrete strategies:** one class per rule: `StudentPricing`, `StaffPricing`, `GuestPricing`.\n- **Context:** the class that uses a strategy without knowing which one, here `Checkout`. It receives the strategy from outside, usually in its constructor.\n\n`Checkout.bill()` now only sums `self.pricing.price(p)`. It never mentions students or guests. **The context depends on the interface, not on any concrete rule.**\n\nThis is the **open-closed principle** in action: `Checkout` is *closed* for modification (we never edit it for new rules) but the system is *open* for extension (we add a class).",
+      "visual": {
+        "id": "strategy-classes",
+        "kind": "mermaid",
+        "alt": "Class diagram: Checkout holds a Pricing; StudentPricing, StaffPricing, GuestPricing and FestivalPricing implement Pricing; FestivalPricing also wraps another Pricing.",
+        "data": {
+          "source": "classDiagram\n  class Pricing { <<interface>> +price(base) }\n  Checkout o-- Pricing\n  Pricing <|.. StudentPricing\n  Pricing <|.. StaffPricing\n  Pricing <|.. GuestPricing\n  Pricing <|.. FestivalPricing\n  FestivalPricing o-- Pricing : inner"
+        }
+      }
+    },
+    {
+      "kind": "example",
+      "heading": "Pricing strategies in code",
+      "body": "A tray of poha (₹30), chai (₹10) and samosa (₹15) priced four ways. `FestivalPricing` was added last; notice it **wraps** another strategy, so a festival discount works for students, staff or guests without three new classes.",
+      "code": [
+        {
+          "lang": "python",
+          "src": "from abc import ABC, abstractmethod\n\n\nclass Pricing(ABC):\n    @abstractmethod\n    def price(self, base): ...\n\n\nclass StudentPricing(Pricing):\n    def price(self, base):\n        return base\n\n\nclass StaffPricing(Pricing):\n    def price(self, base):\n        return round(base * 1.2)\n\n\nclass GuestPricing(Pricing):\n    def price(self, base):\n        return round(base * 1.5) + 10      # visitor surcharge\n\n\nclass FestivalPricing(Pricing):            # added later: no other class changed\n    def __init__(self, inner, off):\n        self.inner, self.off = inner, off\n\n    def price(self, base):\n        return max(0, self.inner.price(base) - self.off)\n\n\nclass Checkout:\n    def __init__(self, pricing: Pricing):\n        self.pricing = pricing\n\n    def bill(self, items):\n        return sum(self.pricing.price(p) for p in items)\n\n\ntray = [30, 10, 15]                         # poha, chai, samosa\nfor name, rule in [(\"student\", StudentPricing()), (\"staff\", StaffPricing()),\n                   (\"guest\", GuestPricing()), (\"student on Diwali\", FestivalPricing(StudentPricing(), 5))]:\n    print(f\"{name:<18} Rs {Checkout(rule).bill(tray)}\")\n",
+          "runnable": true,
+          "expected_output": "student            Rs 55\nstaff              Rs 66\nguest              Rs 112\nstudent on Diwali  Rs 40\n",
+          "caption": "Pricing strategies plugged into one checkout"
+        }
+      ]
+    },
+    {
+      "kind": "example",
+      "heading": "Checking the numbers",
+      "body": "- **Student:** 30 + 10 + 15 = ₹55.\n- **Staff:** round(36.0) + round(12.0) + round(18.0) = 36 + 12 + 18 = ₹66.\n- **Guest:** (45 + 10) + (15 + 10) + (round(22.5) + 10). Python rounds 22.5 to the even number 22, so 55 + 25 + 32 = ₹112.\n- **Student on Diwali:** each item ₹5 less: 25 + 5 + 10 = ₹40.\n\n> **Note:** The guest line shows why money rules belong in one tested place: Python's `round` uses banker's rounding (22.5 → 22). If the canteen wants 22.5 → 23, that is a one-line change in `GuestPricing`, and no other class can get it wrong."
+    },
+    {
+      "kind": "concept",
+      "heading": "Choosing the strategy, and when not to use the pattern",
+      "body": "Somebody still has to decide *which* strategy a customer gets. Keep that decision in **one place**, often a small factory or a dictionary such as `{\"student\": StudentPricing(), ...}`, filled from the customer's role. The `if` does not vanish; it moves to the edge of the system and appears **once**, instead of inside every method that prices something.\n\nIn languages with first-class functions, a strategy can simply be a **function** passed in: `Checkout(lambda base: round(base * 1.2))`. Use classes when a strategy has its own state or configuration (like `FestivalPricing`'s discount), or when the interview expects explicit classes. Use plain functions for one-line rules.\n\nAnd if there are only two rules that will never grow, an `if` is fine. Patterns are for variation you **expect**, not variation you imagine."
+    },
+    {
+      "kind": "note",
+      "heading": "Strategy inside a typical LLD question",
+      "body": "Here is how the pattern usually shows up in an interview, so you can spot it quickly.\n\n**Parking lot.** \"Cars pay ₹20 an hour, bikes ₹10, and on weekends the first hour is free.\" The varying rule is the fee. Make a `FeePolicy` interface with `fee(vehicle, minutes)`, one policy per vehicle type, and a weekend policy that wraps another one, exactly like `FestivalPricing`. The `ParkingLot` class calls `policy.fee(...)` at exit and never contains an `if vehicle == \"car\"`.\n\n**Ride app.** \"Match a rider to the nearest driver; later, to the highest-rated driver within 2 km.\" The varying rule is the matching. A `MatchingStrategy` with `pick(rider, drivers)` lets the dispatcher stay the same while the product team experiments.\n\n**Notifications.** \"Send by SMS; later by email or WhatsApp.\" Each channel is a strategy behind `send(user, text)`.\n\nThe interview move is the same each time:\n\n1. Hear the word \"later\", \"also\" or \"depending on type\" attached to a rule.\n2. Name the interface after what varies (`FeePolicy`, not `CarFeeManager`).\n3. Inject the strategy into the class that uses it, through the constructor.\n4. Show one new rule being added **without editing** the user class.\n\nTesting gets easier too: a fake strategy that always returns ₹0 lets you test the checkout's adding-up logic on its own, and each pricing class can be tested with a single number in, a single number out. That separation, stable flow versus varying rule, is the heart of most good LLD answers."
+    },
+    {
+      "kind": "misconception",
+      "heading": "Common mix-ups",
+      "body": "**Many students think strategy and state are the same pattern.** The class diagrams look alike, but in **state** the object switches its own behaviour as its state changes (an order moves from placed to paid to delivered). In **strategy** the client chooses the behaviour from outside and it usually stays fixed for the operation.\n\n**Many students think the pattern removes all conditionals.** It moves the choice to one factory or configuration point; it does not make the decision disappear.\n\n**Many students think every strategy needs its own file and class hierarchy.** For simple rules, a function or a lambda is a perfectly good strategy."
+    },
+    {
+      "kind": "interview",
+      "heading": "Interview questions",
+      "body": "Answers as a strong candidate would say them.",
+      "qa": [
+        {
+          "q": "When would you use the strategy pattern?",
+          "a": "When one step of an algorithm varies by type or configuration and new variants are expected, like fare rules or pricing. I put the varying step behind an interface, write one class per rule, and inject the right one into the class that uses it."
+        },
+        {
+          "q": "How does strategy relate to the open-closed principle?",
+          "a": "The context class depends only on the strategy interface, so adding a new rule means adding a new class, not editing the context. The context is closed for modification and the behaviour is open for extension."
+        },
+        {
+          "q": "How would you add a discount that applies on top of any pricing rule?",
+          "a": "I would write a strategy that wraps another strategy, like FestivalPricing taking an inner Pricing and subtracting the discount from its result. That composes with every existing rule without new combinations of classes."
+        },
+        {
+          "q": "Strategy versus state?",
+          "a": "In strategy the caller picks the behaviour from outside, usually once. In state the object changes its own behaviour as its internal state changes, and the states know about transitions to each other."
+        }
+      ]
+    },
+    {
+      "kind": "summary",
+      "heading": "Summary",
+      "body": "- Strategy separates the varying rule (an interface with concrete classes) from the stable code that uses it (the context).\n- New rules are added as classes; the context is not edited (open-closed).\n- Wrapping strategies composes rules, like a festival discount over any pricing.\n- The choice of strategy moves to one factory or configuration point.\n- For one-line rules a function is a fine strategy; for two fixed rules, an if is fine."
+    }
+  ],
+  "quiz": [
+    {
+      "stem": "In the strategy pattern, what does the context depend on?",
+      "options": [
+        "Every concrete strategy",
+        "Only the strategy interface",
+        "A global if-else",
+        "The factory's internals"
+      ],
+      "correct": 1,
+      "explanation": "The context calls the interface method and never names concrete strategies."
+    },
+    {
+      "stem": "A new 'alumni' price is 10% above the student price. What changes in a strategy design?",
+      "options": [
+        "Edit Checkout.bill()",
+        "Add an AlumniPricing class and register it where strategies are chosen",
+        "Edit every existing pricing class",
+        "Add a flag to Pricing"
+      ],
+      "correct": 1,
+      "explanation": "Add a class; only the selection point learns about it."
+    },
+    {
+      "stem": "With StaffPricing (×1.2, rounded), what is the bill for items of ₹50 and ₹25?",
+      "options": [
+        "90",
+        "75",
+        "91",
+        "88"
+      ],
+      "correct": 0,
+      "explanation": "round(60.0) + round(30.0) = 60 + 30 = 90."
+    },
+    {
+      "stem": "Which situation suits the state pattern better than strategy?",
+      "options": [
+        "Choosing a sorting rule for one call",
+        "An order that changes behaviour as it moves from placed to paid to delivered",
+        "Picking a tax rule by city",
+        "Choosing a compression algorithm"
+      ],
+      "correct": 1,
+      "explanation": "Behaviour driven by the object's own changing state is the state pattern."
+    }
+  ],
+  "revision_card": {
+    "front": "Strategy pattern: three parts, the principle it serves, and when a plain if is enough?",
+    "back": "Strategy interface + concrete strategies + context that receives one. Serves open-closed: add a class, do not edit the context. Choice made once at the edge. Two fixed rules: an if is fine."
+  },
+  "next": [
+    "ood-encapsulation-invariants"
+  ]
+}

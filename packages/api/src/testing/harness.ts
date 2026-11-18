@@ -47,6 +47,7 @@ import {
   DepartmentStore,
   ReportStore,
   LibraryStore,
+  ContentStore,
   staffScope,
   migrate,
   pgliteExecutor,
@@ -90,6 +91,7 @@ import { PrepCommunity } from "../prep-community.js";
 import { PrepEngage } from "../prep-engage.js";
 import { PrepCampus } from "../prep-campus.js";
 import { StarterPacks } from "../starter-packs.js";
+import { ContentUploads } from "../content-uploads.js";
 import { Sahayak } from "../sahayak.js";
 import { PracticeIdentity } from "../practice-identity.js";
 import { buildServer, type ServerOptions } from "../server.js";
@@ -150,6 +152,8 @@ let hashed: Promise<string> | null = null;
 const passwordHash = () => (hashed ??= hashPassword(PASSWORD));
 
 export interface Wiring {
+  /** The starter packs (with `pendingPacks`, also those waiting for the owner's approval). */
+  readonly starterPacks: StarterPacks;
   readonly handlers: ReturnType<typeof buildIntegrations>["handlers"] & {
     readonly staff_email: ItemHandler;
     readonly learner_email: ItemHandler;
@@ -170,6 +174,8 @@ export interface Wiring {
   readonly security: StaffSecurity;
   readonly app: FastifyInstance;
   readonly prepEngage: PrepEngage;
+  /** The bulk content upload: a test waits on its worker with `idle`. */
+  readonly contentUploads: ContentUploads;
 }
 
 export async function wire(
@@ -187,6 +193,8 @@ export async function wire(
     readonly greenhouseHosts?: readonly string[];
     /** Where staff mail (password resets) goes. */
     readonly mailer?: Mailer;
+    /** Starter packs may offer the packs still waiting for the owner's approval (PENDING_PACKS). */
+    readonly pendingPacks?: boolean;
     readonly push?: PushSender;
     /** Results may go by WhatsApp too, as when the server has it set up. */
     readonly whatsapp?: boolean;
@@ -355,6 +363,7 @@ export async function wire(
     ...(options.now === undefined ? {} : { now: options.now }),
   });
   prepService.usePeople((orgId, ids) => prepCommunity.people(orgId, ids));
+  const starterPacks = new StarterPacks({ practice: new PracticeStore(sql), prep: new PrepStore(sql), service: prepService, pending: options.pendingPacks === true });
   const prepEngage = new PrepEngage({
     store: new PrepEngageStore(sql),
     practiceStore: new PracticeStore(sql),
@@ -446,6 +455,13 @@ export async function wire(
     publicUrl: PUBLIC_URL,
     ...(options.now === undefined ? {} : { now: options.now }),
   });
+  const contentUploads = new ContentUploads({
+    store: new ContentStore(sql),
+    practice: new PracticeStore(sql),
+    prep: new PrepStore(sql),
+    run: practice.judging ? (request) => practice.judgeRun(request) : null,
+    ...(options.now === undefined ? {} : { now: options.now }),
+  });
   const app = buildServer({
     service,
     invitations,
@@ -521,7 +537,8 @@ export async function wire(
     practice,
     practiceIdentity,
     prep: prepService,
-    starterPacks: new StarterPacks({ practice: new PracticeStore(sql), prep: new PrepStore(sql), service: prepService }),
+    starterPacks,
+    contentUploads,
     prepCommunity,
     prepEngage,
     prepCampus,
@@ -540,6 +557,7 @@ export async function wire(
   });
   await app.ready();
   return {
+    starterPacks,
     store,
     identity,
     service,
@@ -549,6 +567,7 @@ export async function wire(
     security,
     app,
     prepEngage,
+    contentUploads,
     results,
     rechecks,
     handlers: { ...integrations.handlers, staff_email: (item) =>

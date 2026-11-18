@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "project.schema.json",
+  "title": "Parikshaa content: project (multi-file, one language, hidden tests, rubric)",
+  "description": "A small program built over milestones. Tests drive the program through standard input (a driver file reads commands and calls the learner's code). The runner takes one file today, so the files are joined by the bundling rules in docs/content/CONTENT-FORMAT.md section 8.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "slug", "version", "title", "tier", "text_language", "difficulty", "tags", "authoring", "language", "est_hours", "brief", "requirements", "milestones", "files", "solution_files", "bundle_order", "tests", "rubric"],
+  "properties": {
+    "schema": { "const": "parikshaa.content/project@1" },
+    "slug": { "$ref": "common.schema.json#/$defs/slug" },
+    "version": { "$ref": "common.schema.json#/$defs/version" },
+    "title": { "$ref": "common.schema.json#/$defs/title" },
+    "tier": { "$ref": "common.schema.json#/$defs/tier" },
+    "text_language": { "$ref": "common.schema.json#/$defs/text_language" },
+    "difficulty": { "$ref": "common.schema.json#/$defs/difficulty" },
+    "tags": { "$ref": "common.schema.json#/$defs/tags" },
+    "authoring": { "$ref": "common.schema.json#/$defs/authoring" },
+    "placement": { "$ref": "common.schema.json#/$defs/placement" },
+    "variants": { "$ref": "common.schema.json#/$defs/variants" },
+    "language": { "$ref": "common.schema.json#/$defs/code_language" },
+    "est_hours": { "type": "number", "minimum": 0.5, "maximum": 40 },
+    "brief": { "$ref": "common.schema.json#/$defs/markdown", "description": "What the learner builds and why it matters." },
+    "requirements": { "type": "array", "minItems": 3, "items": { "type": "string", "minLength": 10 } },
+    "io_protocol": { "$ref": "common.schema.json#/$defs/markdown", "description": "The commands the driver reads and what it prints, so a learner can test by hand." },
+    "milestones": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "instructions"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9-]{1,40}$" },
+          "title": { "type": "string", "minLength": 3 },
+          "instructions": { "$ref": "common.schema.json#/$defs/markdown" },
+          "hints": { "type": "array", "items": { "type": "string", "minLength": 10 } }
+        }
+      }
+    },
+    "files": { "$ref": "common.schema.json#/$defs/files", "description": "The starter: what the learner opens. Must build, and must fail at least one test." },
+    "solution_files": { "$ref": "common.schema.json#/$defs/files", "description": "Replacements for starter files (by path) that make every test pass. Never shown." },
+    "bundle_order": { "type": "array", "minItems": 1, "items": { "type": "string" }, "description": "Paths in the order they are joined into one runner file; the entry (driver with main) last." },
+    "tests": { "type": "array", "minItems": 8, "items": { "$ref": "common.schema.json#/$defs/io_test" } },
+    "checker": { "$ref": "common.schema.json#/$defs/checker" },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": { "time_ms": { "type": "integer", "minimum": 100, "maximum": 10000 }, "memory_mb": { "type": "integer", "minimum": 32, "maximum": 1024 } }
+    },
+    "rubric": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "criterion", "weight", "checked_by"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9-]{1,40}$" },
+          "criterion": { "type": "string", "minLength": 10 },
+          "weight": { "type": "integer", "minimum": 1, "maximum": 100 },
+          "checked_by": { "enum": ["tests", "review", "ai-feedback"] }
+        }
+      },
+      "description": "Weights sum to 100. ai-feedback is advice only and at most 20."
+    },
+    "extensions": { "type": "array", "items": { "type": "string", "minLength": 10 }, "description": "Ideas to take it further (not graded)." }
+  },
+  "x-needs-platform": "Project page, a multi-file editor and runner (today: joined into one file by the bundling rules), milestone progress, rubric review."
+}

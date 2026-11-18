@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "bundle.schema.json",
+  "title": "Parikshaa content: bundle for bulk upload",
+  "description": "One upload. Either a single JSON file (manifest + items inline), or a folder/ZIP with manifest.json at its root and one item per *.json file anywhere below it, where any string may be {\"$file\": \"relative/path\"}. See docs/content/CONTENT-FORMAT.md section 3.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "manifest"],
+  "properties": {
+    "schema": { "const": "parikshaa.content/bundle@1" },
+    "manifest": { "$ref": "#/$defs/manifest" },
+    "items": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "object", "required": ["schema"], "properties": { "schema": { "type": "string", "pattern": "^parikshaa\\.content/(dsa-problem|sql-problem|mcq|lesson|project|system-design)@1$" } } },
+      "description": "Inline items (single-file bundle). A folder bundle leaves this out."
+    }
+  },
+  "$defs": {
+    "manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bundle_id", "version", "title", "author", "created_on", "licence", "originality"],
+      "properties": {
+        "bundle_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{2,79}$", "description": "Stable name of this batch, e.g. dsa-arrays-batch-03." },
+        "version": { "type": "integer", "minimum": 1, "description": "Raise on every re-upload of the batch." },
+        "title": { "type": "string", "minLength": 3 },
+        "author": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name"],
+          "properties": { "name": { "type": "string", "minLength": 2 }, "team": { "type": "string" }, "contact": { "type": "string" } }
+        },
+        "created_on": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "generated_with": { "type": "string", "description": "Tool and how it was used, free text (e.g. 'AI drafts from docs/content/prompts, edited by the team')." },
+        "licence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["owner", "terms"],
+          "properties": {
+            "owner": { "type": "string", "minLength": 2, "description": "Who owns the content (Parikshaa / the owner's company)." },
+            "terms": { "type": "string", "minLength": 10, "description": "e.g. 'All rights reserved; written for Parikshaa.'" }
+          }
+        },
+        "originality": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["statement", "checks"],
+          "properties": {
+            "statement": { "type": "string", "minLength": 40, "description": "Every item is our own: own stories, statements, tests, solutions and editorials; nothing copied from LeetCode, GeeksforGeeks, InterviewBit, HackerRank, Codeforces, IndiaBix or any book or site we do not own." },
+            "checks": { "type": "array", "minItems": 1, "items": { "type": "string" }, "description": "What was done to check it (validator duplicate check, reviewer read, search spot-checks)." }
+          }
+        },
+        "tracks": {
+          "description": "Tracks (courses) the items' placement refers to. Modules in order.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["slug", "title", "description", "modules"],
+            "properties": {
+              "slug": { "$ref": "common.schema.json#/$defs/slug" },
+              "title": { "$ref": "common.schema.json#/$defs/title" },
+              "description": { "type": "string", "minLength": 10, "maxLength": 20000 },
+              "modules": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1, "maxLength": 160 } },
+              "free_modules": { "type": "integer", "minimum": 0, "maximum": 60 }
+            }
+          },
+          "x-db": "prep_tracks, prep_modules"
+        },
+        "notes": { "type": "string" }
+      }
+    }
+  }
+}

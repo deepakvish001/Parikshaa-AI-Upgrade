@@ -1,0 +1,215 @@
+{
+  "schema": "parikshaa.content/lesson@1",
+  "slug": "lang-javascript-closures",
+  "version": 1,
+  "title": "JavaScript closures: functions that remember",
+  "tier": "public",
+  "text_language": "en",
+  "course": "lang-javascript",
+  "difficulty": "medium",
+  "tags": {
+    "topics": [
+      "functions",
+      "scope"
+    ],
+    "patterns": [
+      "closure",
+      "private-state"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own lesson text and examples on javascript closures: functions that remember, examples, code, quiz and explanations; no text from any site, book or course.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-languages",
+      "module": "JavaScript",
+      "position": 0
+    }
+  ],
+  "est_minutes": 12,
+  "prerequisites": [],
+  "outcomes": [
+    "can explain what a closure captures and how long it lives",
+    "can use a closure to keep private state per instance",
+    "can predict var versus let behaviour in loops that create functions"
+  ],
+  "sections": [
+    {
+      "kind": "why",
+      "heading": "Why this matters",
+      "body": "Closures are everywhere in JavaScript: every event handler, every callback, every React hook depends on them. \"What is a closure?\" and \"what does this loop print?\" are among the most asked front-end interview questions, and the bugs they cause (the wrong value in a callback, state shared by accident) are some of the hardest to see."
+    },
+    {
+      "kind": "concept",
+      "heading": "A function plus the variables it can see",
+      "body": "When a function is created inside another function, it can use the outer function's variables. A **closure** is that inner function **together with the variables it refers to**. The surprising part: those variables **stay alive after the outer function returns**, for as long as the inner function exists.\n\nIn `makeDispenser(prefix)`, the variable `next` is created when `makeDispenser` runs. The returned function uses `next`, so JavaScript keeps it. Each call to `makeDispenser` creates a **new** `next`, so two dispensers count independently.\n\nThis gives JavaScript **private state** without classes: nothing outside can read or change `next`; only the returned function can.\n\n> **Note:** A closure captures **variables, not values**. If the variable changes later, the function sees the new value. This one sentence explains the loop puzzle below."
+    },
+    {
+      "kind": "example",
+      "heading": "Two token dispensers",
+      "body": "The canteen and the library each get their own dispenser with their own counter.",
+      "code": [
+        {
+          "lang": "javascript",
+          "src": "function makeDispenser(prefix) {\n  let next = 1;                       // lives on after makeDispenser returns\n  return function () {\n    return prefix + next++;\n  };\n}\n\nconst canteen = makeDispenser(\"C\");\nconst library = makeDispenser(\"L\");\nconsole.log(canteen(), canteen(), library(), canteen(), library());\nconsole.log(typeof next);             // not visible out here: the closure keeps it private\n",
+          "runnable": true,
+          "expected_output": "C1 C2 L1 C3 L2\nundefined\n",
+          "caption": "Each closure keeps its own variables"
+        }
+      ]
+    },
+    {
+      "kind": "concept",
+      "heading": "The loop puzzle: var versus let",
+      "body": "A `var` variable belongs to the **whole function** (or the whole script), not to the loop body. A loop with `var i` has **one** `i`, and every function created in the loop closes over that same variable. When the functions finally run, the loop has finished and `i` is 4, one past the last value, so all of them return 4.\n\n`let` and `const` are **block-scoped**, and a `for (let j ...)` loop creates a **fresh `j` for every iteration**. Each function closes over its own `j`, so they return 1, 2, 3.\n\nBefore `let` existed, people fixed this with an immediately invoked function that took `i` as a parameter, creating a new variable per iteration. Today, `let` is the fix: **use `let` or `const`, never `var`, in new code**."
+    },
+    {
+      "kind": "example",
+      "heading": "Watching it happen",
+      "body": "Three functions made in a `var` loop and three made in a `let` loop.",
+      "code": [
+        {
+          "lang": "javascript",
+          "src": "const withVar = [];\nfor (var i = 1; i <= 3; i++) withVar.push(() => i);    // one i shared by every function\nconst withLet = [];\nfor (let j = 1; j <= 3; j++) withLet.push(() => j);    // a new j for each iteration\nconsole.log(\"var:\", withVar.map((f) => f()).join(\" \"));\nconsole.log(\"let:\", withLet.map((f) => f()).join(\" \"));\n",
+          "runnable": true,
+          "expected_output": "var: 4 4 4\nlet: 1 2 3\n",
+          "caption": "var versus let inside a loop"
+        }
+      ]
+    },
+    {
+      "kind": "example",
+      "heading": "Planning the hands-on task",
+      "body": "The task gives every queue its own token numbers: the input names counters, and each request prints the next token for that counter. The starter keeps `next` at the top of the file, **outside** `makeDispenser`, so all dispensers share one counter: requests `C, L, C` print `C1, L2, C3` instead of `C1, L1, C2`.\n\nThe fix is to move `let next = 1;` **inside** `makeDispenser`. Now each call to `makeDispenser` creates a new `next`, and the arrow function it returns closes over that one.\n\nTrace the first test, `C L C L L`: the program creates the C dispenser on the first request (`C1`), the L dispenser on the second (`L1`), then C again (`C2`, its own `next` is now 2), L (`L2`), L (`L3`). The dictionary `dispensers` stores one closure per counter name, so each name always reaches the same closure and its counter.\n\nThis is the same pattern behind module-level private state, memoised functions, and React's `useState`: **a function that returns another function is a factory for independent pieces of state.**"
+    },
+    {
+      "kind": "note",
+      "heading": "Closures you already use",
+      "body": "Once you know the idea, you will see closures in most JavaScript you read:\n\n- **Event handlers.** `button.addEventListener(\"click\", () => save(studentId))` closes over `studentId`. When the click happens minutes later, the handler still knows which student it was made for.\n- **Callbacks with settings.** `const byFee = (limit) => (hostel) => hostel.fee <= limit;` returns a filter that remembers `limit`: `hostels.filter(byFee(5000))`.\n- **Memoisation.** A function can keep a `cache` object in its closure and return stored answers for repeated inputs, without exposing the cache to anyone.\n- **React hooks.** Each render's event handlers close over that render's state. The well-known \"stale state\" bug, where a timer keeps seeing an old value, is a closure capturing the variable from an earlier render.\n\nThe question to ask when such code misbehaves is always the same: **which variable did this function capture, and has it changed since?**"
+    },
+    {
+      "kind": "misconception",
+      "heading": "Common mix-ups",
+      "body": "**Many students think a closure copies the variable's value when the function is created.** It keeps a reference to the variable itself; later changes are visible.\n\n**Many students think closures are a special syntax.** Every function in JavaScript is a closure over the scope it was created in; you notice it only when the function outlives that scope.\n\n**Many students think closures leak memory.** A closure keeps its variables alive only while the function is reachable. Problems come from keeping functions around (for example, event listeners never removed), not from closures themselves."
+    },
+    {
+      "kind": "interview",
+      "heading": "Interview questions",
+      "body": "Answers as a strong candidate would say them.",
+      "qa": [
+        {
+          "q": "What is a closure?",
+          "a": "A function together with the variables from the scope where it was created. Those variables stay alive as long as the function does, even after the outer function has returned, which lets the function keep private state."
+        },
+        {
+          "q": "Why does a var loop that pushes `() => i` give 4, 4, 4?",
+          "a": "var is function-scoped, so the loop has one i shared by all the functions, and closures capture the variable, not its value. By the time the functions run, the loop has set i to 4. With let, each iteration gets its own binding, so they return 1, 2, 3."
+        },
+        {
+          "q": "How do you make private state in JavaScript without a class?",
+          "a": "Return functions from a factory function. The variables declared in the factory are reachable only through the returned functions, like the counter inside makeDispenser."
+        }
+      ]
+    },
+    {
+      "kind": "summary",
+      "heading": "Summary",
+      "body": "- A closure is a function plus the variables of the scope it was created in.\n- Captured variables live as long as the function does.\n- Closures capture variables, not values.\n- `var` gives one variable per function; `let` gives one per loop iteration.\n- A factory function returning closures creates independent private state."
+    }
+  ],
+  "quiz": [
+    {
+      "stem": "`const a = makeDispenser('A'); const b = makeDispenser('B'); a(); b(); a();` What does the last call return?",
+      "options": [
+        "A1",
+        "A2",
+        "A3",
+        "B2"
+      ],
+      "correct": 1,
+      "explanation": "a has its own next; it was used once before, so this call returns A2."
+    },
+    {
+      "stem": "`for (var k = 0; k < 2; k++) setTimeout(() => console.log(k));` What prints?",
+      "options": [
+        "0 then 1",
+        "2 then 2",
+        "1 then 2",
+        "undefined twice"
+      ],
+      "correct": 1,
+      "explanation": "One shared k, which is 2 when the callbacks run."
+    },
+    {
+      "stem": "What does a closure capture?",
+      "options": [
+        "A copy of each value",
+        "The variables themselves",
+        "Only global variables",
+        "Nothing until called"
+      ],
+      "correct": 1,
+      "explanation": "It keeps references to the variables, so later changes are visible."
+    },
+    {
+      "stem": "Which change makes the var loop print 0 then 1?",
+      "options": [
+        "Use const instead of var for k",
+        "Use let instead of var",
+        "Add 'use strict'",
+        "Use a while loop"
+      ],
+      "correct": 1,
+      "explanation": "let creates a new binding per iteration; const would fail because k++ reassigns it."
+    }
+  ],
+  "hands_on": [
+    {
+      "id": "token-dispenser",
+      "title": "A token dispenser per counter",
+      "task": "Read `t`, then `t` lines, each a counter name. For each line print the next token for **that** counter: the name followed by 1, 2, 3, ... counted separately per counter. The starter shares one counter between all dispensers; fix it with a closure.",
+      "lang": "javascript",
+      "starter": "const lines = require(\"fs\").readFileSync(0, \"utf8\").split(\"\\n\").map((s) => s.trim());\n\nlet next = 1; // TODO: every counter must have its OWN numbering; this one is shared\n\nfunction makeDispenser(prefix) {\n  return () => prefix + next++;\n}\n\nconst dispensers = {};\nconst out = [];\nconst t = Number(lines[0]);\nfor (let k = 1; k <= t; k++) {\n  const counter = lines[k];\n  if (!(counter in dispensers)) dispensers[counter] = makeDispenser(counter);\n  out.push(dispensers[counter]());\n}\nconsole.log(out.join(\"\\n\"));\n",
+      "solution": "const lines = require(\"fs\").readFileSync(0, \"utf8\").split(\"\\n\").map((s) => s.trim());\n\nfunction makeDispenser(prefix) {\n  let next = 1;\n  return () => prefix + next++;\n}\n\nconst dispensers = {};\nconst out = [];\nconst t = Number(lines[0]);\nfor (let k = 1; k <= t; k++) {\n  const counter = lines[k];\n  if (!(counter in dispensers)) dispensers[counter] = makeDispenser(counter);\n  out.push(dispensers[counter]());\n}\nconsole.log(out.join(\"\\n\"));\n",
+      "tests": [
+        {
+          "id": "t1",
+          "input": "5\nC\nL\nC\nL\nL\n",
+          "expected": "C1\nL1\nC2\nL2\nL3\n",
+          "hidden": false
+        },
+        {
+          "id": "t2",
+          "input": "1\nQ\n",
+          "expected": "Q1\n",
+          "hidden": true
+        },
+        {
+          "id": "t3",
+          "input": "4\nX\nX\nX\nX\n",
+          "expected": "X1\nX2\nX3\nX4\n",
+          "hidden": true
+        },
+        {
+          "id": "t4",
+          "input": "6\nA\nB\nC\nA\nB\nC\n",
+          "expected": "A1\nB1\nC1\nA2\nB2\nC2\n",
+          "hidden": true
+        }
+      ]
+    }
+  ],
+  "revision_card": {
+    "front": "Closures in one line, the var-in-a-loop bug, and the private-state pattern?",
+    "back": "A function plus the variables of its creation scope, kept alive with it; captures variables, not values. var loop: one shared variable (use let). Factory returning functions = private state per instance."
+  },
+  "next": [
+    "lang-javascript-event-loop"
+  ]
+}

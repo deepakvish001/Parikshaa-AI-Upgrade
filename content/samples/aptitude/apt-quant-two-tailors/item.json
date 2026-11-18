@@ -1,0 +1,103 @@
+{
+  "schema": "parikshaa.content/mcq@1",
+  "slug": "apt-quant-two-tailors",
+  "version": 1,
+  "title": "Two tailors on one order",
+  "tier": "public",
+  "text_language": "en",
+  "difficulty": "medium",
+  "section": "aptitude-quant",
+  "topic": "time-and-work",
+  "tags": {
+    "topics": [
+      "time-and-work"
+    ],
+    "patterns": [
+      "work-rate"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: own numbers, story and explanation; no text from any question bank.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-aptitude",
+      "module": "Quant",
+      "position": 1
+    }
+  ],
+  "variants": {
+    "params": [
+      {
+        "name": "a",
+        "description": "days the first tailor takes alone"
+      },
+      {
+        "name": "b",
+        "description": "days the second tailor takes alone"
+      },
+      {
+        "name": "k",
+        "description": "days the first tailor works before leaving"
+      }
+    ],
+    "sets": [
+      {
+        "a": 12,
+        "b": 18,
+        "k": 3
+      },
+      {
+        "a": 10,
+        "b": 15,
+        "k": 4
+      },
+      {
+        "a": 20,
+        "b": 30,
+        "k": 6
+      },
+      {
+        "a": 9,
+        "b": 18,
+        "k": 3
+      }
+    ]
+  },
+  "kind": "mcq",
+  "stem": "Meena can stitch a school's uniform order alone in {{a}} days; Farhan can do it alone in {{b}} days. They start together. After {{k}} days Meena leaves for a wedding, and Farhan finishes the rest alone. How many days does the whole order take?",
+  "options": [
+    "{{o1}}",
+    "{{o2}}",
+    "{{o3}}",
+    "{{o4}}"
+  ],
+  "correct": 0,
+  "explanation": "### Understand\nWe need the total days from start to finish: the {{k}} days together plus Farhan's days alone.\n\n### Plan\nUse work per day. Take the whole order as LCM({{a}}, {{b}}) = {{w}} units, so Meena does {{ra}} units a day and Farhan {{rb}}.\n\n### Solve\n1. Together for {{k}} days: {{k}} × ({{ra}} + {{rb}}) = {{done}} units.\n2. Left: {{w}} − {{done}} = {{left}} units.\n3. Farhan alone: {{left}} ÷ {{rb}} = {{alone}} days.\n4. Total: {{k}} + {{alone}} = **{{o1}}**.\n\n### Check\nWorking together they would need {{w}} ÷ ({{ra}} + {{rb}}) = {{together}} days, and alone Farhan needs {{b}}, so the answer must lie between them. {{o2}} counts only Farhan's days alone; {{o3}} assumes Meena leaves after {{k}} days but forgets the work she did; {{o4}} averages the two times.",
+  "distractors": [
+    {
+      "option": 1,
+      "mistake": "gave only the days Farhan works alone, not the total"
+    },
+    {
+      "option": 2,
+      "mistake": "ignored the work Meena did before leaving"
+    },
+    {
+      "option": 3,
+      "mistake": "averaged the two single-worker times"
+    }
+  ],
+  "shortcut": "Total = k + (1 − k(1/a + 1/b)) · b.",
+  "time_target_sec": 90,
+  "solver": "import json, sys\nfrom fractions import Fraction as F\nfrom math import lcm\np = json.load(sys.stdin)\na, b, k = p[\"a\"], p[\"b\"], p[\"k\"]\nw = lcm(a, b); ra, rb = w // a, w // b\ndone = k * (ra + rb); left = w - done\nalone = F(left, rb)\nfmt = lambda x: (str(x.numerator) if x.denominator == 1 else f\"{float(x):g}\") + \" days\"\ntotal = k + alone\nopts = [fmt(total), fmt(alone), fmt(F(k) + b), fmt(F(a + b, 2))]\nprint(json.dumps({\"answer\": opts[0], \"values\": {\"o1\": opts[0], \"o2\": opts[1], \"o3\": opts[2], \"o4\": opts[3], \"w\": w, \"ra\": ra, \"rb\": rb, \"done\": done, \"left\": left, \"alone\": fmt(alone)[:-5], \"together\": f\"{float(F(w, ra + rb)):g}\"}}))\n",
+  "revision_card": {
+    "front": "Two workers start together, one leaves after k days: total time?",
+    "back": "Work = LCM units. Done together = k(ra + rb). Rest ÷ the stayer's rate. Add k."
+  }
+}

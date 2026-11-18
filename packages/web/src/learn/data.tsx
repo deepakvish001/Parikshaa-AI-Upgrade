@@ -88,7 +88,7 @@ const nextKey = (site: string) => `parikshaa.learn.next.${site}`;
 
 /**
  * Where a "go back to" may send the learner: only a screen of this site, as
- * `<screen>`, `sheet/<track>`, or `problems/<slug>` / `lessons/<slug>` (the
+ * `<screen>`, `sheet/<track>`, `aptitude/<topic>`, or `problems/<slug>` / `lessons/<slug>` (the
  * old site's addresses, which Learn opens too). Anything else (another site, a scheme,
  * `//`, `..`, a query) is dropped, so no link can send a learner off the site.
  */
@@ -97,7 +97,7 @@ export function safeNext(raw: string | null | undefined): string | null {
   const match = /^([a-z][a-z0-9-]{0,30})(?:\/([a-z0-9][a-z0-9-]{0,120}))?$/.exec(raw);
   if (match === null) return null;
   const [, screen, slug] = match;
-  if (slug !== undefined) return screen === "problems" || screen === "lessons" || screen === "sheet" ? raw : null;
+  if (slug !== undefined) return screen === "problems" || screen === "lessons" || screen === "sheet" || screen === "aptitude" ? raw : null;
   return screen === "onboarding" || screenById(screen!) !== undefined ? raw : null;
 }
 

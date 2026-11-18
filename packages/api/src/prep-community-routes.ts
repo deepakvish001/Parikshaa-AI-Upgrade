@@ -5,7 +5,7 @@ import type { Learner, PracticeSite } from "@parikshaa/store";
 import type { PracticeService } from "./practice.js";
 import type { PrepCommunity } from "./prep-community.js";
 import * as S from "./schemas.js";
-import { PACKS, type StarterPacks } from "./starter-packs.js";
+import { isOffered, PACKS, type StarterPacks } from "./starter-packs.js";
 import type { ExamService } from "./service.js";
 import type { Actor, Permission } from "./staff-auth.js";
 
@@ -813,7 +813,7 @@ export function registerPrepCommunityRoutes(routes: Routes, deps: PrepCommunityR
       async (request, reply) => {
         const actor = await staff(request, reply, "exam:read");
         if (actor === null) return;
-        return reply.send({ packs: await packs.list(actor.orgId) });
+        return reply.send({ packs: (await packs.list(actor.orgId)).filter(isOffered) });
       },
     );
     routes.post(

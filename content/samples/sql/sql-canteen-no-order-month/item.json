@@ -1,0 +1,91 @@
+{
+  "schema": "parikshaa.content/sql-problem@1",
+  "slug": "sql-canteen-no-order-month",
+  "version": 1,
+  "title": "Canteen coupons: who did not order in November?",
+  "tier": "public",
+  "text_language": "en",
+  "difficulty": "easy",
+  "level": "L1",
+  "tags": { "topics": ["joins"], "patterns": ["anti-join"], "extra": ["null-handling", "dates"] },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own canteen story, tables, datasets, queries and editorial; no text from any problem site.",
+    "review": { "state": "self-checked" }
+  },
+  "placement": [{ "track": "samples-sql", "module": "Easy", "position": 0 }],
+  "dialect": "sqlite",
+  "stem": "Annapurna canteen runs a pre-order app for the students of a college. At the end of each month the mess committee sends a \"we miss you\" coupon to every student who placed **no app order in that month**.\n\n**Tables**\n\n`students`\n\n| Column | Type | Meaning |\n|---|---|---|\n| `student_id` | INTEGER, primary key | |\n| `name` | TEXT, not null | Names can repeat |\n| `hostel` | TEXT | NULL for a day scholar |\n\n`orders`\n\n| Column | Type | Meaning |\n|---|---|---|\n| `order_id` | INTEGER, primary key | |\n| `student_id` | INTEGER | The student who ordered; **NULL for a walk-in counter sale**, which belongs to no student |\n| `item` | TEXT, not null | |\n| `amount` | INTEGER, not null | Rupees |\n| `ordered_on` | TEXT, not null | ISO date, `'2026-11-17'` |\n\n**Task:** return `student_id` and `name` of every student with no order dated in November 2026 (`2026-11-01` to `2026-11-30`, both included). Orders in other months do not count. Sort by `student_id` ascending. If every student ordered in November, return no rows.",
+  "schema_sql": "CREATE TABLE students (\n  student_id INTEGER PRIMARY KEY,\n  name TEXT NOT NULL,\n  hostel TEXT\n);\nCREATE TABLE orders (\n  order_id INTEGER PRIMARY KEY,\n  student_id INTEGER REFERENCES students(student_id),\n  item TEXT NOT NULL,\n  amount INTEGER NOT NULL,\n  ordered_on TEXT NOT NULL\n);",
+  "datasets": [
+    {
+      "id": "sample-1",
+      "hidden": false,
+      "purpose": "sample",
+      "rows_sql": "INSERT INTO students VALUES (1, 'Aarav', 'Kaveri'), (2, 'Bhavna', 'Godavari'), (3, 'Chirag', NULL), (4, 'Divya', 'Kaveri'), (5, 'Eshan', 'Narmada');\nINSERT INTO orders VALUES (101, 1, 'Masala dosa', 60, '2026-11-03'), (102, 2, 'Poha', 30, '2026-10-28'), (103, 2, 'Chai', 10, '2026-11-15'), (104, 4, 'Veg thali', 90, '2026-10-30'), (105, 1, 'Cold coffee', 45, '2026-11-20');",
+      "expected": "3\tChirag\n4\tDivya\n5\tEshan\n",
+      "explanation": "Aarav (101, 105) and Bhavna (103) ordered in November. Divya's only order is in October, and Chirag and Eshan never ordered."
+    },
+    {
+      "id": "sample-2",
+      "hidden": false,
+      "purpose": "sample",
+      "rows_sql": "INSERT INTO students VALUES (1, 'Farah', 'Tapti'), (2, 'Gopal', NULL);\nINSERT INTO orders VALUES (201, 1, 'Samosa', 15, '2026-11-01'), (202, 2, 'Idli', 35, '2026-11-30');",
+      "expected": "",
+      "explanation": "Both ordered on a boundary day of November (the 1st and the 30th), so nobody gets a coupon: no rows."
+    },
+    { "id": "empty", "hidden": true, "purpose": "empty", "rows_sql": "" },
+    {
+      "id": "walk-in-null",
+      "hidden": true,
+      "purpose": "null",
+      "rows_sql": "INSERT INTO students VALUES (1, 'Heena', NULL), (2, 'Irfan', 'Kaveri'), (3, 'Jaya', NULL), (4, 'Kabir', 'Tapti');\nINSERT INTO orders VALUES (301, NULL, 'Chai', 10, '2026-11-05'), (302, 2, 'Poha', 30, '2026-11-06'), (303, NULL, 'Samosa', 15, '2026-11-09'), (304, 4, 'Veg thali', 90, '2026-09-12');"
+    },
+    {
+      "id": "same-names",
+      "hidden": true,
+      "purpose": "ties",
+      "rows_sql": "INSERT INTO students VALUES (7, 'Rahul', 'Kaveri'), (3, 'Rahul', 'Godavari'), (5, 'Ananya', NULL), (9, 'Rahul', NULL);\nINSERT INTO orders VALUES (401, 7, 'Chai', 10, '2026-11-11'), (402, 5, 'Poha', 30, '2026-11-12');"
+    },
+    {
+      "id": "many-orders-one-student",
+      "hidden": true,
+      "purpose": "duplicates",
+      "rows_sql": "INSERT INTO students VALUES (1, 'Lata', 'Narmada'), (2, 'Manav', 'Tapti'), (3, 'Nisha', NULL);\nINSERT INTO orders VALUES (501, 1, 'Chai', 10, '2026-11-02'), (502, 1, 'Chai', 10, '2026-11-03'), (503, 1, 'Samosa', 15, '2026-11-04'), (504, 2, 'Poha', 30, '2026-10-01'), (505, 2, 'Idli', 35, '2026-10-02'), (506, 3, 'Chai', 10, '2026-11-25'), (507, 3, 'Poha', 30, '2026-12-01');"
+    },
+    {
+      "id": "outside-the-month",
+      "hidden": true,
+      "purpose": "edge",
+      "rows_sql": "INSERT INTO students VALUES (1, 'Om', 'Kaveri'), (2, 'Pooja', 'Tapti'), (3, 'Qasim', NULL), (4, 'Ritu', 'Godavari');\nINSERT INTO orders VALUES (601, 1, 'Chai', 10, '2025-11-14'), (602, 2, 'Poha', 30, '2026-10-31'), (603, 3, 'Samosa', 15, '2026-12-01'), (604, 4, 'Idli', 35, '2026-11-30');"
+    },
+    { "id": "big-month", "hidden": true, "purpose": "many-rows", "gen": { "src": { "$file": "gen.py" }, "args": "7 300 2000" } }
+  ],
+  "order_matters": true,
+  "reference": { "$file": "reference.sql" },
+  "alternatives": [{ "$file": "alt-not-exists.sql" }, { "$file": "alt-except.sql" }],
+  "wrong": [
+    { "src": { "$file": "wrong-not-in.sql" }, "why": "NOT IN against a subquery that can return NULL (a walk-in order) is never true, so no student is returned." },
+    { "src": { "$file": "wrong-filter-in-where.sql" }, "why": "The date filter sits in WHERE after the join: a student with an October and a November order is kept, and a student with two October orders shows twice." },
+    { "src": { "$file": "wrong-month-only.sql" }, "why": "Checks only the month number, so a November 2025 order wrongly counts as November 2026." }
+  ],
+  "starter": "-- Students with no app order in November 2026.\n-- Columns: student_id, name; sorted by student_id.\nSELECT student_id, name\nFROM students;",
+  "hints": [
+    "Start from students, not orders: the students we want are the ones with nothing on the orders side.",
+    "A LEFT JOIN keeps every student, and the order columns come back NULL when nothing matches. Which clause should decide what a November match is?",
+    "Put the date range in the ON clause and keep the rows where o.order_id IS NULL. Avoid NOT IN on a column that can hold NULL."
+  ],
+  "approaches": [
+    { "name": "LEFT JOIN + IS NULL", "summary": "Join each student to their November orders only (the date range in ON) and keep students whose order_id stayed NULL." },
+    { "name": "NOT EXISTS", "summary": "Keep a student when no November order with their id exists. Safe with NULLs, and reads like the task." },
+    { "name": "EXCEPT", "summary": "All students minus the students who have a November order. Short, and fine here because student_id is a key." }
+  ],
+  "editorial": { "$file": "editorial.md" },
+  "editorial_length": { "form": "standard", "target_words": 600 },
+  "revision_card": {
+    "front": "Find rows with no match in another table (an anti-join). What are the safe patterns, and what is the trap?",
+    "back": "LEFT JOIN with the match conditions in ON, then WHERE right.pk IS NULL; or NOT EXISTS. Trap: NOT IN (subquery) returns nothing if the subquery yields a NULL. Filters on the right table go in ON, not WHERE."
+  },
+  "related": ["sql-hostel-room-headcount", "sql-metro-recharge-having"]
+}

@@ -72,3 +72,33 @@ export interface DsaPack {
     readonly timeMs?: number;
   }[];
 }
+
+/**
+ * Aptitude questions written for Parikshaa: quant, logical reasoning and verbal ability (K2-8). Each is a content kit
+ * item (content/samples/aptitude) as the bulk upload publishes it: its default variant set, filled with its solver's
+ * values; section and topic lead its tags; the explanation, then the shortcut, is its editorial.
+ */
+export interface AptitudePack {
+  /** Where it was made from. */
+  readonly source: string;
+  readonly questions: readonly {
+    readonly slug: string;
+    readonly title: string;
+    readonly difficulty: PackDifficulty;
+    /** The section (`aptitude-quant`, `aptitude-logical`, `aptitude-verbal`), the topic, then the item's topics and patterns. */
+    readonly tags: readonly string[];
+    readonly question:
+      | {
+          readonly kind: "mcq";
+          /** Markdown. */
+          readonly stem: string;
+          readonly options: readonly string[];
+          readonly correctIndex: number;
+          /** A reading passage the question is on. */
+          readonly passage?: { readonly id: string; readonly title?: string; readonly text: string };
+        }
+      | { readonly kind: "numeric"; readonly stem: string; readonly expected: number; readonly tolerance: number };
+    /** Markdown: Understand, Plan, Solve, Check, then the shortcut where there is one. */
+    readonly editorial: string;
+  }[];
+}

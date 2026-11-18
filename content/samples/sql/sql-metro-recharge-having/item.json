@@ -1,0 +1,86 @@
+{
+  "schema": "parikshaa.content/sql-problem@1",
+  "slug": "sql-metro-recharge-having",
+  "version": 1,
+  "title": "Metro cards that crossed a monthly recharge line",
+  "tier": "premium",
+  "text_language": "en",
+  "difficulty": "easy",
+  "level": "L1",
+  "tags": { "topics": ["grouping", "aggregation"], "patterns": ["where-vs-having"], "extra": ["dates", "tie-break"] },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own metro story, cards, datasets, queries and editorial; no text from any problem site.",
+    "review": { "state": "self-checked" }
+  },
+  "placement": [{ "track": "samples-sql", "module": "Easy", "position": 2 }],
+  "variants": {
+    "params": [{ "name": "min_total", "description": "the October total a card must reach, in rupees" }],
+    "sets": [{ "min_total": 1000 }, { "min_total": 1200 }, { "min_total": 500 }]
+  },
+  "dialect": "sqlite",
+  "stem": "The metro's loyalty team gives a free ride pass to every smart card whose **successful** recharges in **October 2026** add up to **at least ₹{{min_total}}**.\n\n**Table** `recharges`\n\n| Column | Type | Meaning |\n|---|---|---|\n| `recharge_id` | INTEGER, primary key | |\n| `card_no` | TEXT, not null | Like `'DM-4410'` |\n| `amount` | INTEGER, not null | Rupees |\n| `recharged_on` | TEXT, not null | ISO date, `'2026-10-02'` |\n| `status` | TEXT, not null | `'ok'` or `'failed'`; a failed recharge added no money |\n| `station` | TEXT | Where it was done; NULL for a recharge in the app |\n\n**Task:** return `card_no`, `recharges` (the number of successful October recharges) and `total` (their sum) for every card whose total is at least ₹{{min_total}}. Sort by `total` from highest to lowest; equal totals by `card_no` ascending. If no card qualifies, return no rows.",
+  "schema_sql": "CREATE TABLE recharges (\n  recharge_id INTEGER PRIMARY KEY,\n  card_no TEXT NOT NULL,\n  amount INTEGER NOT NULL,\n  recharged_on TEXT NOT NULL,\n  status TEXT NOT NULL,\n  station TEXT\n);",
+  "datasets": [
+    {
+      "id": "sample-1",
+      "hidden": false,
+      "purpose": "sample",
+      "rows_sql": "INSERT INTO recharges VALUES (1, 'DM-4410', 500, '2026-10-02', 'ok', 'Rajiv Chowk'), (2, 'DM-4410', 500, '2026-10-19', 'ok', NULL), (3, 'DM-2087', 1000, '2026-10-05', 'ok', 'Hauz Khas'), (4, 'DM-2087', 200, '2026-10-25', 'failed', 'Hauz Khas'), (5, 'DM-7311', 300, '2026-10-07', 'ok', NULL), (6, 'DM-7311', 300, '2026-10-14', 'ok', NULL), (7, 'DM-7311', 300, '2026-10-21', 'ok', NULL), (8, 'DM-7311', 300, '2026-10-28', 'ok', NULL), (9, 'DM-5150', 1500, '2026-09-30', 'ok', 'Kashmere Gate'), (10, 'DM-5150', 400, '2026-10-31', 'ok', 'Kashmere Gate');",
+      "explanation": "Successful October totals: DM-7311 ₹1,200 (4 recharges), DM-2087 ₹1,000 (the ₹200 failed), DM-4410 ₹1,000, DM-5150 ₹400 (its ₹1,500 was in September). Cards at or above ₹{{min_total}} are listed, highest total first, equal totals by card number."
+    },
+    {
+      "id": "sample-2",
+      "hidden": false,
+      "purpose": "sample",
+      "rows_sql": "INSERT INTO recharges VALUES (1, 'DM-1002', 900, '2026-10-10', 'ok', NULL), (2, 'DM-1002', 600, '2026-10-11', 'ok', NULL), (3, 'DM-1001', 2000, '2026-10-12', 'failed', 'Rajiv Chowk');",
+      "explanation": "DM-1002 recharged ₹1,500 in two successful payments. DM-1001's ₹2,000 failed, so it has no successful recharge at all."
+    },
+    { "id": "empty", "hidden": true, "purpose": "empty", "rows_sql": "" },
+    {
+      "id": "app-recharges",
+      "hidden": true,
+      "purpose": "null",
+      "rows_sql": "INSERT INTO recharges VALUES (1, 'DM-3001', 700, '2026-10-01', 'ok', NULL), (2, 'DM-3001', 700, '2026-10-30', 'ok', NULL), (3, 'DM-3002', 1300, '2026-10-15', 'ok', NULL), (4, 'DM-3003', 450, '2026-10-16', 'ok', NULL), (5, 'DM-3003', 100, '2026-10-17', 'ok', NULL);"
+    },
+    {
+      "id": "equal-totals",
+      "hidden": true,
+      "purpose": "ties",
+      "rows_sql": "INSERT INTO recharges VALUES (1, 'DM-9000', 1200, '2026-10-03', 'ok', NULL), (2, 'DM-1500', 600, '2026-10-04', 'ok', NULL), (3, 'DM-1500', 600, '2026-10-05', 'ok', NULL), (4, 'DM-4000', 1200, '2026-10-06', 'ok', NULL), (5, 'DM-2500', 500, '2026-10-07', 'ok', NULL), (6, 'DM-0500', 500, '2026-10-08', 'ok', NULL);"
+    },
+    {
+      "id": "exactly-on-the-line",
+      "hidden": true,
+      "purpose": "edge",
+      "rows_sql": "INSERT INTO recharges VALUES (1, 'DM-6001', 500, '2026-10-09', 'ok', NULL), (2, 'DM-6002', 600, '2026-10-09', 'ok', NULL), (3, 'DM-6002', 400, '2026-10-10', 'ok', NULL), (4, 'DM-6003', 1200, '2026-10-11', 'ok', NULL), (5, 'DM-6004', 499, '2026-10-12', 'ok', NULL), (6, 'DM-6005', 999, '2026-10-13', 'ok', NULL), (7, 'DM-6005', 1, '2026-11-01', 'ok', NULL), (8, 'DM-6006', 1199, '2026-10-14', 'ok', NULL), (9, 'DM-6006', 5, '2026-10-15', 'failed', NULL);"
+    },
+    { "id": "busy-month", "hidden": true, "purpose": "many-rows", "gen": { "src": { "$file": "gen.py" }, "args": "5 300 3000" } }
+  ],
+  "order_matters": true,
+  "reference": { "$file": "reference.sql" },
+  "alternatives": [{ "$file": "alt-derived-table.sql" }],
+  "wrong": [
+    { "src": { "$file": "wrong-no-status.sql" }, "why": "Counts failed recharges as money, so totals are too high." },
+    { "src": { "$file": "wrong-row-filter.sql" }, "why": "Applies the threshold to each single recharge in WHERE instead of to the card's total in HAVING." },
+    { "src": { "$file": "wrong-strictly-greater.sql" }, "why": "Uses > for 'at least', dropping a card exactly on the line." }
+  ],
+  "starter": "-- card_no, recharges, total for cards at or above the line.\n-- Highest total first; equal totals by card_no.\nSELECT card_no, 0 AS recharges, 0 AS total\nFROM recharges;",
+  "hints": [
+    "Sort the conditions into two piles: facts about one recharge, and facts about a card's total.",
+    "Status and date are row facts and go in WHERE. The total exists only after GROUP BY, so the threshold goes in HAVING.",
+    "WHERE status = 'ok' AND the date is in October, GROUP BY card_no, HAVING SUM(amount) >= the line, ORDER BY total DESC, card_no."
+  ],
+  "approaches": [
+    { "name": "WHERE + GROUP BY + HAVING", "summary": "Filter successful October rows, group by card, keep groups whose sum reaches the line, sort with a tie-break." },
+    { "name": "Derived table", "summary": "Compute every card's October count and total in a subquery, then filter the totals with an ordinary WHERE outside." }
+  ],
+  "editorial": { "$file": "editorial.md" },
+  "editorial_length": { "form": "standard", "target_words": 780 },
+  "revision_card": {
+    "front": "A condition on a single row vs a condition on a group's total: where does each go, and why?",
+    "back": "Row facts go in WHERE (it runs before GROUP BY). Group facts like SUM(...) >= x go in HAVING (it runs after). Order: FROM, WHERE, GROUP BY, HAVING, SELECT, ORDER BY. Add a tie-break when sorting by a total."
+  },
+  "related": ["sql-canteen-no-order-month", "sql-library-late-fines"]
+}

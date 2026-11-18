@@ -107,10 +107,10 @@ export const PROBLEM_SCREEN: LearnScreen = {
   desc: ["Problem and code; Sahayak opens a third pane", "Problem aur code; Sahayak se teesra pane", "प्रश्न और कोड; सहायक तीसरा पैन"],
 };
 
-/** Addresses below a screen: `sheet/<track>` and `lessons/<lesson>` (K2-4), `problems/<problem>` (K2-5). */
-export const SUB_ROUTE = /^(sheet|lessons|problems)\/([a-z0-9][a-z0-9-]{0,120})$/;
+/** Addresses below a screen: `sheet/<track>` and `lessons/<lesson>` (K2-4), `problems/<problem>` (K2-5), `aptitude/<topic>` and `aptitude/misses` (K2-8). */
+export const SUB_ROUTE = /^(sheet|lessons|problems|aptitude)\/([a-z0-9][a-z0-9-]{0,120})$/;
 
-/** The screen a route belongs to: its own, the sheet's for `sheet/<track>`, a lesson's for `lessons/<slug>`, the workspace for `problems/<slug>`. */
+/** The screen a route belongs to: its own, the sheet's for `sheet/<track>` (aptitude's for `aptitude/<topic>`), a lesson's for `lessons/<slug>`, the workspace for `problems/<slug>`. */
 export function screenOfRoute(route: string | null): LearnScreen | undefined {
   if (route === null) return undefined;
   const sub = SUB_ROUTE.exec(route);

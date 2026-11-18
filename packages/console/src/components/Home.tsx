@@ -199,6 +199,8 @@ export const ACTIONS: Record<string, string> = {
   "practice.comment_hidden": "hid a comment",
   "practice.comment_shown": "showed a hidden comment again",
   "practice.similarity_viewed": "compared learners' code",
+  "practice.content_uploaded": "uploaded a content bundle",
+  "practice.content_published": "published uploaded content to Learn",
   "prep.track_created": "added a track",
   "prep.track_changed": "changed a track",
   "prep.lesson_created": "added a lesson",

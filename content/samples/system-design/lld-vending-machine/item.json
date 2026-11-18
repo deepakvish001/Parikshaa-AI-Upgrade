@@ -1,0 +1,350 @@
+{
+  "schema": "parikshaa.content/system-design@1",
+  "slug": "lld-vending-machine",
+  "version": 1,
+  "title": "A hostel vending machine with explicit states",
+  "tier": "premium",
+  "text_language": "en",
+  "mode": "lld",
+  "difficulty": "medium",
+  "tags": {
+    "topics": [
+      "class-design",
+      "state-machines"
+    ],
+    "patterns": [
+      "state",
+      "guard-clauses"
+    ],
+    "extra": [
+      "money-handling"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own vending machine design case and kata, examples, code, quiz and explanations; no text from any site, book or course.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-system-design",
+      "module": "LLD",
+      "position": 3
+    }
+  ],
+  "time_minutes": 45,
+  "scenario": "The hostel common room is getting a snack vending machine that takes coins and gives change. Design the controller's classes and code it so that every command behaves correctly in every state: money inserted or not, item in stock or not, enough credit or not.",
+  "clarifying_questions": [
+    {
+      "q": "Which coins?",
+      "a": "1, 2, 5, 10, 20, 50 and 100 rupee values; anything else is refused."
+    },
+    {
+      "q": "Does the machine always have change?",
+      "a": "Assume yes for this kata."
+    },
+    {
+      "q": "Can a student buy two items with one insertion?",
+      "a": "No: a sale returns all remaining credit as change."
+    },
+    {
+      "q": "What does cancel do?",
+      "a": "Returns all credit; with no credit it says there is nothing to refund."
+    }
+  ],
+  "requirements": {
+    "functional": [
+      "Stock items with a price and quantity",
+      "Accept coins and show credit",
+      "Sell an item with change, or explain why not",
+      "Cancel and refund"
+    ],
+    "non_functional": [
+      {
+        "name": "Correctness",
+        "target": "no item dispensed without full payment; credit never lost"
+      },
+      {
+        "name": "Clarity",
+        "target": "every command defined in every state"
+      }
+    ]
+  },
+  "entities": [
+    {
+      "name": "Machine",
+      "responsibility": "Holds the state (IDLE or PAID), the credit and the stock; each command checks the state first."
+    },
+    {
+      "name": "Item record",
+      "responsibility": "Price and quantity of one product."
+    },
+    {
+      "name": "Driver (Main)",
+      "responsibility": "Parses commands and validates coins and numbers."
+    }
+  ],
+  "patterns": [
+    {
+      "name": "State machine (explicit state field)",
+      "why": "Writing the states down (IDLE, PAID) and checking them first in each command makes every command's behaviour in every state visible and testable."
+    },
+    {
+      "name": "Guard clauses",
+      "why": "Each refusal returns early with a clear message, so the success path at the end is short and safe."
+    }
+  ],
+  "diagram": {
+    "id": "vending-states",
+    "kind": "mermaid",
+    "alt": "State diagram: IDLE goes to PAID on INSERT; PAID stays PAID on INSERT or a refused SELECT; PAID returns to IDLE on a successful SELECT (dispense with change) or CANCEL (refund).",
+    "data": {
+      "source": "stateDiagram-v2\n  [*] --> IDLE\n  IDLE --> PAID: INSERT\n  PAID --> PAID: INSERT / refused SELECT\n  PAID --> IDLE: SELECT ok (dispense + change)\n  PAID --> IDLE: CANCEL (refund)"
+    }
+  },
+  "kata": {
+    "io_protocol": "| Command | Prints |\n|---|---|\n| `STOCK <item> <price> <qty>` | `<item>: <qty in stock> at <price>` (re-stocking keeps the first price) |\n| `INSERT <coin>` | `credit <total>` |\n| `SELECT <item>` | `dispense <item>, change <c>`, `error: insert money first`, `error: <item> unavailable`, or `error: need <n> more` |\n| `CANCEL` | `refund <credit>` or `nothing to refund` |\n\nCoins: 1, 2, 5, 10, 20, 50, 100. Prices and quantities 1-10000. Anything else: `error: bad command <line>`.",
+    "implementations": [
+      {
+        "language": "python",
+        "files": [
+          {
+            "path": "machine.py",
+            "content": "class Machine:\n    \"\"\"States: IDLE (no money) and PAID (money inserted). Selling returns to IDLE.\"\"\"\n\n    def __init__(self):\n        self.items = {}                # name -> [price, qty]\n        self.state = \"IDLE\"\n        self.credit = 0\n\n    def stock(self, name, price, qty):\n        if name in self.items:\n            self.items[name][1] += qty\n        else:\n            self.items[name] = [price, qty]\n        return f\"{name}: {self.items[name][1]} at {self.items[name][0]}\"\n\n    def insert(self, amount):\n        self.credit += amount\n        self.state = \"PAID\"\n        return f\"credit {self.credit}\"\n\n    def select(self, name):\n        # TODO: refuse in IDLE, refuse unavailable items and too little credit; else dispense with change.\n        return f\"dispense {name}, change 0\"\n\n    def cancel(self):\n        # TODO: return the credit and go back to IDLE.\n        return \"nothing to refund\"\n",
+            "role": "source"
+          },
+          {
+            "path": "main.py",
+            "content": "import sys\n\nfrom machine import Machine\n\n\ndef num(s):\n    return int(s) if s.isdigit() and 0 < int(s) <= 10000 else None\n\n\ndef main():\n    m = Machine()\n    for raw in sys.stdin:\n        p = raw.split()\n        if not p:\n            continue\n        if p[0] == \"STOCK\" and len(p) == 4 and num(p[2]) and num(p[3]):\n            print(m.stock(p[1], num(p[2]), num(p[3])))\n        elif p[0] == \"INSERT\" and len(p) == 2 and p[1] in (\"1\", \"2\", \"5\", \"10\", \"20\", \"50\", \"100\"):\n            print(m.insert(int(p[1])))\n        elif p[0] == \"SELECT\" and len(p) == 2:\n            print(m.select(p[1]))\n        elif p[0] == \"CANCEL\" and len(p) == 1:\n            print(m.cancel())\n        else:\n            print(f\"error: bad command {raw.strip()}\")\n\n\nmain()\n",
+            "role": "driver",
+            "editable": false
+          }
+        ],
+        "solution_files": [
+          {
+            "path": "machine.py",
+            "content": "class Machine:\n    \"\"\"States: IDLE (no money) and PAID (money inserted). Selling returns to IDLE.\"\"\"\n\n    def __init__(self):\n        self.items = {}                # name -> [price, qty]\n        self.state = \"IDLE\"\n        self.credit = 0\n\n    def stock(self, name, price, qty):\n        if name in self.items:\n            self.items[name][1] += qty\n        else:\n            self.items[name] = [price, qty]\n        return f\"{name}: {self.items[name][1]} at {self.items[name][0]}\"\n\n    def insert(self, amount):\n        self.credit += amount\n        self.state = \"PAID\"\n        return f\"credit {self.credit}\"\n\n    def select(self, name):\n        if self.state == \"IDLE\":\n            return \"error: insert money first\"\n        item = self.items.get(name)\n        if item is None or item[1] == 0:\n            return f\"error: {name} unavailable\"\n        price = item[0]\n        if self.credit < price:\n            return f\"error: need {price - self.credit} more\"\n        item[1] -= 1\n        change = self.credit - price\n        self.credit, self.state = 0, \"IDLE\"\n        return f\"dispense {name}, change {change}\"\n\n    def cancel(self):\n        if self.state == \"IDLE\":\n            return \"nothing to refund\"\n        refund, self.credit, self.state = self.credit, 0, \"IDLE\"\n        return f\"refund {refund}\"\n",
+            "role": "source"
+          }
+        ],
+        "change_files": [
+          {
+            "path": "machine.py",
+            "content": "class Machine:\n    \"\"\"States: IDLE (no money) and PAID (money inserted). Selling returns to IDLE.\"\"\"\n\n    def __init__(self):\n        self.items = {}                # name -> [price, qty]\n        self.state = \"IDLE\"\n        self.credit = 0\n\n    def stock(self, name, price, qty):\n        if name in self.items:\n            self.items[name][1] += qty\n        else:\n            self.items[name] = [price, qty]\n        return f\"{name}: {self.items[name][1]} at {self.items[name][0]}\"\n\n    def reprice(self, name, price):\n        if name not in self.items:\n            return f\"error: {name} unavailable\"\n        self.items[name][0] = price\n        return f\"{name} now {price}\"\n\n    def insert(self, amount):\n        self.credit += amount\n        self.state = \"PAID\"\n        return f\"credit {self.credit}\"\n\n    def select(self, name):\n        if self.state == \"IDLE\":\n            return \"error: insert money first\"\n        item = self.items.get(name)\n        if item is None or item[1] == 0:\n            return f\"error: {name} unavailable\"\n        price = item[0]\n        if self.credit < price:\n            return f\"error: need {price - self.credit} more\"\n        item[1] -= 1\n        change = self.credit - price\n        self.credit, self.state = 0, \"IDLE\"\n        return f\"dispense {name}, change {change}\"\n\n    def cancel(self):\n        if self.state == \"IDLE\":\n            return \"nothing to refund\"\n        refund, self.credit, self.state = self.credit, 0, \"IDLE\"\n        return f\"refund {refund}\"\n",
+            "role": "source"
+          },
+          {
+            "path": "main.py",
+            "content": "import sys\n\nfrom machine import Machine\n\n\ndef num(s):\n    return int(s) if s.isdigit() and 0 < int(s) <= 10000 else None\n\n\ndef main():\n    m = Machine()\n    for raw in sys.stdin:\n        p = raw.split()\n        if not p:\n            continue\n        if p[0] == \"STOCK\" and len(p) == 4 and num(p[2]) and num(p[3]):\n            print(m.stock(p[1], num(p[2]), num(p[3])))\n        elif p[0] == \"PRICE\" and len(p) == 3 and num(p[2]):\n            print(m.reprice(p[1], num(p[2])))\n        elif p[0] == \"INSERT\" and len(p) == 2 and p[1] in (\"1\", \"2\", \"5\", \"10\", \"20\", \"50\", \"100\"):\n            print(m.insert(int(p[1])))\n        elif p[0] == \"SELECT\" and len(p) == 2:\n            print(m.select(p[1]))\n        elif p[0] == \"CANCEL\" and len(p) == 1:\n            print(m.cancel())\n        else:\n            print(f\"error: bad command {raw.strip()}\")\n\n\nmain()\n",
+            "role": "driver",
+            "editable": false
+          }
+        ],
+        "bundle_order": [
+          "machine.py",
+          "main.py"
+        ]
+      },
+      {
+        "language": "java",
+        "files": [
+          {
+            "path": "Machine.java",
+            "content": "import java.util.*;\n\nclass Machine {\n    enum State { IDLE, PAID }\n    final Map<String, int[]> items = new HashMap<>();   // name -> {price, qty}\n    State state = State.IDLE;\n    int credit = 0;\n\n    String stock(String name, int price, int qty) {\n        int[] it = items.computeIfAbsent(name, k -> new int[] {price, 0});\n        it[1] += qty;\n        return name + \": \" + it[1] + \" at \" + it[0];\n    }\n\n    String insert(int amount) {\n        credit += amount;\n        state = State.PAID;\n        return \"credit \" + credit;\n    }\n\n    String select(String name) {\n        // TODO: refuse in IDLE, refuse unavailable items and too little credit; else dispense with change.\n        return \"dispense \" + name + \", change 0\";\n    }\n\n    String cancel() {\n        // TODO: return the credit and go back to IDLE.\n        return \"nothing to refund\";\n    }\n}\n",
+            "role": "source"
+          },
+          {
+            "path": "Main.java",
+            "content": "import java.io.*;\nimport java.util.*;\n\npublic class Main {\n    static int num(String s) {\n        return s.matches(\"\\\\d{1,5}\") && Integer.parseInt(s) > 0 && Integer.parseInt(s) <= 10000 ? Integer.parseInt(s) : 0;\n    }\n\n    public static void main(String[] args) throws IOException {\n        BufferedReader in = new BufferedReader(new InputStreamReader(System.in));\n        StringBuilder out = new StringBuilder();\n        Machine m = new Machine();\n        List<String> coins = List.of(\"1\", \"2\", \"5\", \"10\", \"20\", \"50\", \"100\");\n        for (String raw; (raw = in.readLine()) != null; ) {\n            String[] p = raw.trim().split(\"\\\\s+\");\n            if (p[0].isEmpty()) continue;\n            String reply;\n            if (p[0].equals(\"STOCK\") && p.length == 4 && num(p[2]) > 0 && num(p[3]) > 0) reply = m.stock(p[1], num(p[2]), num(p[3]));\n            else if (p[0].equals(\"INSERT\") && p.length == 2 && coins.contains(p[1])) reply = m.insert(Integer.parseInt(p[1]));\n            else if (p[0].equals(\"SELECT\") && p.length == 2) reply = m.select(p[1]);\n            else if (p[0].equals(\"CANCEL\") && p.length == 1) reply = m.cancel();\n            else reply = \"error: bad command \" + raw.trim();\n            out.append(reply).append('\\n');\n        }\n        System.out.print(out);\n    }\n}\n",
+            "role": "driver",
+            "editable": false
+          }
+        ],
+        "solution_files": [
+          {
+            "path": "Machine.java",
+            "content": "import java.util.*;\n\nclass Machine {\n    enum State { IDLE, PAID }\n    final Map<String, int[]> items = new HashMap<>();   // name -> {price, qty}\n    State state = State.IDLE;\n    int credit = 0;\n\n    String stock(String name, int price, int qty) {\n        int[] it = items.computeIfAbsent(name, k -> new int[] {price, 0});\n        it[1] += qty;\n        return name + \": \" + it[1] + \" at \" + it[0];\n    }\n\n    String insert(int amount) {\n        credit += amount;\n        state = State.PAID;\n        return \"credit \" + credit;\n    }\n\n    String select(String name) {\n        if (state == State.IDLE) return \"error: insert money first\";\n        int[] it = items.get(name);\n        if (it == null || it[1] == 0) return \"error: \" + name + \" unavailable\";\n        if (credit < it[0]) return \"error: need \" + (it[0] - credit) + \" more\";\n        it[1]--;\n        int change = credit - it[0];\n        credit = 0;\n        state = State.IDLE;\n        return \"dispense \" + name + \", change \" + change;\n    }\n\n    String cancel() {\n        if (state == State.IDLE) return \"nothing to refund\";\n        int refund = credit;\n        credit = 0;\n        state = State.IDLE;\n        return \"refund \" + refund;\n    }\n}\n",
+            "role": "source"
+          }
+        ],
+        "change_files": [
+          {
+            "path": "Machine.java",
+            "content": "import java.util.*;\n\nclass Machine {\n    enum State { IDLE, PAID }\n    final Map<String, int[]> items = new HashMap<>();   // name -> {price, qty}\n    State state = State.IDLE;\n    int credit = 0;\n\n    String stock(String name, int price, int qty) {\n        int[] it = items.computeIfAbsent(name, k -> new int[] {price, 0});\n        it[1] += qty;\n        return name + \": \" + it[1] + \" at \" + it[0];\n    }\n\n    String reprice(String name, int price) {\n        int[] it = items.get(name);\n        if (it == null) return \"error: \" + name + \" unavailable\";\n        it[0] = price;\n        return name + \" now \" + price;\n    }\n\n    String insert(int amount) {\n        credit += amount;\n        state = State.PAID;\n        return \"credit \" + credit;\n    }\n\n    String select(String name) {\n        if (state == State.IDLE) return \"error: insert money first\";\n        int[] it = items.get(name);\n        if (it == null || it[1] == 0) return \"error: \" + name + \" unavailable\";\n        if (credit < it[0]) return \"error: need \" + (it[0] - credit) + \" more\";\n        it[1]--;\n        int change = credit - it[0];\n        credit = 0;\n        state = State.IDLE;\n        return \"dispense \" + name + \", change \" + change;\n    }\n\n    String cancel() {\n        if (state == State.IDLE) return \"nothing to refund\";\n        int refund = credit;\n        credit = 0;\n        state = State.IDLE;\n        return \"refund \" + refund;\n    }\n}\n",
+            "role": "source"
+          },
+          {
+            "path": "Main.java",
+            "content": "import java.io.*;\nimport java.util.*;\n\npublic class Main {\n    static int num(String s) {\n        return s.matches(\"\\\\d{1,5}\") && Integer.parseInt(s) > 0 && Integer.parseInt(s) <= 10000 ? Integer.parseInt(s) : 0;\n    }\n\n    public static void main(String[] args) throws IOException {\n        BufferedReader in = new BufferedReader(new InputStreamReader(System.in));\n        StringBuilder out = new StringBuilder();\n        Machine m = new Machine();\n        List<String> coins = List.of(\"1\", \"2\", \"5\", \"10\", \"20\", \"50\", \"100\");\n        for (String raw; (raw = in.readLine()) != null; ) {\n            String[] p = raw.trim().split(\"\\\\s+\");\n            if (p[0].isEmpty()) continue;\n            String reply;\n            if (p[0].equals(\"STOCK\") && p.length == 4 && num(p[2]) > 0 && num(p[3]) > 0) reply = m.stock(p[1], num(p[2]), num(p[3]));\n            else if (p[0].equals(\"PRICE\") && p.length == 3 && num(p[2]) > 0) reply = m.reprice(p[1], num(p[2]));\n            else if (p[0].equals(\"INSERT\") && p.length == 2 && coins.contains(p[1])) reply = m.insert(Integer.parseInt(p[1]));\n            else if (p[0].equals(\"SELECT\") && p.length == 2) reply = m.select(p[1]);\n            else if (p[0].equals(\"CANCEL\") && p.length == 1) reply = m.cancel();\n            else reply = \"error: bad command \" + raw.trim();\n            out.append(reply).append('\\n');\n        }\n        System.out.print(out);\n    }\n}\n",
+            "role": "driver",
+            "editable": false
+          }
+        ],
+        "bundle_order": [
+          "Machine.java",
+          "Main.java"
+        ]
+      }
+    ],
+    "tests": [
+      {
+        "id": "buy-with-change",
+        "input": "STOCK chips 20 3\nINSERT 50\nSELECT chips\n",
+        "expected": "chips: 3 at 20\ncredit 50\ndispense chips, change 30\n",
+        "hidden": false
+      },
+      {
+        "id": "not-enough",
+        "input": "STOCK juice 35 1\nINSERT 20\nSELECT juice\nINSERT 10\nSELECT juice\nINSERT 5\nSELECT juice\n",
+        "expected": "juice: 1 at 35\ncredit 20\nerror: need 15 more\ncredit 30\nerror: need 5 more\ncredit 35\ndispense juice, change 0\n",
+        "hidden": false
+      },
+      {
+        "id": "idle-select",
+        "input": "STOCK chips 20 1\nSELECT chips\nCANCEL\n",
+        "expected": "chips: 1 at 20\nerror: insert money first\nnothing to refund\n",
+        "hidden": true
+      },
+      {
+        "id": "sold-out",
+        "input": "STOCK cake 30 1\nINSERT 50\nSELECT cake\nINSERT 50\nSELECT cake\nSELECT nuts\nCANCEL\n",
+        "expected": "cake: 1 at 30\ncredit 50\ndispense cake, change 20\ncredit 50\nerror: cake unavailable\nerror: nuts unavailable\nrefund 50\n",
+        "hidden": true
+      },
+      {
+        "id": "cancel-refund",
+        "input": "INSERT 10\nINSERT 20\nCANCEL\nCANCEL\n",
+        "expected": "credit 10\ncredit 30\nrefund 30\nnothing to refund\n",
+        "hidden": true
+      },
+      {
+        "id": "restock",
+        "input": "STOCK tea 10 1\nSTOCK tea 99 2\nINSERT 10\nSELECT tea\n",
+        "expected": "tea: 1 at 10\ntea: 3 at 10\ncredit 10\ndispense tea, change 0\n",
+        "hidden": true
+      },
+      {
+        "id": "exact-money",
+        "input": "STOCK water 20 5\nINSERT 20\nSELECT water\nINSERT 10\nINSERT 10\nSELECT water\n",
+        "expected": "water: 5 at 20\ncredit 20\ndispense water, change 0\ncredit 10\ncredit 20\ndispense water, change 0\n",
+        "hidden": true
+      },
+      {
+        "id": "bad-commands",
+        "input": "INSERT 3\nINSERT -5\nSTOCK x 0 1\nSTOCK x 5\nBUY x\nSELECT\n",
+        "expected": "error: bad command INSERT 3\nerror: bad command INSERT -5\nerror: bad command STOCK x 0 1\nerror: bad command STOCK x 5\nerror: bad command BUY x\nerror: bad command SELECT\n",
+        "hidden": true
+      }
+    ],
+    "change_request": {
+      "description": "The warden wants to change prices without emptying the machine. Add `PRICE <item> <price>`: prints `<item> now <price>`, or `error: <item> unavailable` for an item never stocked. Credit already inserted is untouched.",
+      "tests": [
+        {
+          "id": "price-change",
+          "input": "STOCK chips 20 3\nPRICE chips 25\nINSERT 20\nSELECT chips\nINSERT 5\nSELECT chips\n",
+          "expected": "chips: 3 at 20\nchips now 25\ncredit 20\nerror: need 5 more\ncredit 25\ndispense chips, change 0\n",
+          "hidden": false
+        },
+        {
+          "id": "price-unknown",
+          "input": "PRICE ghost 10\nSTOCK gum 5 1\nPRICE gum 8\nINSERT 10\nSELECT gum\n",
+          "expected": "error: ghost unavailable\ngum: 1 at 5\ngum now 8\ncredit 10\ndispense gum, change 2\n",
+          "hidden": true
+        }
+      ]
+    }
+  },
+  "rubric": [
+    {
+      "id": "tests",
+      "criterion": "Kata tests pass, including the price change.",
+      "weight": 40,
+      "checked_by": "tests"
+    },
+    {
+      "id": "states",
+      "criterion": "States are explicit and each command checks the state before acting.",
+      "weight": 20,
+      "checked_by": "review"
+    },
+    {
+      "id": "money",
+      "criterion": "Credit is never lost: refused selections keep credit, sales return change, cancel refunds.",
+      "weight": 20,
+      "checked_by": "review"
+    },
+    {
+      "id": "change",
+      "criterion": "Repricing touches only the item record and the driver.",
+      "weight": 10,
+      "checked_by": "review"
+    },
+    {
+      "id": "feedback",
+      "criterion": "Guard clauses and naming (AI feedback, advice only).",
+      "weight": 10,
+      "checked_by": "ai-feedback"
+    }
+  ],
+  "concept_checks": [
+    {
+      "stem": "Credit is 20 and the item costs 35. What should SELECT do?",
+      "options": [
+        "Dispense and owe 15",
+        "Refuse with 'need 15 more' and keep the 20 credit",
+        "Refund 20",
+        "Reset to IDLE"
+      ],
+      "correct": 1,
+      "explanation": "A refused selection leaves the state and credit as they were."
+    },
+    {
+      "stem": "In which state is SELECT refused with 'insert money first'?",
+      "options": [
+        "PAID",
+        "IDLE",
+        "Both",
+        "Neither"
+      ],
+      "correct": 1,
+      "explanation": "With no credit, nothing can be sold."
+    },
+    {
+      "stem": "Why make the state an explicit field instead of checking credit > 0 everywhere?",
+      "options": [
+        "It is faster",
+        "It names the states, so every command can be specified and tested per state",
+        "Java needs enums",
+        "To save memory"
+      ],
+      "correct": 1,
+      "explanation": "Explicit states make the behaviour table visible."
+    },
+    {
+      "stem": "Inserting 50 for an item of 20 gives what?",
+      "options": [
+        "dispense, change 0",
+        "dispense, change 30",
+        "error: too much money",
+        "credit 70"
+      ],
+      "correct": 1,
+      "explanation": "Change is credit minus price."
+    }
+  ],
+  "follow_ups": [
+    "What if the machine runs out of coins for change? Add a coin inventory and refuse sales it cannot change.",
+    "Model a third state, DISPENSING, for a motor that can jam.",
+    "Show the state pattern with one class per state and compare it with the enum version."
+  ],
+  "revision_card": {
+    "front": "Vending machine LLD: states, transitions, and the money rule?",
+    "back": "IDLE --INSERT--> PAID; PAID --SELECT ok--> IDLE (dispense + change); PAID --CANCEL--> IDLE (refund); refused SELECT keeps state and credit. Check the state first in every command (guard clauses)."
+  },
+  "reference_solution": {
+    "$file": "reference.md"
+  }
+}

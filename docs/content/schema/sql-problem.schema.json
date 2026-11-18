@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sql-problem.schema.json",
+  "title": "Parikshaa content: SQL problem (SQLite)",
+  "description": "One query over tables made fresh for each dataset. Runs on the runner's SQLite. See docs/content/CONTENT-FORMAT.md section 5.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "slug", "version", "title", "tier", "text_language", "difficulty", "level", "tags", "authoring", "stem", "schema_sql", "datasets", "order_matters", "reference", "wrong", "starter", "hints", "editorial", "editorial_length", "approaches"],
+  "properties": {
+    "schema": { "const": "parikshaa.content/sql-problem@1" },
+    "slug": { "$ref": "common.schema.json#/$defs/slug", "x-db": "practice_problems.slug" },
+    "version": { "$ref": "common.schema.json#/$defs/version" },
+    "title": { "$ref": "common.schema.json#/$defs/title" },
+    "tier": { "$ref": "common.schema.json#/$defs/tier" },
+    "text_language": { "$ref": "common.schema.json#/$defs/text_language" },
+    "difficulty": { "$ref": "common.schema.json#/$defs/difficulty" },
+    "level": { "$ref": "common.schema.json#/$defs/level" },
+    "tags": { "$ref": "common.schema.json#/$defs/tags" },
+    "authoring": { "$ref": "common.schema.json#/$defs/authoring" },
+    "placement": { "$ref": "common.schema.json#/$defs/placement" },
+    "variants": { "$ref": "common.schema.json#/$defs/variants" },
+    "dialect": { "const": "sqlite", "description": "The runner's SQL is SQLite 3. Window functions and CTEs are there; RIGHT/FULL JOIN need SQLite 3.39+, so avoid them." },
+    "stem": { "$ref": "common.schema.json#/$defs/markdown", "description": "The task, the tables (name, columns, types, keys) and the exact columns and order of the result.", "x-db": "question.stem" },
+    "schema_sql": { "type": "string", "minLength": 10, "description": "CREATE TABLE statements, the same for every dataset." },
+    "datasets": {
+      "description": "Each dataset is one test: schema_sql then its rows. The first one or two are shown (hidden false).",
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 40,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "hidden", "purpose"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9_-]{1,40}$" },
+          "hidden": { "type": "boolean" },
+          "purpose": { "enum": ["sample", "empty", "null", "ties", "duplicates", "fewer-rows", "many-rows", "edge", "random"] },
+          "rows_sql": { "type": "string", "description": "INSERT statements. Empty string: tables stay empty." },
+          "gen": { "type": "object", "additionalProperties": false, "required": ["src"], "properties": { "src": { "type": "string" }, "args": { "type": "string" } }, "description": "A Python 3 program printing INSERT statements (for many-rows). Reads args on stdin." },
+          "expected": { "type": "string", "description": "Optional: when given, must equal the reference's rows." },
+          "explanation": { "type": "string" }
+        }
+      },
+      "x-db": "question.tests: input = schema_sql + rows, expected = the reference's rows"
+    },
+    "order_matters": { "type": "boolean", "description": "true: rows must come in the stated ORDER BY (with a full tie-break). false: any order (checker unordered).", "x-db": "question.checker = unordered when false" },
+    "reference": { "type": "string", "minLength": 6, "description": "A right query. Its rows are every dataset's expected output." },
+    "alternatives": { "type": "array", "items": { "type": "string", "minLength": 6 }, "description": "Other right queries (another approach). Each must give the same rows on every dataset." },
+    "wrong": {
+      "description": "Plausible wrong queries. Each must fail at least one dataset.",
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["src", "why"],
+        "properties": { "src": { "type": "string", "minLength": 6 }, "why": { "type": "string", "minLength": 5 } }
+      }
+    },
+    "starter": { "type": "string", "x-db": "question.starter" },
+    "hints": { "$ref": "common.schema.json#/$defs/hints" },
+    "approaches": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "summary"],
+        "properties": { "name": { "type": "string", "minLength": 3 }, "summary": { "type": "string", "minLength": 20 } }
+      }
+    },
+    "editorial": { "$ref": "common.schema.json#/$defs/markdown", "description": "Same 4 steps as DSA, shorter. [[code-tabs]] shows the reference and alternatives.", "x-db": "practice_problems.editorial" },
+    "editorial_length": { "$ref": "common.schema.json#/$defs/editorial_length" },
+    "revision_card": { "$ref": "common.schema.json#/$defs/revision_card" },
+    "related": { "type": "array", "maxItems": 8, "items": { "$ref": "common.schema.json#/$defs/slug" } }
+  }
+}

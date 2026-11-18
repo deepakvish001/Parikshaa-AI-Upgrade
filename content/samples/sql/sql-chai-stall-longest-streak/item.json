@@ -1,0 +1,89 @@
+{
+  "schema": "parikshaa.content/sql-problem@1",
+  "slug": "sql-chai-stall-longest-streak",
+  "version": 1,
+  "title": "A chai stall's longest good streak",
+  "tier": "public",
+  "text_language": "en",
+  "difficulty": "hard",
+  "level": "L3",
+  "tags": { "topics": ["window-functions", "dates"], "patterns": ["gaps-and-islands", "top-n-per-group"], "extra": ["julianday", "ties", "null-handling"] },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own chai stall story, datasets, queries and editorial; no text from any problem site.",
+    "review": { "state": "self-checked" }
+  },
+  "placement": [{ "track": "samples-sql", "module": "Hard", "position": 0 }],
+  "dialect": "sqlite",
+  "stem": "A college-road vendors' association gives a badge to the chai stall with the **longest streak of good days**: consecutive calendar days on which it sold **at least 50 cups**.\n\n**Tables**\n\n`stalls`\n\n| Column | Type | Meaning |\n|---|---|---|\n| `stall` | TEXT, primary key | Stall name |\n| `owner` | TEXT, not null | |\n\n`sales` (primary key `(stall, sold_on)`)\n\n| Column | Type | Meaning |\n|---|---|---|\n| `stall` | TEXT, not null | |\n| `sold_on` | TEXT, not null | ISO date. **No row on a day the stall was closed.** |\n| `cups` | INTEGER | Cups sold; **NULL if the day's tally sheet was lost** (not a good day) |\n\nA **streak** is a run of consecutive calendar days that are all good days. A closed day (no row) or a day that is not good ends a streak.\n\n**Task:** for every stall return `stall`, `streak_days` (the length of its longest streak), `streak_start` and `streak_end` (that streak's first and last day). If several streaks share the longest length, report the one that starts earliest. A stall with no good day has `streak_days` 0 and NULL dates. Sort by `streak_days` from highest to lowest, then `stall` ascending.",
+  "schema_sql": "CREATE TABLE stalls (\n  stall TEXT PRIMARY KEY,\n  owner TEXT NOT NULL\n);\nCREATE TABLE sales (\n  stall TEXT NOT NULL REFERENCES stalls(stall),\n  sold_on TEXT NOT NULL,\n  cups INTEGER,\n  PRIMARY KEY (stall, sold_on)\n);",
+  "datasets": [
+    {
+      "id": "sample-1",
+      "hidden": false,
+      "purpose": "sample",
+      "rows_sql": "INSERT INTO stalls VALUES ('Gupta Chai', 'Ramesh Gupta'), ('Kulhad Corner', 'Sunita Rao'), ('Tapri 9', 'Imran Shaikh');\nINSERT INTO sales VALUES ('Gupta Chai', '2026-11-01', 62), ('Gupta Chai', '2026-11-02', 55), ('Gupta Chai', '2026-11-03', 48), ('Gupta Chai', '2026-11-04', 70), ('Gupta Chai', '2026-11-05', 71), ('Gupta Chai', '2026-11-06', 50), ('Gupta Chai', '2026-11-08', 90), ('Kulhad Corner', '2026-10-30', 51), ('Kulhad Corner', '2026-10-31', 52), ('Kulhad Corner', '2026-11-01', 53), ('Kulhad Corner', '2026-11-02', NULL), ('Kulhad Corner', '2026-11-03', 60), ('Kulhad Corner', '2026-11-04', 61), ('Kulhad Corner', '2026-11-05', 62), ('Tapri 9', '2026-11-01', 40), ('Tapri 9', '2026-11-02', 49);",
+      "expected": "Gupta Chai\t3\t2026-11-04\t2026-11-06\nKulhad Corner\t3\t2026-10-30\t2026-11-01\nTapri 9\t0\tNULL\tNULL\n",
+      "explanation": "Gupta Chai: 1–2 Nov (2 days), 4–6 Nov (3 days; 50 cups counts), 8 Nov alone (closed on the 7th). Kulhad Corner: 30 Oct–1 Nov and 3–5 Nov are both 3 days (the lost sheet on 2 Nov breaks them), so the earlier one is reported. Tapri 9 never sold 50."
+    },
+    {
+      "id": "sample-2",
+      "hidden": false,
+      "purpose": "sample",
+      "rows_sql": "INSERT INTO stalls VALUES ('Masala Point', 'Leena Joshi');\nINSERT INTO sales VALUES ('Masala Point', '2026-11-10', 80), ('Masala Point', '2026-11-11', 75), ('Masala Point', '2026-11-12', 66), ('Masala Point', '2026-11-13', 59), ('Masala Point', '2026-11-14', 58);",
+      "explanation": "Every day from 10 to 14 November is good: one streak of 5 days."
+    },
+    { "id": "empty", "hidden": true, "purpose": "empty", "rows_sql": "" },
+    {
+      "id": "lost-sheets",
+      "hidden": true,
+      "purpose": "null",
+      "rows_sql": "INSERT INTO stalls VALUES ('Adda', 'Kunal'), ('Baithak', 'Nazia');\nINSERT INTO sales VALUES ('Adda', '2026-11-01', NULL), ('Adda', '2026-11-02', 70), ('Adda', '2026-11-03', NULL), ('Adda', '2026-11-04', 70), ('Adda', '2026-11-05', 71), ('Baithak', '2026-11-01', NULL), ('Baithak', '2026-11-02', NULL);"
+    },
+    {
+      "id": "equal-streaks",
+      "hidden": true,
+      "purpose": "ties",
+      "rows_sql": "INSERT INTO stalls VALUES ('Zaika', 'Om'), ('Chuski', 'Pallavi'), ('Mehfil', 'Qamar');\nINSERT INTO sales VALUES ('Zaika', '2026-11-05', 60), ('Zaika', '2026-11-06', 60), ('Zaika', '2026-11-01', 60), ('Zaika', '2026-11-02', 60), ('Chuski', '2026-11-09', 55), ('Chuski', '2026-11-10', 55), ('Mehfil', '2026-11-03', 99), ('Mehfil', '2026-11-04', 10), ('Mehfil', '2026-11-05', 99);"
+    },
+    {
+      "id": "calendar-edges",
+      "hidden": true,
+      "purpose": "edge",
+      "rows_sql": "INSERT INTO stalls VALUES ('Nukkad', 'Ravi'), ('Saffron', 'Tina'), ('Solo', 'Uma');\nINSERT INTO sales VALUES ('Nukkad', '2026-12-30', 50), ('Nukkad', '2026-12-31', 50), ('Nukkad', '2027-01-01', 50), ('Nukkad', '2027-01-02', 49), ('Saffron', '2028-02-28', 70), ('Saffron', '2028-02-29', 70), ('Saffron', '2028-03-01', 70), ('Saffron', '2028-03-03', 70), ('Saffron', '2028-03-04', 70), ('Saffron', '2028-03-05', 70), ('Saffron', '2028-03-06', 70), ('Solo', '2026-11-11', 51);"
+    },
+    {
+      "id": "no-sales-rows",
+      "hidden": true,
+      "purpose": "fewer-rows",
+      "rows_sql": "INSERT INTO stalls VALUES ('New Stall', 'Vikram'), ('Old Stall', 'Wahida');\nINSERT INTO sales VALUES ('Old Stall', '2026-11-01', 52);"
+    },
+    { "id": "season", "hidden": true, "purpose": "many-rows", "gen": { "src": { "$file": "gen.py" }, "args": "13 30 110" } }
+  ],
+  "order_matters": true,
+  "reference": { "$file": "reference.sql" },
+  "alternatives": [{ "$file": "alt-starts-and-ends.sql" }],
+  "wrong": [
+    { "src": { "$file": "wrong-consecutive-rows.sql" }, "why": "Finds runs of consecutive rows, not days: a closed day (no row) does not break the streak." },
+    { "src": { "$file": "wrong-drops-zero-stalls.sql" }, "why": "Starts from the streaks, not the stalls, so a stall with no good day disappears instead of showing 0." },
+    { "src": { "$file": "wrong-strict-threshold.sql" }, "why": "Uses > 50, so a day with exactly 50 cups wrongly breaks a streak." }
+  ],
+  "starter": "-- stall, streak_days, streak_start, streak_end.\n-- Longest streak first, then stall name.\nSELECT stall, 0 AS streak_days, NULL AS streak_start, NULL AS streak_end\nFROM stalls\nORDER BY stall;",
+  "hints": [
+    "Keep only the good days and number each stall's good days in date order. What happens to (date − number) inside one unbroken run?",
+    "julianday(sold_on) − ROW_NUMBER() is constant within a run of consecutive days and changes at every gap, so it names the run. GROUP BY stall and that name.",
+    "From the runs, pick per stall the longest (then earliest) with ROW_NUMBER() ORDER BY streak_days DESC, streak_start; LEFT JOIN that to stalls and COALESCE the length to 0."
+  ],
+  "approaches": [
+    { "name": "Edges: starts and ends", "summary": "A good day starts a run if the day before is not good, and ends one if the day after is not; pair each start with the first end after it." },
+    { "name": "Date minus row number", "summary": "julianday(day) − ROW_NUMBER() over a stall's good days is constant inside a run; group by it, then pick each stall's longest, earliest run." }
+  ],
+  "editorial": { "$file": "editorial.md" },
+  "editorial_length": { "form": "standard", "target_words": 1200 },
+  "revision_card": {
+    "front": "Longest run of consecutive calendar days meeting a condition, when some days have no row. The trick?",
+    "back": "Filter qualifying days; grp = julianday(day) − ROW_NUMBER() OVER (PARTITION BY key ORDER BY day). Constant within a run, so GROUP BY key, grp gives runs (COUNT, MIN, MAX). Row-number minus row-number finds consecutive rows, which is wrong when days are missing."
+  },
+  "related": ["sql-library-late-fines", "sql-monthly-growth-with-gaps"]
+}

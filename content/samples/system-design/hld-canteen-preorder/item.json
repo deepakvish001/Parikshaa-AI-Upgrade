@@ -1,0 +1,301 @@
+{
+  "schema": "parikshaa.content/system-design@1",
+  "slug": "hld-canteen-preorder",
+  "version": 1,
+  "title": "Campus canteen pre-ordering at lunch rush",
+  "tier": "public",
+  "text_language": "en",
+  "mode": "hld",
+  "difficulty": "medium",
+  "tags": {
+    "topics": [
+      "inventory",
+      "queues"
+    ],
+    "patterns": [
+      "reservation",
+      "idempotency",
+      "time-slots"
+    ],
+    "extra": [
+      "payments"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own canteen pre-order design case, examples, code, quiz and explanations; no text from any site, book or course.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-system-design",
+      "module": "HLD",
+      "position": 1
+    }
+  ],
+  "time_minutes": 45,
+  "scenario": "A university with **40,000 students** and 12 canteens wants an app where students order lunch before class ends, pay by UPI, and pick it up at a chosen 10-minute slot without queueing. Popular items (veg biryani on Fridays) run out, and each canteen's kitchen can make only so many plates per slot. Design the backend.",
+  "clarifying_questions": [
+    {
+      "q": "How many orders, and when?",
+      "a": "About 25,000 orders a day, 70% of them between 12:30 and 13:30."
+    },
+    {
+      "q": "What limits a canteen?",
+      "a": "Stock per item per day (e.g. 300 biryani plates) and kitchen capacity per 10-minute slot (e.g. 60 plates)."
+    },
+    {
+      "q": "How do students pay?",
+      "a": "UPI through a payment gateway; the gateway confirms by a callback a few seconds later, sometimes twice."
+    },
+    {
+      "q": "What if payment fails or the student never pays?",
+      "a": "The reserved plate must go back to stock within a few minutes."
+    },
+    {
+      "q": "Do canteens need a screen?",
+      "a": "Yes: a kitchen screen lists orders per slot, and a pickup screen marks orders collected."
+    },
+    {
+      "q": "Is this one region?",
+      "a": "One campus, one cloud region; multi-region is out of scope."
+    }
+  ],
+  "requirements": {
+    "functional": [
+      "Browse menus with live availability per canteen",
+      "Place an order for a pickup slot, holding stock and slot capacity",
+      "Pay by UPI; confirm the order only after payment",
+      "Release holds when payment fails or times out",
+      "Kitchen and pickup screens per canteen"
+    ],
+    "non_functional": [
+      {
+        "name": "Peak orders",
+        "target": "about 10 orders per second sustained at lunch, bursts of 50"
+      },
+      {
+        "name": "Correctness",
+        "target": "never sell more plates or slot capacity than exist"
+      },
+      {
+        "name": "Latency",
+        "target": "p99 under 500 ms to place an order (excluding UPI)"
+      },
+      {
+        "name": "Availability",
+        "target": "99.9% during 11:00-15:00"
+      }
+    ]
+  },
+  "estimates": [
+    {
+      "id": "lunch-qps",
+      "question": "Average order rate during the lunch hour if 70% of 25,000 daily orders fall in that hour?",
+      "answer": 4.9,
+      "tolerance_pct": 20,
+      "unit": "orders per second",
+      "working": "25,000 × 0.7 = 17,500 orders in 3,600 s ≈ 4.9 per second; bursts (class ends at the same minute) are about 10 times that.",
+      "solver": "print(round(25_000 * 0.7 / 3600, 1))\n"
+    },
+    {
+      "id": "menu-reads",
+      "question": "Menu reads per second at lunch if each ordering student opens menus 8 times and half of the 40,000 students order on a given day?",
+      "answer": 44,
+      "tolerance_pct": 20,
+      "unit": "reads per second",
+      "working": "20,000 students × 8 reads = 1,60,000 reads, mostly in the same hour: 1,60,000 / 3,600 ≈ 44 per second.",
+      "solver": "print(round(40_000 * 0.5 * 8 / 3600))\n"
+    },
+    {
+      "id": "order-storage",
+      "question": "Storage for one year of orders at 1 KB per order (with items and status history), in GB?",
+      "answer": 9.1,
+      "tolerance_pct": 20,
+      "unit": "GB",
+      "working": "25,000 × 365 × 1 KB ≈ 91,25,000 KB ≈ 9.1 GB a year: a single relational database is plenty.",
+      "solver": "print(round(25_000 * 365 * 1 / 1_000_000, 1))\n"
+    }
+  ],
+  "expected_components": [
+    {
+      "name": "Order service with a relational database",
+      "why": "Orders, holds and payments need transactions so stock and slot counts never go below zero.",
+      "must": true
+    },
+    {
+      "name": "Inventory and slot counters updated atomically",
+      "why": "A conditional update (stock - 1 WHERE stock > 0) makes overselling impossible even with concurrent orders.",
+      "must": true
+    },
+    {
+      "name": "Hold with expiry (reservation)",
+      "why": "Stock is held while the student pays and released if payment does not complete in time.",
+      "must": true
+    },
+    {
+      "name": "Payment gateway integration with idempotent callbacks",
+      "why": "UPI callbacks can arrive twice or late; the order must be confirmed exactly once.",
+      "must": true
+    },
+    {
+      "name": "Menu read cache",
+      "why": "Menus are read far more than they change; cache them for a few seconds and show availability as approximate.",
+      "must": true
+    },
+    {
+      "name": "Expiry worker or delayed queue",
+      "why": "Releases holds whose payment window has passed.",
+      "must": true
+    },
+    {
+      "name": "Push channel to kitchen and pickup screens",
+      "why": "Screens update as orders are confirmed and collected, without polling the database.",
+      "must": false
+    },
+    {
+      "name": "Notification service",
+      "why": "Tells the student when the order is ready.",
+      "must": false
+    }
+  ],
+  "api": [
+    "GET /canteens/{id}/menu → items with price and approximate availability",
+    "POST /orders {canteen, slot, items[], idempotency_key} → order in state HELD with a payment link",
+    "POST /payments/callback {order_id, txn_id, status} → 200 (idempotent)",
+    "GET /orders/{id} → status",
+    "POST /canteens/{id}/orders/{order}/collected"
+  ],
+  "data_model": "items(canteen_id, item_id, name, price, stock_today); slots(canteen_id, slot_start, capacity, used); orders(order_id, student_id, canteen_id, slot_start, state HELD|PAID|CANCELLED|COLLECTED, hold_expires_at, idempotency_key UNIQUE); order_lines(order_id, item_id, qty); payments(txn_id UNIQUE, order_id, status, received_at).",
+  "diagram": {
+    "id": "canteen-architecture",
+    "kind": "mermaid",
+    "alt": "The student app talks to an API gateway; menu reads go to a cache in front of the database; orders go to the order service, which updates stock and slots in the database and calls the payment gateway; payment callbacks return to the order service; an expiry worker releases old holds; kitchen screens get updates over a push channel.",
+    "data": {
+      "source": "flowchart LR\n  App[Student app] --> GW[API gateway]\n  GW -->|menus| MC[(Menu cache)]\n  MC --> DB[(Orders DB)]\n  GW -->|orders| OS[Order service]\n  OS --> DB\n  OS -->|payment link| PG[UPI gateway]\n  PG -->|callback| OS\n  EW[Expiry worker] --> DB\n  OS --> PUSH[Push channel]\n  PUSH --> KS[Kitchen screens]"
+    }
+  },
+  "deep_dives": [
+    {
+      "topic": "Never oversell: the hold",
+      "body": "Placing an order runs one transaction: decrement each item's stock with `UPDATE items SET stock_today = stock_today - :qty WHERE item_id = :id AND stock_today >= :qty`, increment the slot with `UPDATE slots SET used = used + :plates WHERE ... AND used + :plates <= capacity`, and insert the order as HELD with `hold_expires_at = now + 5 min`. If any update touches zero rows, roll back and tell the student what ran out. Because each check-and-change is one statement, two students can never both take the last plate."
+    },
+    {
+      "topic": "Payments that arrive twice, late or never",
+      "body": "The callback handler looks up the order and moves it HELD → PAID only if it is still HELD, in the same transaction that records `txn_id` (unique). A second callback finds the txn_id already stored and returns 200 without changes. If the callback arrives after the hold expired and stock was released, we try to re-take the stock; if it is gone, we refund automatically. The expiry worker moves HELD orders past `hold_expires_at` to CANCELLED and gives their stock and slot back, in one transaction."
+    },
+    {
+      "topic": "Menus under load",
+      "body": "Menu reads are ten times order writes. Serving them from a short-lived cache (5-10 seconds) keeps the database free for orders. Availability on the menu is therefore approximate; the order transaction is the real check, and the app explains politely when an item sold out between viewing and ordering."
+    }
+  ],
+  "trade_offs": [
+    "A relational database with conditional updates is simpler and safer than a distributed counter at 10 orders per second; it would be revisited only at far higher scale.",
+    "Holding stock during payment can briefly show items as sold out that later return; a short hold window limits it.",
+    "Cached menus can be a few seconds stale; correctness is enforced at order time instead."
+  ],
+  "failure_modes": [
+    "The payment gateway is slow: holds expire and stock returns; late successes are re-checked or refunded.",
+    "The expiry worker stops: holds pile up and items look sold out; alert on the count of expired-but-held orders.",
+    "The database is down: ordering stops; menus may still be served from cache with an 'ordering paused' banner."
+  ],
+  "rubric": [
+    {
+      "id": "scope",
+      "criterion": "Clarifies limits (stock, slot capacity), payment behaviour and peak hours.",
+      "weight": 10,
+      "checked_by": "review"
+    },
+    {
+      "id": "numbers",
+      "criterion": "Estimates order rate, read rate and storage, and concludes one database suffices.",
+      "weight": 15,
+      "checked_by": "auto"
+    },
+    {
+      "id": "no-oversell",
+      "criterion": "Prevents overselling with atomic conditional updates or equivalent locking.",
+      "weight": 25,
+      "checked_by": "review"
+    },
+    {
+      "id": "holds-payments",
+      "criterion": "Designs holds with expiry and idempotent payment confirmation, including late and duplicate callbacks.",
+      "weight": 25,
+      "checked_by": "review"
+    },
+    {
+      "id": "reads",
+      "criterion": "Separates heavy menu reads (cache) from order writes.",
+      "weight": 15,
+      "checked_by": "review"
+    },
+    {
+      "id": "communication",
+      "criterion": "Explains trade-offs and failure handling clearly (AI feedback, advice only).",
+      "weight": 10,
+      "checked_by": "ai-feedback"
+    }
+  ],
+  "concept_checks": [
+    {
+      "stem": "Two students order the last biryani at the same moment. What guarantees only one succeeds?",
+      "options": [
+        "A menu cache",
+        "UPDATE ... SET stock = stock - 1 WHERE stock >= 1, checking rows affected",
+        "Reading stock, then writing stock - 1",
+        "A bigger server"
+      ],
+      "correct": 1,
+      "explanation": "Check and change in one atomic statement; zero rows affected means sold out."
+    },
+    {
+      "stem": "The UPI gateway sends the same success callback twice. What makes this safe?",
+      "options": [
+        "Ignoring callbacks",
+        "A unique txn_id and moving the order HELD → PAID only if it is still HELD",
+        "Sending two plates",
+        "Retrying the payment"
+      ],
+      "correct": 1,
+      "explanation": "Idempotent handling: the second callback finds the transaction already recorded."
+    },
+    {
+      "stem": "Why hold stock before payment completes?",
+      "options": [
+        "To slow ordering down",
+        "So a student who is paying cannot lose the plate to someone else, while unpaid holds expire",
+        "UPI requires it",
+        "To fill the cache"
+      ],
+      "correct": 1,
+      "explanation": "The hold reserves the plate for a short, bounded time."
+    },
+    {
+      "stem": "At about 5 orders per second, what is the simplest correct store for orders and stock?",
+      "options": [
+        "A distributed NoSQL counter",
+        "One relational database with transactions",
+        "Files on disk",
+        "Only the cache"
+      ],
+      "correct": 1,
+      "explanation": "The load is small; transactions give correctness simply."
+    }
+  ],
+  "follow_ups": [
+    "How would you add 'reorder my usual' in one tap?",
+    "A canteen wants to stop accepting orders for a slot when the kitchen falls behind: how?",
+    "How would the design change for 10 universities on one platform?"
+  ],
+  "revision_card": {
+    "front": "Pre-order with limited stock and payment in between: the three mechanisms?",
+    "back": "Atomic conditional updates (stock - n WHERE stock >= n) so nothing is oversold; a hold with expiry released by a worker; idempotent payment callbacks (unique txn_id, HELD → PAID only once)."
+  },
+  "reference_solution": {
+    "$file": "reference.md"
+  }
+}

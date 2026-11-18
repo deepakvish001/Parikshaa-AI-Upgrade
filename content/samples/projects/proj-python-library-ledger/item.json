@@ -1,0 +1,206 @@
+{
+  "schema": "parikshaa.content/project@1",
+  "slug": "proj-python-library-ledger",
+  "version": 1,
+  "title": "Library ledger with due dates and fines",
+  "tier": "premium",
+  "text_language": "en",
+  "difficulty": "medium",
+  "tags": {
+    "topics": [
+      "python",
+      "dates",
+      "classes"
+    ],
+    "patterns": [
+      "two-module-design",
+      "report-sorting"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own project brief, code, tests and rubric for library ledger with due dates and fines, examples, code, quiz and explanations; no text from any site, book or course.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-projects",
+      "module": "Python",
+      "position": 1
+    }
+  ],
+  "language": "python",
+  "est_hours": 4,
+  "brief": "Build the issue desk of a college library: a catalogue that knows how many copies of each book exist, and a ledger that issues books for 14 days, takes them back with a fine of ₹5 per late day, and prints an overdue report. Two classes in two modules talk to each other; the driver turns text commands into calls.",
+  "requirements": [
+    "A book can be issued only if it exists, a copy is free, the member does not already hold that book, and the member holds fewer than 3 books.",
+    "Loans last 14 days; the due date is printed in ISO form.",
+    "A return on or before the due date has fine 0; each later day costs ₹5.",
+    "OVERDUE <date> lists loans past due on that date: most days late first, then member, then book code.",
+    "Bad numbers or dates print an error line instead of crashing."
+  ],
+  "io_protocol": "| Command | Prints |\n|---|---|\n| `BOOK <code> <copies>` | `book <code>: <total> copies` |\n| `ISSUE <code> <member> <date>` | `issued <code> to <member>, due <date + 14>`, or an error |\n| `RETURN <code> <member> <date>` | `returned <code>, fine <n>`, or `error: <code> is not with <member>` |\n| `OVERDUE <date>` | `<member> <code> <days> days` lines, or `nothing overdue` |\n| `AVAILABLE <code>` | `<code>: <n> available` |\n\nIssue errors, checked in this order: `error: no book <code>`, `error: <member> already has <code>`, `error: no copies of <code> left`, `error: <member> already has 3 books`. Dates are `YYYY-MM-DD`; a bad number or date prints `error: bad value in <line>`.",
+  "milestones": [
+    {
+      "id": "m1",
+      "title": "Catalogue and issuing",
+      "instructions": "Fill in `Catalogue` and `Ledger.issue` with its four checks, in the order the protocol lists them.",
+      "hints": [
+        "Store the due date as a date object; timedelta(days=14) adds the loan period.",
+        "A member's count is the number of loan keys with their name."
+      ]
+    },
+    {
+      "id": "m2",
+      "title": "Returns and fines",
+      "instructions": "Fill in `Catalogue.give_back` and `Ledger.give_back`. The fine is ₹5 for each day after the due date.",
+      "hints": [
+        "(return_day - due).days is negative for early returns; clip it with max(0, ...).",
+        "Remove the loan with dict.pop so the same book can be returned only once."
+      ]
+    },
+    {
+      "id": "m3",
+      "title": "Overdue report",
+      "instructions": "List loans whose due date is before the given day, sorted by days late (most first), then member, then code.",
+      "hints": [
+        "Sort tuples with a key like (-days, member, code).",
+        "A loan due on the report day itself is not overdue yet."
+      ]
+    }
+  ],
+  "files": [
+    {
+      "path": "books.py",
+      "content": "class Catalogue:\n    def __init__(self):\n        self._copies = {}        # code -> copies owned\n        self._out = {}           # code -> copies issued now\n\n    def add(self, code, copies):\n        # Milestone 1: add copies of a book (adding again increases the count). Return the new total.\n        return 0\n\n    def known(self, code):\n        return False             # Milestone 1\n\n    def available(self, code):\n        return 0                 # Milestone 1: copies owned minus copies issued\n\n    def take(self, code):\n        pass                     # Milestone 1: one more copy issued\n\n    def give_back(self, code):\n        pass                     # Milestone 2: one fewer copy issued\n",
+      "role": "source"
+    },
+    {
+      "path": "loans.py",
+      "content": "from datetime import date, timedelta\n\nfrom books import Catalogue\n\nLOAN_DAYS = 14\nFINE_PER_DAY = 5\nMAX_BOOKS = 3\n\n\nclass Ledger:\n    def __init__(self, catalogue: Catalogue):\n        self.catalogue = catalogue\n        self._loans = {}         # (code, member) -> due date\n\n    def issue(self, code, member, day: date):\n        # Milestone 1: \"issued <code> to <member>, due <YYYY-MM-DD>\" or an error line.\n        return \"TODO\"\n\n    def give_back(self, code, member, day: date):\n        # Milestone 2: \"returned <code>, fine <n>\" or \"error: <code> is not with <member>\".\n        return \"TODO\"\n\n    def overdue(self, day: date):\n        # Milestone 3: lines \"<member> <code> <days> days\", most days first, then member, then code.\n        return []\n",
+      "role": "source"
+    },
+    {
+      "path": "main.py",
+      "content": "import sys\nfrom datetime import date\n\nfrom books import Catalogue\nfrom loans import Ledger\n\n\ndef main():\n    catalogue = Catalogue()\n    ledger = Ledger(catalogue)\n    for raw in sys.stdin:\n        p = raw.split()\n        if not p:\n            continue\n        try:\n            if p[0] == \"BOOK\" and len(p) == 3:\n                print(f\"book {p[1]}: {catalogue.add(p[1], int(p[2]))} copies\")\n            elif p[0] == \"ISSUE\" and len(p) == 4:\n                print(ledger.issue(p[1], p[2], date.fromisoformat(p[3])))\n            elif p[0] == \"RETURN\" and len(p) == 4:\n                print(ledger.give_back(p[1], p[2], date.fromisoformat(p[3])))\n            elif p[0] == \"OVERDUE\" and len(p) == 2:\n                rows = ledger.overdue(date.fromisoformat(p[1]))\n                print(\"\\n\".join(rows) if rows else \"nothing overdue\")\n            elif p[0] == \"AVAILABLE\" and len(p) == 2:\n                print(f\"{p[1]}: {catalogue.available(p[1])} available\")\n            else:\n                print(f\"error: bad command {raw.strip()}\")\n        except ValueError:\n            print(f\"error: bad value in {raw.strip()}\")\n\n\nmain()\n",
+      "role": "driver",
+      "editable": false
+    }
+  ],
+  "solution_files": [
+    {
+      "path": "books.py",
+      "content": "class Catalogue:\n    def __init__(self):\n        self._copies = {}        # code -> copies owned\n        self._out = {}           # code -> copies issued now\n\n    def add(self, code, copies):\n        self._copies[code] = self._copies.get(code, 0) + copies\n        return self._copies[code]\n\n    def known(self, code):\n        return code in self._copies\n\n    def available(self, code):\n        return self._copies.get(code, 0) - self._out.get(code, 0)\n\n    def take(self, code):\n        self._out[code] = self._out.get(code, 0) + 1\n\n    def give_back(self, code):\n        self._out[code] -= 1\n",
+      "role": "source"
+    },
+    {
+      "path": "loans.py",
+      "content": "from datetime import date, timedelta\n\nfrom books import Catalogue\n\nLOAN_DAYS = 14\nFINE_PER_DAY = 5\nMAX_BOOKS = 3\n\n\nclass Ledger:\n    def __init__(self, catalogue: Catalogue):\n        self.catalogue = catalogue\n        self._loans = {}         # (code, member) -> due date\n\n    def _held_by(self, member):\n        return sum(1 for (_, m) in self._loans if m == member)\n\n    def issue(self, code, member, day: date):\n        if not self.catalogue.known(code):\n            return f\"error: no book {code}\"\n        if (code, member) in self._loans:\n            return f\"error: {member} already has {code}\"\n        if self.catalogue.available(code) == 0:\n            return f\"error: no copies of {code} left\"\n        if self._held_by(member) >= MAX_BOOKS:\n            return f\"error: {member} already has {MAX_BOOKS} books\"\n        due = day + timedelta(days=LOAN_DAYS)\n        self._loans[(code, member)] = due\n        self.catalogue.take(code)\n        return f\"issued {code} to {member}, due {due.isoformat()}\"\n\n    def give_back(self, code, member, day: date):\n        due = self._loans.pop((code, member), None)\n        if due is None:\n            return f\"error: {code} is not with {member}\"\n        self.catalogue.give_back(code)\n        late = max(0, (day - due).days)\n        return f\"returned {code}, fine {late * FINE_PER_DAY}\"\n\n    def overdue(self, day: date):\n        rows = [((day - due).days, member, code) for (code, member), due in self._loans.items() if day > due]\n        rows.sort(key=lambda r: (-r[0], r[1], r[2]))\n        return [f\"{member} {code} {days} days\" for days, member, code in rows]\n",
+      "role": "source"
+    }
+  ],
+  "bundle_order": [
+    "books.py",
+    "loans.py",
+    "main.py"
+  ],
+  "tests": [
+    {
+      "id": "issue-basic",
+      "input": "BOOK RD101 2\nISSUE RD101 aditi 2026-11-01\nAVAILABLE RD101\n",
+      "expected": "book RD101: 2 copies\nissued RD101 to aditi, due 2026-11-15\nRD101: 1 available\n",
+      "hidden": false,
+      "milestone": "m1"
+    },
+    {
+      "id": "return-late",
+      "input": "BOOK RD101 1\nISSUE RD101 aditi 2026-11-01\nRETURN RD101 aditi 2026-11-18\nAVAILABLE RD101\n",
+      "expected": "book RD101: 1 copies\nissued RD101 to aditi, due 2026-11-15\nreturned RD101, fine 15\nRD101: 1 available\n",
+      "hidden": false,
+      "milestone": "m2"
+    },
+    {
+      "id": "no-copies",
+      "input": "BOOK CL7 1\nISSUE CL7 aditi 2026-11-01\nISSUE CL7 bilal 2026-11-02\nISSUE XX9 bilal 2026-11-02\n",
+      "expected": "book CL7: 1 copies\nissued CL7 to aditi, due 2026-11-15\nerror: no copies of CL7 left\nerror: no book XX9\n",
+      "hidden": true,
+      "milestone": "m1"
+    },
+    {
+      "id": "same-book-twice",
+      "input": "BOOK CL7 3\nISSUE CL7 aditi 2026-11-01\nISSUE CL7 aditi 2026-11-03\n",
+      "expected": "book CL7: 3 copies\nissued CL7 to aditi, due 2026-11-15\nerror: aditi already has CL7\n",
+      "hidden": true,
+      "milestone": "m1"
+    },
+    {
+      "id": "three-book-limit",
+      "input": "BOOK A1 1\nBOOK A2 1\nBOOK A3 1\nBOOK A4 1\nISSUE A1 om 2026-10-01\nISSUE A2 om 2026-10-01\nISSUE A3 om 2026-10-01\nISSUE A4 om 2026-10-01\nRETURN A2 om 2026-10-05\nISSUE A4 om 2026-10-06\n",
+      "expected": "book A1: 1 copies\nbook A2: 1 copies\nbook A3: 1 copies\nbook A4: 1 copies\nissued A1 to om, due 2026-10-15\nissued A2 to om, due 2026-10-15\nissued A3 to om, due 2026-10-15\nerror: om already has 3 books\nreturned A2, fine 0\nissued A4 to om, due 2026-10-20\n",
+      "hidden": true,
+      "milestone": "m1"
+    },
+    {
+      "id": "on-time-return",
+      "input": "BOOK B1 2\nISSUE B1 tara 2026-11-01\nRETURN B1 tara 2026-11-15\nRETURN B1 tara 2026-11-16\n",
+      "expected": "book B1: 2 copies\nissued B1 to tara, due 2026-11-15\nreturned B1, fine 0\nerror: B1 is not with tara\n",
+      "hidden": true,
+      "milestone": "m2"
+    },
+    {
+      "id": "overdue-report",
+      "input": "BOOK X1 3\nBOOK X2 1\nISSUE X1 zoya 2026-10-01\nISSUE X1 amit 2026-10-01\nISSUE X2 bina 2026-10-20\nISSUE X1 ravi 2026-11-10\nOVERDUE 2026-11-17\n",
+      "expected": "book X1: 3 copies\nbook X2: 1 copies\nissued X1 to zoya, due 2026-10-15\nissued X1 to amit, due 2026-10-15\nissued X2 to bina, due 2026-11-03\nissued X1 to ravi, due 2026-11-24\namit X1 33 days\nzoya X1 33 days\nbina X2 14 days\n",
+      "hidden": true,
+      "milestone": "m3"
+    },
+    {
+      "id": "nothing-overdue",
+      "input": "BOOK X1 1\nOVERDUE 2026-11-17\nISSUE X1 zoya 2026-11-10\nOVERDUE 2026-11-24\nOVERDUE 2026-11-25\n",
+      "expected": "book X1: 1 copies\nnothing overdue\nissued X1 to zoya, due 2026-11-24\nnothing overdue\nzoya X1 1 days\n",
+      "hidden": true,
+      "milestone": "m3"
+    },
+    {
+      "id": "month-boundary",
+      "input": "BOOK M1 1\nISSUE M1 neha 2026-12-25\nOVERDUE 2027-01-10\nRETURN M1 neha 2027-01-10\n",
+      "expected": "book M1: 1 copies\nissued M1 to neha, due 2027-01-08\nneha M1 2 days\nreturned M1, fine 10\n",
+      "hidden": true,
+      "milestone": "m2"
+    },
+    {
+      "id": "bad-input",
+      "input": "BOOK Z1 two\nISSUE Z1 aditi 2026-13-01\nLEND Z1 aditi\nAVAILABLE NOPE\n",
+      "expected": "error: bad value in BOOK Z1 two\nerror: bad value in ISSUE Z1 aditi 2026-13-01\nerror: bad command LEND Z1 aditi\nNOPE: 0 available\n",
+      "hidden": true,
+      "milestone": "m1"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "tests",
+      "criterion": "Hidden tests pass: every command prints exactly the expected output.",
+      "weight": 65,
+      "checked_by": "tests"
+    },
+    {
+      "id": "structure",
+      "criterion": "Catalogue owns copy counts and Ledger owns loans; neither reaches into the other's dictionaries, and dates are date objects, not strings.",
+      "weight": 20,
+      "checked_by": "review"
+    },
+    {
+      "id": "feedback",
+      "criterion": "Readable names, small functions and clear error handling (AI feedback, advice only).",
+      "weight": 15,
+      "checked_by": "ai-feedback"
+    }
+  ],
+  "extensions": [
+    "Allow renewing a loan once for another 14 days.",
+    "Cap each loan's fine at ₹200 and print each member's total fine."
+  ]
+}

@@ -1,0 +1,217 @@
+{
+  "schema": "parikshaa.content/lesson@1",
+  "slug": "dbms-normal-forms",
+  "version": 1,
+  "title": "Normal forms: 1NF, 2NF and 3NF on one messy table",
+  "tier": "public",
+  "text_language": "en",
+  "course": "dbms",
+  "difficulty": "medium",
+  "tags": {
+    "topics": [
+      "normalization",
+      "relational-design"
+    ],
+    "patterns": [
+      "functional-dependency",
+      "decomposition"
+    ],
+    "extra": [
+      "anomalies"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own canteen example of normalisation, examples, code, quiz and explanations; no text from any site, book or course.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-cs-core",
+      "module": "DBMS",
+      "position": 0
+    }
+  ],
+  "est_minutes": 14,
+  "prerequisites": [],
+  "outcomes": [
+    "can spot update, insert and delete anomalies in a table",
+    "can write the functional dependencies of a small table and find its key",
+    "can take a table to 3NF and explain what each step removed"
+  ],
+  "sections": [
+    {
+      "kind": "why",
+      "heading": "Why this matters",
+      "body": "A badly shaped table works fine on day one and quietly corrupts itself by month three: a price changed in one row but not another, a warden's name spelt two ways. Normalisation is the discipline that prevents this. Placement tests ask \"which normal form is this table in?\", and system design interviews ask you to sketch tables; both need the same skill: **seeing which facts depend on which**."
+    },
+    {
+      "kind": "concept",
+      "heading": "The messy table",
+      "body": "Our canteen started with one spreadsheet-style table, `canteen_orders`:\n\n| order_id | roll | name | hostel | warden | items | prices |\n|---|---|---|---|---|---|---|\n| 1 | 21CS04 | Aditi | Kaveri | Mrs Iyer | Poha, Chai×2 | 30, 10 |\n| 2 | 21ME11 | Bilal | Tapti | Mr Bhosle | Samosa×3 | 15 |\n| 3 | 21CS04 | Aditi | Kaveri | Mrs Iyer | Chai | 10 |\n\nIt has three kinds of trouble, called **anomalies**:\n\n- **Update anomaly:** Kaveri gets a new warden. We must change every row of every Kaveri student; miss one and the data disagrees with itself.\n- **Insert anomaly:** a new item, Upma at ₹25, cannot be recorded until somebody orders it, because there is no row to put it in.\n- **Delete anomaly:** if Bilal's only order is deleted, we also lose the fact that Tapti's warden is Mr Bhosle.\n\nAll three come from one cause: **one table is storing several different facts**, so each fact is repeated or tied to unrelated data."
+    },
+    {
+      "kind": "concept",
+      "heading": "Functional dependencies: the tool",
+      "body": "A **functional dependency** `X → Y` means: if two rows agree on `X`, they must agree on `Y`. Written for our canteen:\n\n- `roll → name, hostel` (a roll number fixes the student)\n- `hostel → warden`\n- `item → price`\n- `order_id → roll` (an order belongs to one student)\n- `(order_id, item) → qty`\n\nA **key** is a smallest set of columns that determines every other column. Once each line of an order is its own row, the key of the big table is `(order_id, item)`.\n\n**Normal forms are rules about which dependencies may live in one table.** Each step below moves a dependency that breaks the rule into a table of its own."
+    },
+    {
+      "kind": "concept",
+      "heading": "1NF, 2NF, 3NF",
+      "body": "**1NF: one value per cell.** `items` holds a list (\"Poha, Chai×2\"). We split it so each row is one item of one order, with a `qty` column. Now `(order_id, item)` is the key.\n\n**2NF: no partial dependency.** In 2NF, no non-key column may depend on **only part** of a composite key. But `price` depends on `item` alone, and `roll`, `name`, `hostel`, `warden` depend on `order_id` alone. Each part goes to its own table: `items(item, price)`, `orders(order_id, roll, ...)`, and `order_lines(order_id, item, qty)` keeps only what needs the whole key.\n\n**3NF: no transitive dependency.** In 3NF, a non-key column may not depend on **another non-key column**. In `orders(order_id, roll, name, hostel, warden)`, `warden` depends on `hostel`, which depends on `roll`, which depends on `order_id`. We split again: `students(roll, name, hostel)` and `hostels(hostel, warden)`, leaving `orders(order_id, roll)`.\n\nA one-line memory aid: every non-key column depends on **the key, the whole key, and nothing but the key**.\n\n> **Note:** A table whose key is a single column is automatically in 2NF once it is in 1NF: there is no \"part\" of the key to depend on. Partial dependencies only appear with composite keys.",
+      "visual": {
+        "id": "nf-steps",
+        "kind": "table",
+        "alt": "The steps: 1NF splits the item list into rows; 2NF moves price to items and student columns to orders; 3NF moves name and hostel to students and warden to hostels.",
+        "data": {
+          "headers": [
+            "Step",
+            "Dependency removed",
+            "New table"
+          ],
+          "rows": [
+            [
+              "1NF",
+              "list of items in one cell",
+              "one row per (order, item)"
+            ],
+            [
+              "2NF",
+              "item → price",
+              "items(item, price)"
+            ],
+            [
+              "2NF",
+              "order_id → roll, ...",
+              "orders(order_id, roll, ...)"
+            ],
+            [
+              "3NF",
+              "roll → name, hostel",
+              "students(roll, name, hostel)"
+            ],
+            [
+              "3NF",
+              "hostel → warden",
+              "hostels(hostel, warden)"
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "kind": "example",
+      "heading": "The same data, rebuilt with joins",
+      "body": "Normalising must not lose information: joining the small tables must give back exactly what the big table said. Here are the five 3NF tables with our three orders; the query rebuilds each order's student, warden and bill.",
+      "code": [
+        {
+          "lang": "sql",
+          "src": "SELECT o.order_id, s.name, h.warden, SUM(l.qty * i.price) AS bill\nFROM orders AS o\nJOIN students AS s ON s.roll = o.roll\nJOIN hostels AS h ON h.hostel = s.hostel\nJOIN order_lines AS l ON l.order_id = o.order_id\nJOIN items AS i ON i.item = l.item\nGROUP BY o.order_id, s.name, h.warden\nORDER BY o.order_id;\n",
+          "runnable": true,
+          "stdin": "CREATE TABLE hostels (hostel TEXT PRIMARY KEY, warden TEXT NOT NULL);\nCREATE TABLE students (roll TEXT PRIMARY KEY, name TEXT NOT NULL, hostel TEXT NOT NULL REFERENCES hostels(hostel));\nCREATE TABLE items (item TEXT PRIMARY KEY, price INTEGER NOT NULL);\nCREATE TABLE orders (order_id INTEGER PRIMARY KEY, roll TEXT NOT NULL REFERENCES students(roll));\nCREATE TABLE order_lines (order_id INTEGER NOT NULL REFERENCES orders(order_id), item TEXT NOT NULL REFERENCES items(item), qty INTEGER NOT NULL, PRIMARY KEY (order_id, item));\nINSERT INTO hostels VALUES ('Kaveri', 'Mrs Iyer'), ('Tapti', 'Mr Bhosle');\nINSERT INTO students VALUES ('21CS04', 'Aditi', 'Kaveri'), ('21ME11', 'Bilal', 'Tapti');\nINSERT INTO items VALUES ('Poha', 30), ('Chai', 10), ('Samosa', 15);\nINSERT INTO orders VALUES (1, '21CS04'), (2, '21ME11'), (3, '21CS04');\nINSERT INTO order_lines VALUES (1, 'Poha', 1), (1, 'Chai', 2), (2, 'Samosa', 3), (3, 'Chai', 1);\n",
+          "expected_output": "1\tAditi\tMrs Iyer\t50\n2\tBilal\tMr Bhosle\t45\n3\tAditi\tMrs Iyer\t10\n",
+          "caption": "Five 3NF tables joined back into one bill per order"
+        }
+      ]
+    },
+    {
+      "kind": "example",
+      "heading": "What the split bought us",
+      "body": "Order 1 is Poha (₹30) plus two Chai (₹10 each), a bill of ₹50; order 2 is three Samosa, ₹45; order 3 is one Chai, ₹10. The joins give back everything the messy table had.\n\nNow replay the anomalies:\n\n- Kaveri's new warden: **one** row in `hostels` changes. Every bill shows it at once.\n- Upma at ₹25: one insert into `items`, no order needed.\n- Deleting Bilal's order: `hostels` still says Tapti's warden is Mr Bhosle.\n\nEach fact now lives in exactly **one** place. That is the real goal; the normal forms are just a checklist for getting there.\n\nThere is a small price: the bill now needs four joins instead of one table scan. With indexes on the key columns these joins are cheap for a canteen, and a wrong bill costs far more than a few microseconds."
+    },
+    {
+      "kind": "note",
+      "heading": "A method for exam questions",
+      "body": "Placement tests often give a relation and a list of dependencies and ask for its highest normal form. A steady method beats guessing:\n\n1. **Find the key.** Start from the columns that never appear on the right of any dependency; they must be in every key. Add columns until their closure (everything they determine, following the arrows) covers the whole table.\n2. **Check 1NF.** Any lists, repeating groups or multi-part cells? If yes, stop: not even 1NF.\n3. **Check 2NF** only if the key has several columns. For each dependency, is the left side a *proper part* of the key and the right side a non-key column? If so, 2NF is broken.\n4. **Check 3NF.** For each dependency, is the left side something other than a key, with a non-key column on the right? If so, 3NF is broken.\n\nWork the steps in order and write one line of reason for each. In our canteen, step 3 catches `item → price` and step 4 catches `hostel → warden`, exactly the two splits we made. The same four steps also tell you *what* to split: each broken dependency becomes a table whose key is its left side."
+    },
+    {
+      "kind": "misconception",
+      "heading": "Common mix-ups",
+      "body": "**Many students think more normalised is always better.** Actually each split adds a join. Read-heavy reports sometimes **denormalise** on purpose (keep the bill total in `orders`) and accept the cost of keeping copies in sync. Normalise first, then denormalise deliberately where measurements show it pays.\n\n**Many students think 2NF is about a single-column key.** It is the opposite: 2NF only has work to do when the key has **several** columns.\n\n**Many students think a dependency is a fact about today's rows.** It is a rule about all possible rows. That every current student in Kaveri is named Aditi does not mean `hostel → name`; ask whether the real world forces it."
+    },
+    {
+      "kind": "interview",
+      "heading": "Interview questions",
+      "body": "Answers as a strong candidate would say them.",
+      "qa": [
+        {
+          "q": "What is the difference between 2NF and 3NF?",
+          "a": "2NF forbids a non-key column depending on part of a composite key. 3NF additionally forbids a non-key column depending on another non-key column, a transitive dependency. In our canteen, price depending on item alone broke 2NF, and warden depending on hostel broke 3NF."
+        },
+        {
+          "q": "Why normalise at all?",
+          "a": "So each fact is stored once. That removes update, insert and delete anomalies: a change is made in one place, new facts can be recorded on their own, and deleting one fact does not erase another."
+        },
+        {
+          "q": "When would you denormalise?",
+          "a": "When reads vastly outnumber writes and a join is a measured bottleneck, for example a dashboard total. I would keep the normalised tables as the source of truth and update the copy in the same transaction or with a trigger, so it cannot drift silently."
+        },
+        {
+          "q": "What is BCNF?",
+          "a": "Boyce-Codd normal form requires that for every non-trivial dependency X → Y, X is a superkey. It is a little stricter than 3NF, which allows Y to be part of a key; most practical designs that reach 3NF are already in BCNF."
+        }
+      ]
+    },
+    {
+      "kind": "summary",
+      "heading": "Summary",
+      "body": "- Anomalies (update, insert, delete) come from one table holding several facts.\n- Write the functional dependencies first; they decide the split.\n- 1NF: one value per cell. 2NF: no partial dependency on a composite key. 3NF: no non-key → non-key dependency.\n- \"The key, the whole key, and nothing but the key.\"\n- Joins must rebuild the original data; denormalise later, on purpose."
+    }
+  ],
+  "quiz": [
+    {
+      "stem": "Table `marks(roll, subject, marks, subject_teacher)`, key `(roll, subject)`. `subject → subject_teacher`. Which normal form does it break?",
+      "options": [
+        "1NF",
+        "2NF",
+        "3NF only",
+        "None"
+      ],
+      "correct": 1,
+      "explanation": "subject_teacher depends on subject, only part of the composite key: a partial dependency, so 2NF is broken."
+    },
+    {
+      "stem": "Table `students(roll, hostel, warden)`, key `roll`, with `hostel → warden`. What is the problem?",
+      "options": [
+        "Partial dependency",
+        "Transitive dependency: breaks 3NF",
+        "Repeating group: breaks 1NF",
+        "Nothing"
+      ],
+      "correct": 1,
+      "explanation": "warden depends on hostel, a non-key column: roll → hostel → warden is transitive."
+    },
+    {
+      "stem": "Deleting a student's only order also deletes the only record of her hostel's warden. Which anomaly is this?",
+      "options": [
+        "Update",
+        "Insert",
+        "Delete",
+        "Phantom"
+      ],
+      "correct": 2,
+      "explanation": "Losing an unrelated fact when a row is deleted is a delete anomaly."
+    },
+    {
+      "stem": "A table's key is a single column and every cell holds one value. Which is certainly true?",
+      "options": [
+        "It is in 3NF",
+        "It is in 2NF",
+        "It is in BCNF",
+        "It has no anomalies"
+      ],
+      "correct": 1,
+      "explanation": "With a single-column key there is no partial dependency, so 1NF implies 2NF; it may still break 3NF."
+    }
+  ],
+  "revision_card": {
+    "front": "1NF, 2NF and 3NF in one line each, and the memory aid?",
+    "back": "1NF: atomic cells. 2NF: no non-key column depends on part of a composite key. 3NF: no non-key column depends on another non-key column. \"The key, the whole key, and nothing but the key.\""
+  },
+  "next": [
+    "dbms-transaction-isolation"
+  ]
+}

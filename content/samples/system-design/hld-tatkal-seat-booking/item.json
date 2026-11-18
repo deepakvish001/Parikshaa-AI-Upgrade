@@ -1,0 +1,310 @@
+{
+  "schema": "parikshaa.content/system-design@1",
+  "slug": "hld-tatkal-seat-booking",
+  "version": 1,
+  "title": "Tatkal booking: selling the last seats fairly",
+  "tier": "premium",
+  "text_language": "en",
+  "mode": "hld",
+  "difficulty": "hard",
+  "tags": {
+    "topics": [
+      "inventory",
+      "concurrency",
+      "queues"
+    ],
+    "patterns": [
+      "virtual-waiting-room",
+      "seat-hold",
+      "sharding-by-train"
+    ],
+    "extra": [
+      "thundering-herd"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own tatkal-style booking design case, examples, code, quiz and explanations; no text from any site, book or course.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-system-design",
+      "module": "HLD",
+      "position": 3
+    }
+  ],
+  "time_minutes": 60,
+  "scenario": "A railway-style booking site opens last-minute (tatkal) quotas at exactly 10:00 every day. For popular trains, **lakhs of users** try to book a few hundred seats in the first two minutes. Today the site slows to a crawl, payments time out, and people who paid sometimes get no ticket. Design the booking system for that window.",
+  "clarifying_questions": [
+    {
+      "q": "How many users and seats?",
+      "a": "About 15 lakh users try in the first 2 minutes across 3,000 trains; a popular train has about 400 tatkal seats."
+    },
+    {
+      "q": "Can a user pick a specific seat?",
+      "a": "No: a class and quota per train and date; seats are assigned at confirmation."
+    },
+    {
+      "q": "How long does payment take?",
+      "a": "30 seconds to 3 minutes through a payment gateway."
+    },
+    {
+      "q": "What matters most?",
+      "a": "Never sell a seat twice, never take money without a ticket or a refund, and be fair: earlier valid requests should do better."
+    },
+    {
+      "q": "Is a waiting list needed?",
+      "a": "Yes, after seats run out, up to a fixed waitlist size per train."
+    },
+    {
+      "q": "Read traffic?",
+      "a": "Availability checks are about 10 times the booking attempts."
+    }
+  ],
+  "requirements": {
+    "functional": [
+      "Show approximate availability per train, class and date",
+      "Accept booking requests from 10:00 and hold a seat while the user pays",
+      "Confirm after payment; release on failure or timeout",
+      "Put requests beyond capacity on a waitlist, then refuse"
+    ],
+    "non_functional": [
+      {
+        "name": "Admission",
+        "target": "absorb about 12,500 requests per second at 10:00 without errors"
+      },
+      {
+        "name": "Correctness",
+        "target": "zero double-sold seats; every payment ends in a ticket or a refund"
+      },
+      {
+        "name": "Fairness",
+        "target": "requests are served in arrival order per train"
+      },
+      {
+        "name": "Latency",
+        "target": "a clear 'held / waitlisted / sold out' answer within 5 seconds of admission"
+      }
+    ]
+  },
+  "estimates": [
+    {
+      "id": "peak-rps",
+      "question": "Booking requests per second if 15 lakh users each send about 1 request in the first 2 minutes?",
+      "answer": 12500,
+      "tolerance_pct": 20,
+      "unit": "requests per second",
+      "working": "15,00,000 / 120 s = 12,500 requests per second, before any retries.",
+      "solver": "print(round(1_500_000 / 120))\n"
+    },
+    {
+      "id": "hot-train-share",
+      "question": "If the 20 most popular trains get 40% of all requests, how many requests per second hit one such train on average?",
+      "answer": 250,
+      "tolerance_pct": 20,
+      "unit": "requests per second",
+      "working": "12,500 × 0.4 / 20 = 250 per second on one train, for about 400 seats.",
+      "solver": "print(round(12_500 * 0.4 / 20))\n"
+    },
+    {
+      "id": "held-seats",
+      "question": "How many seats are held at once on a popular train if 400 seats sell in the first 40 seconds and payment takes 90 seconds on average?",
+      "answer": 400,
+      "tolerance_pct": 20,
+      "unit": "seats",
+      "working": "All 400 sell before the first payments finish, so up to all 400 are held at once: holds, not confirmed seats, dominate the first minutes.",
+      "solver": "print(min(400, round(400 / 40 * 90)))\n"
+    },
+    {
+      "id": "availability-reads",
+      "question": "Availability reads per second at 10 times the booking rate?",
+      "answer": 125000,
+      "tolerance_pct": 20,
+      "unit": "reads per second",
+      "working": "12,500 × 10 = 1,25,000 reads per second: these must come from caches, never the booking database.",
+      "solver": "print(12_500 * 10)\n"
+    }
+  ],
+  "expected_components": [
+    {
+      "name": "Virtual waiting room / admission queue",
+      "why": "Absorbs the burst at the edge, stamps arrival order, and admits requests to the booking path at a rate it can serve.",
+      "must": true
+    },
+    {
+      "name": "Per-train booking partition (single writer per train)",
+      "why": "All decisions for one train go through one ordered stream, so seat counts change without lock contention and in arrival order.",
+      "must": true
+    },
+    {
+      "name": "Inventory store with atomic hold and confirm",
+      "why": "Seat counts per train, class and date change only through holds that expire and confirmations.",
+      "must": true
+    },
+    {
+      "name": "Payment orchestration with idempotency and reconciliation",
+      "why": "Payments are slow and unreliable; each must end in a confirmed ticket or an automatic refund.",
+      "must": true
+    },
+    {
+      "name": "Availability cache",
+      "why": "Serves 1 lakh+ reads per second with numbers that are seconds old.",
+      "must": true
+    },
+    {
+      "name": "Hold expiry and waitlist promotion",
+      "why": "Unpaid holds return seats to the next request in line.",
+      "must": true
+    },
+    {
+      "name": "Bot and abuse protection",
+      "why": "Scripts that fire thousands of requests would otherwise take the queue's front places.",
+      "must": false
+    },
+    {
+      "name": "Notification service",
+      "why": "Tells users their result asynchronously instead of keeping connections open.",
+      "must": false
+    }
+  ],
+  "api": [
+    "GET /availability?train=&date=&class= → approximate seats left (cached)",
+    "POST /bookings {train, date, class, passengers[], idempotency_key} → 202 {request_id, queue_position}",
+    "GET /bookings/{request_id} → QUEUED | HELD (pay by …) | WAITLISTED n | SOLD_OUT | CONFIRMED pnr",
+    "POST /payments/callback {request_id, txn_id, status} → 200 (idempotent)"
+  ],
+  "data_model": "inventory(train, date, class, total, held, confirmed, waitlisted) owned by the train's partition; requests(request_id, user_id, train, date, class, arrival_ts, state, hold_expires_at, idempotency_key UNIQUE); payments(txn_id UNIQUE, request_id, status); tickets(pnr, request_id, seats).",
+  "diagram": {
+    "id": "tatkal-architecture",
+    "kind": "mermaid",
+    "alt": "Users reach a CDN and a waiting room that stamps arrival order and admits requests into a queue partitioned by train; one booking worker per partition updates that train's inventory; payments go to a gateway and callbacks return to an orchestrator; an expiry job releases holds; availability is served from a cache.",
+    "data": {
+      "source": "flowchart LR\n  U[Users] --> CDN\n  CDN --> WR[Waiting room]\n  WR -->|admitted, stamped| Q[[Queue partitioned by train]]\n  Q --> W1[Booking worker: train A]\n  Q --> W2[Booking worker: train B]\n  W1 --> INV[(Inventory)]\n  W2 --> INV\n  W1 --> PO[Payment orchestrator]\n  PO <--> PG[Payment gateway]\n  EX[Expiry job] --> INV\n  INV --> AC[(Availability cache)]\n  CDN --> AC"
+    }
+  },
+  "deep_dives": [
+    {
+      "topic": "Why a single writer per train",
+      "body": "250 requests per second fight over one train's 400 seats. With many servers updating one row, they queue on its lock anyway, and lock waits, retries and timeouts pile up. Routing every request for a train to **one partition** of a queue, consumed by **one worker**, turns contention into a simple loop: read the next request, check the counts in memory or in the train's row, hold or waitlist, write. One worker can make thousands of such decisions per second, far above 250. Different trains are independent, so 3,000 trains spread across many workers."
+    },
+    {
+      "topic": "Holds and payments",
+      "body": "A hold reserves seats for, say, 5 minutes and is written with `hold_expires_at`. The payment orchestrator confirms only if the hold is still active (`state = HELD`), records `txn_id` uniquely, and turns the hold into a ticket. A payment that succeeds after its hold expired triggers an automatic refund unless a seat can be re-taken. A reconciliation job queries the gateway for transactions without a callback. Every payment therefore ends in a ticket or a refund: the guarantee users actually care about."
+    },
+    {
+      "topic": "Fairness at the door",
+      "body": "The waiting room stamps each request with its arrival time and gives the user a position. Admission into the booking queue preserves that order per train, so the person who clicked at 10:00:00.2 is decided before the one at 10:00:03. Requests from the same user with the same idempotency key collapse into one, which stops retry storms from multiplying load and from gaining extra places."
+    }
+  ],
+  "trade_offs": [
+    "An asynchronous 'you are in the queue' answer is less satisfying than an instant one but is the only way to stay up under a 12,500 per second burst.",
+    "Single-writer partitions make one hot train limited by one worker's speed, which is still far above its demand; the gain is no lock contention and natural ordering.",
+    "Holding seats during payment can make availability drop to zero and then rise again as holds expire; showing 'seats may become available' manages expectations."
+  ],
+  "failure_modes": [
+    "A booking worker crashes: another takes over its partition from the last committed offset; decisions are idempotent by request_id, so replays do no harm.",
+    "The payment gateway degrades: holds expire, seats return to the waitlist order, late successes are refunded or re-matched.",
+    "The availability cache lags: users see stale numbers, which is acceptable because the booking path decides.",
+    "Bots flood the waiting room: rate limits per account and device, CAPTCHA, and dropping duplicate idempotency keys."
+  ],
+  "rubric": [
+    {
+      "id": "scope",
+      "criterion": "Clarifies seats, peak window, payment behaviour and fairness before designing.",
+      "weight": 10,
+      "checked_by": "review"
+    },
+    {
+      "id": "numbers",
+      "criterion": "Estimates burst rate, per-train rate, holds and reads, and uses them.",
+      "weight": 15,
+      "checked_by": "auto"
+    },
+    {
+      "id": "admission",
+      "criterion": "Absorbs the burst with a waiting room/queue and asynchronous results instead of synchronous requests to the database.",
+      "weight": 20,
+      "checked_by": "review"
+    },
+    {
+      "id": "correctness",
+      "criterion": "Per-train ordering or atomic updates that make double-selling impossible; holds with expiry.",
+      "weight": 25,
+      "checked_by": "review"
+    },
+    {
+      "id": "payments",
+      "criterion": "Idempotent confirmation, reconciliation and refunds so every payment ends in a ticket or refund.",
+      "weight": 20,
+      "checked_by": "review"
+    },
+    {
+      "id": "communication",
+      "criterion": "Clear trade-offs and failure handling (AI feedback, advice only).",
+      "weight": 10,
+      "checked_by": "ai-feedback"
+    }
+  ],
+  "concept_checks": [
+    {
+      "stem": "Why route all requests for one train to one worker?",
+      "options": [
+        "To save servers",
+        "So seat decisions for that train happen in order without lock contention",
+        "Because databases cannot store trains",
+        "To cache availability"
+      ],
+      "correct": 1,
+      "explanation": "A single ordered writer per train removes contention and gives arrival-order fairness."
+    },
+    {
+      "stem": "A payment succeeds after its hold expired and the seat went to someone else. What should happen?",
+      "options": [
+        "Keep the money; the user can try again",
+        "Refund automatically (or re-take a seat if one is free)",
+        "Sell the seat twice",
+        "Ignore the callback"
+      ],
+      "correct": 1,
+      "explanation": "Every payment must end in a ticket or a refund."
+    },
+    {
+      "stem": "Availability reads reach about 1,25,000 per second. Where should they be served from?",
+      "options": [
+        "The booking database",
+        "A cache refreshed every few seconds",
+        "The payment gateway",
+        "Each booking worker"
+      ],
+      "correct": 1,
+      "explanation": "Reads must never compete with the booking path; slightly stale numbers are fine."
+    },
+    {
+      "stem": "What stops one user's retries from multiplying load and gaining extra queue places?",
+      "options": [
+        "Faster servers",
+        "An idempotency key that collapses repeated requests into one",
+        "A bigger cache",
+        "Longer holds"
+      ],
+      "correct": 1,
+      "explanation": "Requests with the same key are the same request."
+    }
+  ],
+  "follow_ups": [
+    "How would you handle a user booking for six passengers when only four seats are left?",
+    "How would you prevent bots from taking the first places in the waiting room?",
+    "How would you show each user a live position in the queue?"
+  ],
+  "revision_card": {
+    "front": "Tatkal-style burst booking: four pillars?",
+    "back": "Waiting room that stamps arrival order and admits at a safe rate; single writer per train (queue partition) for contention-free, ordered seat decisions; holds with expiry + idempotent payment confirmation + reconciliation/refunds; availability from cache."
+  },
+  "reference_solution": {
+    "$file": "reference.md"
+  }
+}

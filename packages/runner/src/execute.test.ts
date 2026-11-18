@@ -84,6 +84,23 @@ describe("SQL", () => {
   });
 });
 
+describe("whole output", () => {
+  const big = "print('x' * 9000)\n";
+  const tests = [{ id: "t", input: "", expected: "" }];
+
+  it("cuts standard output to a report's few kilobytes by default", async () => {
+    const result = await execute({ language: "python", source: big, tests }, options);
+    if (!result.compiled) throw new Error("did not compile");
+    expect(result.tests[0]!.stdout.length).toBeLessThan(9000);
+  });
+
+  it("keeps all of it when asked, for a content upload's gates", async () => {
+    const result = await execute({ language: "python", source: big, tests, fullOutput: true }, options);
+    if (!result.compiled) throw new Error("did not compile");
+    expect(result.tests[0]!.stdout).toBe(`${"x".repeat(9000)}\n`);
+  });
+});
+
 describe("judging", () => {
   it("tells a wrong answer from a right one", async () => {
     expect(statuses(await run("python", "print(0)"))).toEqual(["wrong_answer", "wrong_answer"]);

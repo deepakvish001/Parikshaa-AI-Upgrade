@@ -1,0 +1,82 @@
+{
+  "schema": "parikshaa.content/sql-problem@1",
+  "slug": "sql-hostel-room-headcount",
+  "version": 1,
+  "title": "Hostel rooms: who is staying, and how many beds are free?",
+  "tier": "public",
+  "text_language": "en",
+  "difficulty": "easy",
+  "level": "L1",
+  "tags": { "topics": ["joins", "grouping"], "patterns": ["left-join-count"], "extra": ["null-handling"] },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own hostel story, tables, datasets, queries and editorial; no text from any problem site.",
+    "review": { "state": "self-checked" }
+  },
+  "placement": [{ "track": "samples-sql", "module": "Easy", "position": 1 }],
+  "dialect": "sqlite",
+  "stem": "The warden of a girls' hostel wants a bed chart before the new semester: for **every room**, how many students stay in it now and how many beds are free.\n\n**Tables**\n\n`rooms`\n\n| Column | Type | Meaning |\n|---|---|---|\n| `room_no` | INTEGER, primary key | |\n| `block` | TEXT, not null | `'A'`, `'B'`, ... |\n| `capacity` | INTEGER, not null | Beds in the room |\n\n`allotments`\n\n| Column | Type | Meaning |\n|---|---|---|\n| `allot_id` | INTEGER, primary key | |\n| `room_no` | INTEGER, not null | The room |\n| `student_name` | TEXT, not null | |\n| `checked_out_on` | TEXT | ISO date she left; **NULL while she still stays** |\n\n**Task:** return one row per room with `room_no`, `block`, `staying` (students in it now) and `free_beds` (`capacity - staying`). Rooms with nobody in them appear too, with `staying` 0. Sort by `block`, then `room_no`, both ascending. With no rooms, return no rows.",
+  "schema_sql": "CREATE TABLE rooms (\n  room_no INTEGER PRIMARY KEY,\n  block TEXT NOT NULL,\n  capacity INTEGER NOT NULL\n);\nCREATE TABLE allotments (\n  allot_id INTEGER PRIMARY KEY,\n  room_no INTEGER NOT NULL REFERENCES rooms(room_no),\n  student_name TEXT NOT NULL,\n  checked_out_on TEXT\n);",
+  "datasets": [
+    {
+      "id": "sample-1",
+      "hidden": false,
+      "purpose": "sample",
+      "rows_sql": "INSERT INTO rooms VALUES (101, 'A', 3), (102, 'A', 2), (201, 'B', 3), (202, 'B', 1);\nINSERT INTO allotments VALUES (1, 101, 'Aditi', NULL), (2, 101, 'Bina', '2026-07-31'), (3, 101, 'Charu', NULL), (4, 102, 'Deepa', '2026-06-30'), (5, 201, 'Esha', NULL), (6, 201, 'Fiza', NULL), (7, 201, 'Gauri', NULL);",
+      "expected": "101\tA\t2\t1\n102\tA\t0\t2\n201\tB\t3\t0\n202\tB\t0\t1\n",
+      "explanation": "Bina and Deepa have checked out, so they take no bed. Room 102 (everyone left) and room 202 (never used) still appear with 0 staying."
+    },
+    { "id": "empty", "hidden": true, "purpose": "empty", "rows_sql": "" },
+    {
+      "id": "all-current",
+      "hidden": true,
+      "purpose": "null",
+      "rows_sql": "INSERT INTO rooms VALUES (11, 'C', 2), (12, 'C', 2), (13, 'C', 4);\nINSERT INTO allotments VALUES (1, 11, 'Hema', NULL), (2, 11, 'Isha', NULL), (3, 13, 'Jyoti', NULL);"
+    },
+    {
+      "id": "same-counts",
+      "hidden": true,
+      "purpose": "ties",
+      "rows_sql": "INSERT INTO rooms VALUES (305, 'B', 2), (301, 'B', 2), (110, 'A', 2), (303, 'A', 2);\nINSERT INTO allotments VALUES (1, 305, 'Kavya', NULL), (2, 301, 'Leela', NULL), (3, 110, 'Meera', NULL), (4, 303, 'Neha', NULL);"
+    },
+    {
+      "id": "no-allotments",
+      "hidden": true,
+      "purpose": "fewer-rows",
+      "rows_sql": "INSERT INTO rooms VALUES (1, 'D', 1), (2, 'D', 3);"
+    },
+    {
+      "id": "everyone-left",
+      "hidden": true,
+      "purpose": "edge",
+      "rows_sql": "INSERT INTO rooms VALUES (21, 'E', 2), (22, 'E', 1);\nINSERT INTO allotments VALUES (1, 21, 'Pari', '2026-03-01'), (2, 21, 'Ruhi', '2026-04-15'), (3, 22, 'Sana', NULL), (4, 21, 'Tara', '2026-05-20');"
+    },
+    { "id": "big-hostel", "hidden": true, "purpose": "many-rows", "gen": { "src": { "$file": "gen.py" }, "args": "11 400 900" } }
+  ],
+  "order_matters": true,
+  "reference": { "$file": "reference.sql" },
+  "alternatives": [{ "$file": "alt-subquery.sql" }],
+  "wrong": [
+    { "src": { "$file": "wrong-count-star.sql" }, "why": "COUNT(*) counts the one all-NULL row a LEFT JOIN makes for an empty room, so empty rooms show 1 staying." },
+    { "src": { "$file": "wrong-inner-join.sql" }, "why": "An inner join drops every room with no current student." },
+    { "src": { "$file": "wrong-filter-in-where.sql" }, "why": "The checkout test in WHERE throws away the joined rows of a room whose students all left, so that room disappears." }
+  ],
+  "starter": "-- One row per room: room_no, block, staying, free_beds.\n-- Sorted by block, then room_no.\nSELECT room_no, block, 0 AS staying, capacity AS free_beds\nFROM rooms;",
+  "hints": [
+    "Every room must appear, even an empty one. Which table should the query start from, and which join keeps all its rows?",
+    "After a LEFT JOIN an empty room still makes one row, with NULLs on the right. What does COUNT(*) say for it, and what does COUNT(a.allot_id) say?",
+    "LEFT JOIN allotments with both the room and checked_out_on IS NULL in the ON clause, then GROUP BY the room and COUNT(a.allot_id)."
+  ],
+  "approaches": [
+    { "name": "LEFT JOIN + COUNT(column)", "summary": "Join each room to its current allotments (the checkout test in ON) and count a right-table column, which is 0 for an empty room." },
+    { "name": "Correlated subquery", "summary": "For each room, count its current allotments in a subquery. COUNT(*) over zero rows is 0, so empty rooms are handled for free." }
+  ],
+  "editorial": { "$file": "editorial.md" },
+  "editorial_length": { "form": "standard", "target_words": 600 },
+  "revision_card": {
+    "front": "Count child rows per parent, keeping parents with no children. Which join, which COUNT, and where does a filter on the child go?",
+    "back": "LEFT JOIN from the parent; COUNT(child.id), not COUNT(*) (the empty parent's NULL row would count as 1); a filter on the child goes in ON, or the empty parents vanish. A correlated COUNT(*) subquery avoids both traps."
+  },
+  "related": ["sql-canteen-no-order-month", "sql-metro-recharge-having"]
+}

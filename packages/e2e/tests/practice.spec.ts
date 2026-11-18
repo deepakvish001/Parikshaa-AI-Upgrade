@@ -221,7 +221,7 @@ for (const scheme of ["light", "dark"] as const) {
       await page.getByLabel("Password", { exact: true }).fill(OWNER.password);
       await page.getByRole("button", { name: "Sign in", exact: true }).click();
       await page.getByRole("navigation", { name: "Account" }).getByRole("button", { name: "Practice", exact: true }).click();
-      for (const tab of ["Site", "Problems", "Tracks", "Lessons", "Problem of the day", "Plus", "Companies", "Experiences", "Coin store", "Contests", "Learners", "Discussion"]) {
+      for (const tab of ["Site", "Problems", "Tracks", "Lessons", "Bulk upload", "Problem of the day", "Plus", "Companies", "Experiences", "Coin store", "Contests", "Learners", "Discussion"]) {
         await page.getByRole("tab", { name: tab, exact: true }).click();
         await page.waitForLoadState("networkidle");
         expect(await violations(page), tab).toEqual([]);

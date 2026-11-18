@@ -1,0 +1,189 @@
+{
+  "schema": "parikshaa.content/lesson@1",
+  "slug": "ood-composition-over-inheritance",
+  "version": 1,
+  "title": "Composition over inheritance",
+  "tier": "premium",
+  "text_language": "en",
+  "course": "ood",
+  "difficulty": "medium",
+  "tags": {
+    "topics": [
+      "oop",
+      "inheritance",
+      "composition"
+    ],
+    "patterns": [
+      "has-a-vs-is-a",
+      "decorator"
+    ],
+    "extra": [
+      "class-explosion"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own hostel notification example of composition, examples, code, quiz and explanations; no text from any site, book or course.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-cs-core",
+      "module": "Object-oriented design",
+      "position": 1
+    }
+  ],
+  "est_minutes": 13,
+  "prerequisites": [
+    "ood-encapsulation-invariants"
+  ],
+  "outcomes": [
+    "can tell an is-a relationship from a has-a relationship",
+    "can recognise the class explosion that inheritance causes for combinations of behaviour",
+    "can rebuild a design with composition and a wrapper, and say when inheritance is still the right tool"
+  ],
+  "sections": [
+    {
+      "kind": "why",
+      "heading": "Why this matters",
+      "body": "Inheritance is the first OOP tool most of us learn, so it becomes the tool for everything. Then the requirements grow, and the class tree grows with them until one change ripples through ten classes. \"Favour composition over inheritance\" is one of the most quoted design rules, and LLD interviewers check whether you know **why**, and whether you can still use inheritance where it truly fits."
+    },
+    {
+      "kind": "concept",
+      "heading": "Is-a and has-a",
+      "body": "**Inheritance** models *is-a*: a `SavingsAccount` **is an** `Account`, so it can be used anywhere an `Account` is expected. It also **reuses** the parent's code automatically.\n\n**Composition** models *has-a*: a `Notifier` **has** channels; a `Car` **has an** engine. The outer object holds references to parts and **delegates** work to them.\n\nThe test for inheritance is substitution: could every piece of code that works with the parent work, unchanged and correctly, with the child? If yes, *is-a* fits. If you want the parent only to **reuse some of its code**, that is a has-a relationship in disguise, and composition is the honest model."
+    },
+    {
+      "kind": "example",
+      "heading": "The hostel's notification tree",
+      "body": "The hostel office sends notices by SMS. Then email is added. Then some notices must go by both. Using inheritance, each combination becomes a class.",
+      "code": [
+        {
+          "lang": "python",
+          "src": "class Notifier:\n    def send(self, user, text):\n        raise NotImplementedError\n\n\nclass SmsNotifier(Notifier):\n    def send(self, user, text):\n        return [f\"SMS to {user}: {text}\"]\n\n\nclass EmailNotifier(Notifier):\n    def send(self, user, text):\n        return [f\"Email to {user}: {text}\"]\n\n\nclass SmsAndEmailNotifier(SmsNotifier):          # one class per combination...\n    def send(self, user, text):\n        return super().send(user, text) + [f\"Email to {user}: {text}\"]\n\n\nprint(SmsAndEmailNotifier().send(\"Aditi\", \"Mess closed tonight\"))\nprint(\"classes needed for 3 channels, every combination:\", 2 ** 3 - 1)\n",
+          "runnable": true,
+          "expected_output": "['SMS to Aditi: Mess closed tonight', 'Email to Aditi: Mess closed tonight']\nclasses needed for 3 channels, every combination: 7\n",
+          "caption": "Inheritance: a class for every combination"
+        }
+      ]
+    },
+    {
+      "kind": "concept",
+      "heading": "Where inheritance breaks",
+      "body": "With three channels (SMS, email, WhatsApp) there are `2^3 − 1 = 7` non-empty combinations, so seven classes. Add a fourth channel and it is fifteen. Add one more feature that applies to any of them, such as **quiet hours** (hold messages sent at night), and every class needs a quiet-hours twin. This is the **class explosion**.\n\nThere are deeper problems too:\n\n- **Choices are frozen at compile time.** A student who switches from SMS to WhatsApp needs an object of a different class; you cannot change what an object *is* while the program runs.\n- **Fragile base class.** `SmsAndEmailNotifier` depends on how `SmsNotifier.send` works. Change the parent's return format and every child may break, even ones that never mention it.\n- **Deep trees hide behaviour.** To know what `send` does, you read up through several parents.\n\n**The varying parts are combinations of behaviours, not kinds of things.** That is the signal to compose."
+    },
+    {
+      "kind": "example",
+      "heading": "The same notices with composition",
+      "body": "Now each channel is a small class with one method, `deliver`. A `Notifier` **has a list of channels** and sends through each. Quiet hours becomes a **wrapper** that holds any channel and adds its rule: one class, for every channel.",
+      "code": [
+        {
+          "lang": "python",
+          "src": "class Sms:\n    def deliver(self, user, text):\n        return f\"SMS to {user}: {text}\"\n\n\nclass Email:\n    def deliver(self, user, text):\n        return f\"Email to {user}: {text}\"\n\n\nclass WhatsApp:\n    def deliver(self, user, text):\n        return f\"WhatsApp to {user}: {text}\"\n\n\nclass QuietHours:                                   # a wrapper adds behaviour to any channel\n    def __init__(self, channel, hour):\n        self.channel, self.hour = channel, hour\n\n    def deliver(self, user, text):\n        if 22 <= self.hour or self.hour < 7:\n            return f\"(held until 7 am) {self.channel.deliver(user, text)}\"\n        return self.channel.deliver(user, text)\n\n\nclass Notifier:\n    def __init__(self, channels):\n        self.channels = list(channels)              # has-a: any mix, chosen at runtime\n\n    def send(self, user, text):\n        return [c.deliver(user, text) for c in self.channels]\n\n\nwarden = Notifier([Sms(), Email()])\nfor line in warden.send(\"Aditi\", \"Mess closed tonight\"):\n    print(line)\nnight = Notifier([QuietHours(WhatsApp(), hour=23)])\nprint(night.send(\"Bilal\", \"Water off at 6 am\")[0])\n",
+          "runnable": true,
+          "expected_output": "SMS to Aditi: Mess closed tonight\nEmail to Aditi: Mess closed tonight\n(held until 7 am) WhatsApp to Bilal: Water off at 6 am\n",
+          "caption": "Composition: a notifier has channels"
+        }
+      ]
+    },
+    {
+      "kind": "example",
+      "heading": "What changed",
+      "body": "- **Any combination is just a list**: `Notifier([Sms(), Email()])`. Three channels need three classes, not seven, and a fourth channel is one more class.\n- **Choices happen at runtime**: a student's preferred channels can come from the database and be changed with no new object type.\n- **Cross-cutting behaviour wraps**: `QuietHours(WhatsApp(), hour=23)` works for SMS and email too. Wrapping an object to add behaviour while keeping its interface is the **decorator** pattern.\n- **Each part is testable alone**: `Sms().deliver(...)` needs no notifier at all.\n\nThe cost is a little more wiring: someone has to build the list of channels. That is a small price for a design that grows by **adding** classes instead of multiplying them.\n\n> **Note:** In the composed version `Notifier` depends only on the idea \"something with `deliver(user, text)`\". That is the same move as the strategy pattern: depend on an interface, receive the implementation from outside."
+    },
+    {
+      "kind": "concept",
+      "heading": "When inheritance is still right",
+      "body": "Composition is not a ban on inheritance. Use inheritance when:\n\n- the relationship is a true, stable **is-a**, and the child can stand in for the parent everywhere (a `Circle` and a `Rectangle` are both `Shape`s with `area()`);\n- you are implementing an **interface** or abstract class so that many types can be used the same way (each channel above could implement a `Channel` interface);\n- a framework expects it (extending a test case class, an exception class such as `InsufficientBalance(Exception)`).\n\nAvoid it when you only want to reuse code, when behaviours combine, or when the \"kind\" of an object can change over time. A useful rule of thumb: **inherit interfaces freely, inherit implementations carefully**."
+    },
+    {
+      "kind": "misconception",
+      "heading": "Common mix-ups",
+      "body": "**Many students think composition means never using inheritance.** The rule says *favour*, not *forbid*. Interfaces and genuine is-a hierarchies are good uses.\n\n**Many students think inheritance is the main way to reuse code.** Delegation reuses code too, without tying the classes' fates together: `Notifier` reuses `Sms` by calling it.\n\n**Many students think a deep class tree shows good OOP.** Deep trees are usually a warning sign: hard to read, hard to change, and full of children that override parents in surprising ways."
+    },
+    {
+      "kind": "interview",
+      "heading": "Interview questions",
+      "body": "Answers as a strong candidate would say them.",
+      "qa": [
+        {
+          "q": "Why favour composition over inheritance?",
+          "a": "Inheritance fixes behaviour at compile time and couples the child to the parent's internals, and combinations of behaviours make the class count explode. Composition lets me combine small parts at runtime, swap them, and test them alone, so the design grows by adding classes instead of multiplying them."
+        },
+        {
+          "q": "How do you decide between is-a and has-a?",
+          "a": "I apply the substitution test: can the child be used everywhere the parent is, without surprising the caller? If yes, inheritance can fit. If I only want to reuse some code, or the behaviour should change at runtime, I compose."
+        },
+        {
+          "q": "Give an example of a design that composition fixed.",
+          "a": "Notifications with SMS, email and WhatsApp in any combination. With inheritance I needed a class per combination; with composition a Notifier holds a list of channels, and quiet hours is a wrapper around any channel."
+        },
+        {
+          "q": "What is the decorator pattern and how does it relate?",
+          "a": "A decorator wraps an object and implements the same interface, adding behaviour before or after delegating. It is composition used to stack features, like QuietHours around any channel, instead of creating a subclass for every channel-plus-feature pair."
+        }
+      ]
+    },
+    {
+      "kind": "summary",
+      "heading": "Summary",
+      "body": "- Inheritance = is-a (with substitution); composition = has-a (with delegation).\n- Combinations of behaviours under inheritance cause a class explosion.\n- Composition picks and swaps parts at runtime; wrappers (decorators) add cross-cutting features.\n- Inherit interfaces freely, implementations carefully.\n- Favour, not forbid: true is-a hierarchies and frameworks still use inheritance."
+    }
+  ],
+  "quiz": [
+    {
+      "stem": "With 4 independent channels, how many classes does the inheritance-per-combination design need?",
+      "options": [
+        "4",
+        "8",
+        "15",
+        "16"
+      ],
+      "correct": 2,
+      "explanation": "Every non-empty subset of 4 channels: 2^4 − 1 = 15."
+    },
+    {
+      "stem": "Which relationship is a good fit for inheritance?",
+      "options": [
+        "Car and Engine",
+        "Notifier and Sms",
+        "Circle and Shape",
+        "Wallet and History"
+      ],
+      "correct": 2,
+      "explanation": "A Circle is a Shape and can stand in for one; the others are has-a relationships."
+    },
+    {
+      "stem": "A student changes their preferred channel at runtime. Which design handles it without a new object type?",
+      "options": [
+        "A subclass per channel",
+        "A Notifier holding a list of channels",
+        "A deeper inheritance tree",
+        "Static methods"
+      ],
+      "correct": 1,
+      "explanation": "Composition lets the channel list change at runtime."
+    },
+    {
+      "stem": "QuietHours(WhatsApp()) adds a rule while keeping the deliver interface. Which pattern is this?",
+      "options": [
+        "Singleton",
+        "Decorator",
+        "Factory",
+        "Observer"
+      ],
+      "correct": 1,
+      "explanation": "Wrapping an object with the same interface to add behaviour is the decorator pattern."
+    }
+  ],
+  "revision_card": {
+    "front": "Composition over inheritance: the signal to compose, the test for inheritance, and the slogan?",
+    "back": "Signal: behaviours that combine or change at runtime (class explosion). Test for inheritance: the child can substitute for the parent everywhere. Slogan: inherit interfaces freely, implementations carefully."
+  },
+  "next": [
+    "lld-strategy-pattern"
+  ]
+}

@@ -1,0 +1,186 @@
+{
+  "schema": "parikshaa.content/lesson@1",
+  "slug": "ood-encapsulation-invariants",
+  "version": 1,
+  "title": "Encapsulation: let the object guard its own rules",
+  "tier": "public",
+  "text_language": "en",
+  "course": "ood",
+  "difficulty": "easy",
+  "tags": {
+    "topics": [
+      "oop",
+      "encapsulation"
+    ],
+    "patterns": [
+      "class-invariant"
+    ],
+    "extra": [
+      "properties",
+      "defensive-copy"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own mess-wallet example of encapsulation, examples, code, quiz and explanations; no text from any site, book or course.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-cs-core",
+      "module": "Object-oriented design",
+      "position": 0
+    }
+  ],
+  "est_minutes": 11,
+  "prerequisites": [],
+  "outcomes": [
+    "can state a class invariant and find the methods that could break it",
+    "can hide state behind methods that check the invariant on every change",
+    "can explain why returning a copy of internal data matters"
+  ],
+  "sections": [
+    {
+      "kind": "why",
+      "heading": "Why this matters",
+      "body": "\"Explain encapsulation\" is the most common OOP interview question, and most answers stop at \"make fields private and add getters and setters\". That answer misses the point. Encapsulation is about **rules the object must always keep**, and putting the object in charge of keeping them. Once you see it that way, you design better classes in every LLD round, not just answer the definition."
+    },
+    {
+      "kind": "concept",
+      "heading": "Invariants: the rules an object promises",
+      "body": "An **invariant** is something that must be true about an object **at every moment** anyone can observe it. For a hostel mess wallet:\n\n- the balance is never negative;\n- every change to the balance appears in the history;\n- top-ups and payments are positive amounts.\n\nIf any code anywhere can set `balance` directly, then the invariant is only as strong as the most careless line in the whole program. **Encapsulation means the only way to change the state is through methods that check the rules.** The fields are hidden not for secrecy but so that there is exactly one door in, and the door has a guard."
+    },
+    {
+      "kind": "example",
+      "heading": "A wallet with no guard",
+      "body": "This first version stores the balance as a plain attribute. A meal costing ₹650 is charged to a wallet holding ₹500.",
+      "code": [
+        {
+          "lang": "python",
+          "src": "class MessWallet:\n    def __init__(self, owner):\n        self.owner = owner\n        self.balance = 0          # anyone can change this directly\n\n\nw = MessWallet(\"Aditi\")\nw.balance += 500                  # top-up\nw.balance -= 650                  # a meal costing more than she has: nobody stops it\nprint(w.owner, \"balance:\", w.balance)\n",
+          "runnable": true,
+          "expected_output": "Aditi balance: -150\n",
+          "caption": "Without encapsulation: the balance goes negative"
+        }
+      ]
+    },
+    {
+      "kind": "concept",
+      "heading": "Putting the object in charge",
+      "body": "We fix it in four moves:\n\n1. **Hide the state.** The balance lives in `_balance`. In Python the underscore is a convention meaning \"internal: do not touch\"; Java and C++ enforce it with `private`.\n2. **Expose behaviour, not fields.** Instead of `set_balance()`, the wallet offers `top_up()` and `pay()`, named after what happens in the real world. A generic setter would let callers bypass the rule just as easily as the public field did.\n3. **Check before changing.** Each method validates its input and the invariant *before* touching state. If the check fails, it raises an error and the object is unchanged.\n4. **Give out copies.** `statement()` returns a **copy** of the history. If it returned the internal list, a caller could append fake entries or delete real ones, and the history invariant would break without any method being called.\n\n`balance` stays readable through a **read-only property**, so callers can display it but not assign to it.\n\n> **Note:** A getter that returns a mutable internal object (a list, a dict, a Java `ArrayList`) is a hole in encapsulation. Return a copy, an immutable view, or only the values the caller needs."
+    },
+    {
+      "kind": "example",
+      "heading": "The guarded wallet",
+      "body": "The same story with the encapsulated class: a top-up of ₹500, a ₹120 meal, then the ₹650 meal that must be refused, and an attempt to set the balance directly.",
+      "code": [
+        {
+          "lang": "python",
+          "src": "class InsufficientBalance(Exception):\n    pass\n\n\nclass MessWallet:\n    \"\"\"Invariant: balance is never negative, and every change is recorded.\"\"\"\n\n    def __init__(self, owner):\n        self.owner = owner\n        self._balance = 0\n        self._history = []\n\n    @property\n    def balance(self):            # read-only from outside\n        return self._balance\n\n    def top_up(self, amount):\n        if amount <= 0:\n            raise ValueError(\"top-up must be positive\")\n        self._balance += amount\n        self._history.append((\"top-up\", amount))\n\n    def pay(self, amount):\n        if amount <= 0:\n            raise ValueError(\"payment must be positive\")\n        if amount > self._balance:\n            raise InsufficientBalance(f\"needs {amount}, has {self._balance}\")\n        self._balance -= amount\n        self._history.append((\"meal\", amount))\n\n    def statement(self):\n        return list(self._history)    # a copy: callers cannot edit our history\n\n\nw = MessWallet(\"Aditi\")\nw.top_up(500)\nw.pay(120)\ntry:\n    w.pay(650)\nexcept InsufficientBalance as e:\n    print(\"refused:\", e)\nprint(\"balance:\", w.balance)\nprint(\"statement:\", w.statement())\ntry:\n    w.balance = 10_000\nexcept AttributeError:\n    print(\"cannot set balance directly\")\n",
+          "runnable": true,
+          "expected_output": "refused: needs 650, has 380\nbalance: 380\nstatement: [('top-up', 500), ('meal', 120)]\ncannot set balance directly\n",
+          "caption": "With encapsulation: the class guards its own rule"
+        }
+      ]
+    },
+    {
+      "kind": "example",
+      "heading": "Reading the output",
+      "body": "- The ₹650 payment is **refused** with a clear message, because 650 is more than the ₹380 left after the first meal. The balance stays at 380.\n- The statement shows exactly two entries, the top-up and the meal; the refused payment left no trace, because the check ran before any change.\n- Assigning `w.balance = 10_000` fails: the property has no setter, so the only ways to change the balance are the two guarded methods.\n\nNow the invariant holds no matter what the rest of the program does. If a bug appears later, there are only two methods to look at, not every line that ever touched a wallet."
+    },
+    {
+      "kind": "note",
+      "heading": "Encapsulation in Java and C++",
+      "body": "The same design in Java has `private long balance;`, a `public long getBalance()`, and `topUp`/`pay` methods that throw an exception when a rule is broken. For the history, `getStatement()` returns `List.copyOf(history)`, an unmodifiable copy, never the internal `ArrayList`. In C++, the field is `private`, `balance()` is a `const` member function, and `statement()` returns a `std::vector` by value (a copy) or a `const&` that callers cannot modify.\n\nMoney deserves one more habit: store it as an **integer number of paise or rupees**, never as a floating-point number, so that 0.1 + 0.2 never becomes 0.30000000000000004 on someone's bill."
+    },
+    {
+      "kind": "misconception",
+      "heading": "Common mix-ups",
+      "body": "**Many students think encapsulation means getters and setters for every field.** A public setter for `balance` is just a public field with extra typing: it lets anyone break the rule. Expose **operations** (`pay`, `top_up`) that keep the rules, and getters only for what callers need to read.\n\n**Many students think encapsulation is about hiding data from other programmers for security.** Anyone with the source can read it. The goal is **correctness**: one guarded place where the rules are enforced.\n\n**Many students think a check in the calling code is enough.** If the UI checks the balance but a background job does not, the rule breaks the first time the job runs. A rule that lives in every caller is a rule that some caller will forget."
+    },
+    {
+      "kind": "interview",
+      "heading": "Interview questions",
+      "body": "Answers as a strong candidate would say them.",
+      "qa": [
+        {
+          "q": "What is encapsulation, really?",
+          "a": "It is bundling state with the operations that change it, and allowing changes only through those operations, so the object can enforce its invariants. Making fields private is the mechanism; keeping rules like a non-negative balance always true is the purpose."
+        },
+        {
+          "q": "Why are blanket getters and setters considered a smell?",
+          "a": "A setter for every field lets any caller put the object into an invalid state, so the object no longer protects its rules. I prefer methods named after real operations, like pay or topUp, which check the rules, and getters only for values callers need."
+        },
+        {
+          "q": "What is a defensive copy and when do you need one?",
+          "a": "Returning or storing a copy of a mutable object instead of the original. If a getter returns the internal list, callers can change the object's state without going through its methods, so I return a copy or an unmodifiable view."
+        },
+        {
+          "q": "How does encapsulation help when a bug appears?",
+          "a": "Because state can only change through a few guarded methods, the search space is tiny: I check those methods instead of every line in the codebase that might have written the field."
+        }
+      ]
+    },
+    {
+      "kind": "summary",
+      "heading": "Summary",
+      "body": "- An invariant is a rule that must hold whenever the object can be observed.\n- Encapsulation: hide the state, expose operations that check the rules.\n- Prefer behaviour (`pay`, `top_up`) over setters.\n- Return copies of internal collections.\n- Rules enforced inside the class cannot be forgotten by callers."
+    }
+  ],
+  "quiz": [
+    {
+      "stem": "Which design best protects the rule 'balance is never negative'?",
+      "options": [
+        "A public balance field",
+        "A public setBalance(x) method",
+        "Private balance with pay() that checks the amount first",
+        "A comment saying not to go negative"
+      ],
+      "correct": 2,
+      "explanation": "Only a method that checks before changing enforces the rule; a setter lets callers bypass it."
+    },
+    {
+      "stem": "A wallet with ₹380 refuses a ₹650 payment. What should its balance and history show afterwards?",
+      "options": [
+        "−270, with the payment recorded",
+        "380, with nothing recorded for the refused payment",
+        "0",
+        "380, with the refused payment recorded as paid"
+      ],
+      "correct": 1,
+      "explanation": "The check runs before any change, so the state is untouched."
+    },
+    {
+      "stem": "A getter returns the wallet's internal history list. What is the risk?",
+      "options": [
+        "None",
+        "Callers can add or delete entries without using the wallet's methods",
+        "It is slower",
+        "It breaks inheritance"
+      ],
+      "correct": 1,
+      "explanation": "Returning the internal mutable list lets callers change state behind the object's back; return a copy."
+    },
+    {
+      "stem": "Why name methods pay() and top_up() rather than set_balance()?",
+      "options": [
+        "Shorter names",
+        "They describe real operations and can each enforce their own rules",
+        "Python requires it",
+        "Setters are not allowed in classes"
+      ],
+      "correct": 1,
+      "explanation": "Operation methods carry the rules of each operation; a setter has no idea why the balance is changing."
+    }
+  ],
+  "revision_card": {
+    "front": "Encapsulation in one line, and three habits that make it real?",
+    "back": "State changes only through methods that keep the object's invariants. Habits: hide fields; expose operations, not setters; return copies of internal collections."
+  },
+  "next": [
+    "ood-composition-over-inheritance"
+  ]
+}

@@ -1,0 +1,318 @@
+{
+  "schema": "parikshaa.content/system-design@1",
+  "slug": "hld-campus-notifications",
+  "version": 1,
+  "title": "Campus notifications: SMS, push and email at scale",
+  "tier": "premium",
+  "text_language": "en",
+  "mode": "hld",
+  "difficulty": "hard",
+  "tags": {
+    "topics": [
+      "messaging",
+      "queues",
+      "reliability"
+    ],
+    "patterns": [
+      "fan-out",
+      "priority-queues",
+      "retry-with-backoff",
+      "idempotency"
+    ],
+    "extra": [
+      "rate-limited-providers"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own notification service design case, examples, code, quiz and explanations; no text from any site, book or course.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-system-design",
+      "module": "HLD",
+      "position": 4
+    }
+  ],
+  "time_minutes": 60,
+  "scenario": "The university's apps (results, fees, hostel, exams) all send messages to students by SMS, push and email. On result day one call asks to notify **12 lakh students**, while login OTPs must still arrive within seconds. SMS providers accept only a limited rate and sometimes fail. Design a shared notification service.",
+  "clarifying_questions": [
+    {
+      "q": "Which kinds of messages?",
+      "a": "Transactional (OTP, fee receipt: urgent, one user) and bulk (result published, exam notice: many users, minutes are fine)."
+    },
+    {
+      "q": "Provider limits?",
+      "a": "The SMS provider allows 500 messages per second per account; push and email providers allow far more."
+    },
+    {
+      "q": "Can a student opt out?",
+      "a": "Of bulk messages per channel, yes; of OTPs, no."
+    },
+    {
+      "q": "Is a duplicate message acceptable?",
+      "a": "A duplicate OTP or fee SMS confuses people and costs money: avoid duplicates; at-least-once internally is fine if delivery is deduplicated."
+    },
+    {
+      "q": "Do senders need delivery status?",
+      "a": "Yes: per message status (queued, sent, delivered, failed) and per campaign counts."
+    },
+    {
+      "q": "Templates?",
+      "a": "Yes: senders pass a template id and variables; the service renders text per channel and language."
+    }
+  ],
+  "requirements": {
+    "functional": [
+      "Accept a notification for one user or a campaign for a list or segment of users",
+      "Render per channel and language from templates",
+      "Respect preferences and opt-outs",
+      "Deliver through providers with retries and fallbacks",
+      "Report status per message and per campaign"
+    ],
+    "non_functional": [
+      {
+        "name": "OTP latency",
+        "target": "p99 under 5 seconds from request to provider, even during a bulk campaign"
+      },
+      {
+        "name": "Bulk throughput",
+        "target": "12 lakh SMS within one hour, within the provider's 500 per second"
+      },
+      {
+        "name": "Duplicates",
+        "target": "at most one delivery per (message, channel)"
+      },
+      {
+        "name": "Durability",
+        "target": "an accepted notification is never silently lost"
+      }
+    ]
+  },
+  "estimates": [
+    {
+      "id": "sms-campaign-minutes",
+      "question": "At 500 SMS per second, how many minutes does a 12-lakh SMS campaign take?",
+      "answer": 40,
+      "tolerance_pct": 20,
+      "unit": "minutes",
+      "working": "12,00,000 / 500 = 2,400 s = 40 minutes: the provider limit, not our servers, sets the pace.",
+      "solver": "print(1_200_000 / 500 / 60)\n"
+    },
+    {
+      "id": "otp-share",
+      "question": "If OTPs average 20 per second, what share of the 500 per second SMS budget must be reserved for them, in percent?",
+      "answer": 4,
+      "tolerance_pct": 20,
+      "unit": "percent",
+      "working": "20 / 500 = 4%; reserving about 10% gives headroom for OTP spikes.",
+      "solver": "print(20 / 500 * 100)\n"
+    },
+    {
+      "id": "status-rows",
+      "question": "Status records per year if 3 crore messages are sent and each has about 3 status updates, in crore rows?",
+      "answer": 9,
+      "tolerance_pct": 20,
+      "unit": "crore rows",
+      "working": "3 crore × 3 = 9 crore rows a year: partition by month and archive old ones.",
+      "solver": "print(3 * 3)\n"
+    },
+    {
+      "id": "queue-backlog-gb",
+      "question": "Size of the backlog when a whole 12-lakh campaign is queued at 1 KB per message, in GB?",
+      "answer": 1.2,
+      "tolerance_pct": 20,
+      "unit": "GB",
+      "working": "12,00,000 × 1 KB = 1.2 GB: easily held by a durable queue.",
+      "solver": "print(1_200_000 * 1 / 1_000_000)\n"
+    }
+  ],
+  "expected_components": [
+    {
+      "name": "Notification API with idempotency keys",
+      "why": "Senders retry; the same key must not create a second message.",
+      "must": true
+    },
+    {
+      "name": "Campaign fan-out workers",
+      "why": "Expand a segment into per-user messages in batches, instead of the caller sending 12 lakh requests.",
+      "must": true
+    },
+    {
+      "name": "Separate priority queues (transactional vs bulk) per channel",
+      "why": "A bulk backlog must never delay an OTP.",
+      "must": true
+    },
+    {
+      "name": "Per-provider rate limiter (token bucket)",
+      "why": "Keeps sending within 500 per second with a reserved share for OTPs.",
+      "must": true
+    },
+    {
+      "name": "Channel senders with retry, backoff and fallback",
+      "why": "Provider errors are retried with growing delays; a failed push can fall back to SMS for important messages.",
+      "must": true
+    },
+    {
+      "name": "Preference and opt-out store",
+      "why": "Checked at fan-out and again just before sending.",
+      "must": true
+    },
+    {
+      "name": "Template service",
+      "why": "Renders text per channel and language from versioned templates.",
+      "must": true
+    },
+    {
+      "name": "Status store and provider webhooks",
+      "why": "Records queued, sent, delivered and failed; aggregates campaign counts.",
+      "must": true
+    },
+    {
+      "name": "Dead-letter queue",
+      "why": "Messages that keep failing are parked for inspection instead of retried forever.",
+      "must": false
+    }
+  ],
+  "api": [
+    "POST /notifications {user_id, template_id, vars, channels, priority, idempotency_key} → 202 {message_id}",
+    "POST /campaigns {segment | user_ids_file, template_id, vars, channels, send_at?} → 202 {campaign_id}",
+    "GET /notifications/{id} → status per channel",
+    "GET /campaigns/{id} → counts by status",
+    "POST /providers/{name}/webhook → delivery receipts (idempotent)"
+  ],
+  "data_model": "messages(message_id, idempotency_key UNIQUE, user_id, template_id, vars, priority, campaign_id, created_at); deliveries(message_id, channel, attempt, status, provider_msg_id UNIQUE, updated_at) partitioned by month; preferences(user_id, channel, bulk_opt_out); campaigns(campaign_id, segment, template_id, counts).",
+  "diagram": {
+    "id": "notify-architecture",
+    "kind": "mermaid",
+    "alt": "Senders call the notification API; campaigns go to fan-out workers that read preferences and enqueue per-user messages into bulk queues; single messages go to transactional queues; channel senders read both queues through a rate limiter that reserves capacity for transactional traffic, call SMS, push and email providers, and write statuses; provider webhooks update statuses; failures go to a dead-letter queue.",
+    "data": {
+      "source": "flowchart LR\n  S[Sender apps] --> API[Notification API]\n  API -->|single| TQ[[Transactional queues]]\n  API -->|campaign| FO[Fan-out workers]\n  FO --> PREF[(Preferences)]\n  FO --> BQ[[Bulk queues]]\n  TQ --> RL[Rate limiter]\n  BQ --> RL\n  RL --> SND[Channel senders]\n  SND --> SMS[SMS provider]\n  SND --> PUSH[Push provider]\n  SND --> EM[Email provider]\n  SND --> ST[(Status store)]\n  SMS -->|webhook| ST\n  SND --> DLQ[[Dead letters]]"
+    }
+  },
+  "deep_dives": [
+    {
+      "topic": "OTPs never wait behind a campaign",
+      "body": "Each channel has two queues: transactional and bulk. The SMS sender takes tokens from one 500 per second bucket, but **reserves** a share (say 50 per second) that only transactional messages may use, and always drains the transactional queue first. A 40-minute campaign backlog therefore never adds latency to an OTP; at worst it slows the campaign slightly."
+    },
+    {
+      "topic": "At-least-once inside, at-most-once to the user",
+      "body": "Queues redeliver messages after a crash, so a sender may see the same delivery twice. Before calling the provider it records `(message_id, channel)` as SENDING with a unique constraint; a second worker finds it and skips. Providers that accept a client reference get `message_id` as that reference, so even a retry after a timeout is deduplicated on their side. Status webhooks are keyed by `provider_msg_id` and are idempotent."
+    },
+    {
+      "topic": "Retries, backoff and fallback",
+      "body": "Temporary provider errors (timeouts, 5xx, throttling) are retried with exponential backoff and jitter: 2 s, 4 s, 8 s ... up to a limit, so a provider outage is not hammered by synchronized retries. Permanent errors (invalid number) stop at once. After the last retry the message goes to a dead-letter queue. For important messages, a failed push falls back to SMS."
+    }
+  ],
+  "trade_offs": [
+    "Separate queues and a reserved token share add moving parts but are the only reliable way to keep OTPs fast during bulk sends.",
+    "Deduplicating with a unique (message, channel) record costs one write per delivery but prevents double SMS charges and confused users.",
+    "Fan-out in the service (not the caller) concentrates load in one place but lets the service batch, apply preferences and pace sends."
+  ],
+  "failure_modes": [
+    "The SMS provider is down: messages wait in queues and retry with backoff; important ones fall back to push or a second provider.",
+    "A sender worker crashes mid-send: the queue redelivers; the dedupe record prevents a second SMS.",
+    "A bad template ships: rendering fails for every message, which go to dead letters; fix the template and replay.",
+    "The status store is slow: senders buffer status updates; delivery itself continues."
+  ],
+  "rubric": [
+    {
+      "id": "scope",
+      "criterion": "Separates transactional and bulk traffic and asks about provider limits, opt-outs and duplicates.",
+      "weight": 10,
+      "checked_by": "review"
+    },
+    {
+      "id": "numbers",
+      "criterion": "Estimates campaign duration, OTP share, status volume and backlog, and uses them.",
+      "weight": 15,
+      "checked_by": "auto"
+    },
+    {
+      "id": "priority",
+      "criterion": "Keeps OTP latency low during bulk sends: separate queues and reserved rate.",
+      "weight": 25,
+      "checked_by": "review"
+    },
+    {
+      "id": "reliability",
+      "criterion": "At-least-once internally with deduplication, retries with backoff, fallbacks and dead letters.",
+      "weight": 25,
+      "checked_by": "review"
+    },
+    {
+      "id": "model",
+      "criterion": "Clear API, fan-out, preferences, templates and status design.",
+      "weight": 15,
+      "checked_by": "review"
+    },
+    {
+      "id": "communication",
+      "criterion": "Trade-offs and failure handling explained (AI feedback, advice only).",
+      "weight": 10,
+      "checked_by": "ai-feedback"
+    }
+  ],
+  "concept_checks": [
+    {
+      "stem": "A 12-lakh SMS campaign is queued at 10:00 and an OTP request arrives at 10:01. What keeps the OTP fast?",
+      "options": [
+        "A bigger SMS provider bill",
+        "A separate transactional queue drained first, with reserved send rate",
+        "Sending the OTP by email",
+        "Pausing the campaign manually"
+      ],
+      "correct": 1,
+      "explanation": "Priority isolation: separate queue plus reserved tokens."
+    },
+    {
+      "stem": "At 500 SMS per second, roughly how long does 12 lakh SMS take?",
+      "options": [
+        "4 minutes",
+        "40 minutes",
+        "4 hours",
+        "40 seconds"
+      ],
+      "correct": 1,
+      "explanation": "12,00,000 / 500 = 2,400 s = 40 minutes."
+    },
+    {
+      "stem": "A worker crashes after calling the SMS provider but before acknowledging the queue. What prevents a duplicate SMS when the message is redelivered?",
+      "options": [
+        "Nothing",
+        "A unique (message_id, channel) send record and the provider's client reference",
+        "Longer timeouts",
+        "Smaller batches"
+      ],
+      "correct": 1,
+      "explanation": "Idempotent sending: record the attempt and pass a client reference."
+    },
+    {
+      "stem": "Why add jitter to exponential backoff?",
+      "options": [
+        "To send faster",
+        "So many failed messages do not retry in lockstep and hit the provider at the same instant",
+        "To save storage",
+        "Providers require it"
+      ],
+      "correct": 1,
+      "explanation": "Jitter spreads retries out."
+    }
+  ],
+  "follow_ups": [
+    "How would you schedule a campaign for 9:00 am in each student's language?",
+    "How would you add WhatsApp as a channel without touching existing senders?",
+    "How would you cap a student at 5 bulk messages a day?"
+  ],
+  "revision_card": {
+    "front": "Notification service: how do OTPs stay fast during a bulk campaign, and how are duplicates avoided?",
+    "back": "Separate transactional and bulk queues per channel; rate limiter with a reserved share for transactional, drained first. Duplicates: idempotency key at the API, unique (message, channel) send record, provider client reference, idempotent webhooks. Retries with exponential backoff + jitter, dead letters."
+  },
+  "reference_solution": {
+    "$file": "reference.md"
+  }
+}

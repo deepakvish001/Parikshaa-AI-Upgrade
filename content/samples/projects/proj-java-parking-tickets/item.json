@@ -1,0 +1,178 @@
+{
+  "schema": "parikshaa.content/project@1",
+  "slug": "proj-java-parking-tickets",
+  "version": 1,
+  "title": "Campus parking tickets",
+  "tier": "public",
+  "text_language": "en",
+  "difficulty": "easy",
+  "tags": {
+    "topics": [
+      "java",
+      "classes",
+      "hashmap"
+    ],
+    "patterns": [
+      "fee-rules",
+      "command-driver"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own project brief, code, tests and rubric for campus parking tickets, examples, code, quiz and explanations; no text from any site, book or course.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-projects",
+      "module": "Java",
+      "position": 0
+    }
+  ],
+  "language": "java",
+  "est_hours": 3,
+  "brief": "The college gate runs a small parking lot for bikes and cars. Build its ticket logic: park a vehicle if a slot of its kind is free, charge it when it leaves (the first 15 minutes are free, then every started hour costs ₹10 for a bike and ₹20 for a car), and report the free slots.",
+  "requirements": [
+    "SLOTS sets up the lot; every other command needs a lot first.",
+    "A plate can be parked once at a time; a slot must be free for its type.",
+    "Leaving charges 0 for up to 15 minutes, otherwise every started hour at ₹10 (bike) or ₹20 (car).",
+    "Times are HH:MM on one day; a leave time before the park time is refused."
+  ],
+  "io_protocol": "| Command | Prints |\n|---|---|\n| `SLOTS <bikes> <cars>` | `lot ready: <b> bike, <c> car slots` |\n| `PARK <plate> <BIKE or CAR> <HH:MM>` | `ticket <n> for <plate>`, `error: <plate> is already parked`, or `error: no <bike or car> slot free` |\n| `LEAVE <plate> <HH:MM>` | `<plate> paid <fee>`, `error: <plate> is not parked`, or `error: time goes backwards` |\n| `FREE` | `free: <b> bike, <c> car` |\n\nTickets are numbered from 1. Anything else: `error: bad command <line>`; a command before SLOTS: `error: no lot yet`.",
+  "milestones": [
+    {
+      "id": "m1",
+      "title": "Parking",
+      "instructions": "Fill in `park`: refuse a plate that is already inside, refuse when no slot of that type is free, otherwise take a slot and issue the next ticket.",
+      "hints": [
+        "Check the plate before the slots, so a duplicate gets the duplicate message even when the lot is full.",
+        "free.merge(type, -1, Integer::sum) takes one slot."
+      ]
+    },
+    {
+      "id": "m2",
+      "title": "Leaving and fees",
+      "instructions": "Fill in `fee` and `leave`. Every *started* hour is charged: 61 minutes is 2 hours.",
+      "hints": [
+        "(minutes + 59) / 60 rounds up in integer arithmetic.",
+        "Give the slot back only after all checks pass."
+      ]
+    }
+  ],
+  "files": [
+    {
+      "path": "Ticket.java",
+      "content": "final class Ticket {\n    final int number;\n    final String plate;\n    final String type;     // \"BIKE\" or \"CAR\"\n    final int inMinute;    // minutes since midnight\n\n    Ticket(int number, String plate, String type, int inMinute) {\n        this.number = number;\n        this.plate = plate;\n        this.type = type;\n        this.inMinute = inMinute;\n    }\n}\n",
+      "role": "source",
+      "editable": false
+    },
+    {
+      "path": "ParkingLot.java",
+      "content": "import java.util.*;\n\nclass ParkingLot {\n    static final int FREE_MINUTES = 15;\n    private final Map<String, Integer> free = new HashMap<>();\n    private final Map<String, Ticket> parked = new HashMap<>();\n    private int nextTicket = 1;\n\n    ParkingLot(int bikes, int cars) {\n        free.put(\"BIKE\", bikes);\n        free.put(\"CAR\", cars);\n    }\n\n    int freeSlots(String type) { return free.get(type); }\n\n    /** Milestone 1: \"ticket <n> for <plate>\", \"error: <plate> is already parked\", \"error: no <type> slot free\". */\n    String park(String plate, String type, int minute) {\n        return \"TODO\";\n    }\n\n    /** Milestone 2: \"<plate> paid <fee>\", \"error: <plate> is not parked\", \"error: time goes backwards\". */\n    String leave(String plate, int minute) {\n        return \"TODO\";\n    }\n\n    /** Milestone 2: 0 for up to 15 minutes; otherwise every started hour costs 10 (bike) or 20 (car). */\n    static int fee(String type, int minutes) {\n        return 0;\n    }\n}\n",
+      "role": "source"
+    },
+    {
+      "path": "Main.java",
+      "content": "import java.io.*;\n\npublic class Main {\n    static int minute(String hhmm) {\n        if (!hhmm.matches(\"\\\\d{2}:\\\\d{2}\")) return -1;\n        int h = Integer.parseInt(hhmm.substring(0, 2)), m = Integer.parseInt(hhmm.substring(3));\n        return h < 24 && m < 60 ? h * 60 + m : -1;\n    }\n\n    public static void main(String[] args) throws IOException {\n        BufferedReader in = new BufferedReader(new InputStreamReader(System.in));\n        StringBuilder out = new StringBuilder();\n        ParkingLot lot = null;\n        for (String raw; (raw = in.readLine()) != null; ) {\n            String[] p = raw.trim().split(\"\\\\s+\");\n            if (p[0].isEmpty()) continue;\n            String reply;\n            if (p[0].equals(\"SLOTS\") && p.length == 3 && p[1].matches(\"\\\\d+\") && p[2].matches(\"\\\\d+\")) {\n                lot = new ParkingLot(Integer.parseInt(p[1]), Integer.parseInt(p[2]));\n                reply = \"lot ready: \" + p[1] + \" bike, \" + p[2] + \" car slots\";\n            } else if (lot == null) reply = \"error: no lot yet\";\n            else if (p[0].equals(\"PARK\") && p.length == 4 && (p[2].equals(\"BIKE\") || p[2].equals(\"CAR\")) && minute(p[3]) >= 0)\n                reply = lot.park(p[1], p[2], minute(p[3]));\n            else if (p[0].equals(\"LEAVE\") && p.length == 3 && minute(p[2]) >= 0)\n                reply = lot.leave(p[1], minute(p[2]));\n            else if (p[0].equals(\"FREE\") && p.length == 1)\n                reply = \"free: \" + lot.freeSlots(\"BIKE\") + \" bike, \" + lot.freeSlots(\"CAR\") + \" car\";\n            else reply = \"error: bad command \" + raw.trim();\n            out.append(reply).append('\\n');\n        }\n        System.out.print(out);\n    }\n}\n",
+      "role": "driver",
+      "editable": false
+    }
+  ],
+  "solution_files": [
+    {
+      "path": "ParkingLot.java",
+      "content": "import java.util.*;\n\nclass ParkingLot {\n    static final int FREE_MINUTES = 15;\n    private final Map<String, Integer> free = new HashMap<>();\n    private final Map<String, Ticket> parked = new HashMap<>();\n    private int nextTicket = 1;\n\n    ParkingLot(int bikes, int cars) {\n        free.put(\"BIKE\", bikes);\n        free.put(\"CAR\", cars);\n    }\n\n    int freeSlots(String type) { return free.get(type); }\n\n    String park(String plate, String type, int minute) {\n        if (parked.containsKey(plate)) return \"error: \" + plate + \" is already parked\";\n        if (free.get(type) == 0) return \"error: no \" + type.toLowerCase() + \" slot free\";\n        free.merge(type, -1, Integer::sum);\n        Ticket t = new Ticket(nextTicket++, plate, type, minute);\n        parked.put(plate, t);\n        return \"ticket \" + t.number + \" for \" + plate;\n    }\n\n    String leave(String plate, int minute) {\n        Ticket t = parked.get(plate);\n        if (t == null) return \"error: \" + plate + \" is not parked\";\n        if (minute < t.inMinute) return \"error: time goes backwards\";\n        parked.remove(plate);\n        free.merge(t.type, 1, Integer::sum);\n        return plate + \" paid \" + fee(t.type, minute - t.inMinute);\n    }\n\n    static int fee(String type, int minutes) {\n        if (minutes <= FREE_MINUTES) return 0;\n        int hours = (minutes + 59) / 60;\n        return hours * (type.equals(\"BIKE\") ? 10 : 20);\n    }\n}\n",
+      "role": "source"
+    }
+  ],
+  "bundle_order": [
+    "Ticket.java",
+    "ParkingLot.java",
+    "Main.java"
+  ],
+  "tests": [
+    {
+      "id": "park-and-leave",
+      "input": "SLOTS 2 2\nPARK MH12AB1234 CAR 09:00\nLEAVE MH12AB1234 10:30\nFREE\n",
+      "expected": "lot ready: 2 bike, 2 car slots\nticket 1 for MH12AB1234\nMH12AB1234 paid 40\nfree: 2 bike, 2 car\n",
+      "hidden": false,
+      "milestone": "m2"
+    },
+    {
+      "id": "free-window",
+      "input": "SLOTS 1 1\nPARK KA01 BIKE 08:00\nLEAVE KA01 08:15\nPARK KA01 BIKE 08:20\nLEAVE KA01 08:36\n",
+      "expected": "lot ready: 1 bike, 1 car slots\nticket 1 for KA01\nKA01 paid 0\nticket 2 for KA01\nKA01 paid 10\n",
+      "hidden": false,
+      "milestone": "m2"
+    },
+    {
+      "id": "full-lot",
+      "input": "SLOTS 1 0\nPARK B1 BIKE 07:00\nPARK B2 BIKE 07:05\nPARK C1 CAR 07:06\nFREE\n",
+      "expected": "lot ready: 1 bike, 0 car slots\nticket 1 for B1\nerror: no bike slot free\nerror: no car slot free\nfree: 0 bike, 0 car\n",
+      "hidden": true,
+      "milestone": "m1"
+    },
+    {
+      "id": "duplicate-plate",
+      "input": "SLOTS 2 2\nPARK DL3C CAR 10:00\nPARK DL3C CAR 10:05\n",
+      "expected": "lot ready: 2 bike, 2 car slots\nticket 1 for DL3C\nerror: DL3C is already parked\n",
+      "hidden": true,
+      "milestone": "m1"
+    },
+    {
+      "id": "not-parked",
+      "input": "SLOTS 1 1\nLEAVE GJ05 11:00\nPARK GJ05 CAR 11:00\nLEAVE GJ05 10:59\nLEAVE GJ05 11:00\n",
+      "expected": "lot ready: 1 bike, 1 car slots\nerror: GJ05 is not parked\nticket 1 for GJ05\nerror: time goes backwards\nGJ05 paid 0\n",
+      "hidden": true,
+      "milestone": "m2"
+    },
+    {
+      "id": "hour-edges",
+      "input": "SLOTS 3 3\nPARK A BIKE 06:00\nPARK B CAR 06:00\nPARK C CAR 06:00\nLEAVE A 07:00\nLEAVE B 07:01\nLEAVE C 23:59\n",
+      "expected": "lot ready: 3 bike, 3 car slots\nticket 1 for A\nticket 2 for B\nticket 3 for C\nA paid 10\nB paid 40\nC paid 360\n",
+      "hidden": true,
+      "milestone": "m2"
+    },
+    {
+      "id": "ticket-numbers",
+      "input": "SLOTS 2 1\nPARK X1 BIKE 09:00\nLEAVE X1 09:10\nPARK X2 BIKE 09:11\nPARK X3 CAR 09:12\n",
+      "expected": "lot ready: 2 bike, 1 car slots\nticket 1 for X1\nX1 paid 0\nticket 2 for X2\nticket 3 for X3\n",
+      "hidden": true,
+      "milestone": "m1"
+    },
+    {
+      "id": "before-slots",
+      "input": "PARK A CAR 09:00\nSLOTS 0 1\nPARK A TRUCK 09:00\nPARK A CAR 9:00\nPARK A CAR 25:00\nFREE\n",
+      "expected": "error: no lot yet\nlot ready: 0 bike, 1 car slots\nerror: bad command PARK A TRUCK 09:00\nerror: bad command PARK A CAR 9:00\nerror: bad command PARK A CAR 25:00\nfree: 0 bike, 1 car\n",
+      "hidden": true,
+      "milestone": "m1"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "tests",
+      "criterion": "Hidden tests pass: every command prints exactly the expected output.",
+      "weight": 65,
+      "checked_by": "tests"
+    },
+    {
+      "id": "structure",
+      "criterion": "ParkingLot owns all slot counts and tickets; the fee rule lives in one static method; no public fields.",
+      "weight": 20,
+      "checked_by": "review"
+    },
+    {
+      "id": "feedback",
+      "criterion": "Readable names, small functions and clear error handling (AI feedback, advice only).",
+      "weight": 15,
+      "checked_by": "ai-feedback"
+    }
+  ],
+  "extensions": [
+    "Add a monthly pass that parks for free.",
+    "Support stays that cross midnight."
+  ]
+}

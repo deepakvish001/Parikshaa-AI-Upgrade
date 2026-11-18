@@ -1,0 +1,25 @@
+{
+  "schema": "parikshaa.content/bundle@1",
+  "manifest": {
+    "bundle_id": "gold-samples-v1",
+    "version": 1,
+    "title": "Gold samples: 10 of each content type (plan row 141)",
+    "author": { "name": "Parikshaa content team", "team": "Learn" },
+    "created_on": "2026-11-17",
+    "generated_with": "Written by an AI coding assistant working in the Parikshaa repository, checked with scripts/content-validate.mjs on the runner; for the owner's approval (F6).",
+    "licence": { "owner": "Parikshaa", "terms": "All rights reserved. Written for Parikshaa; not for reuse outside it." },
+    "originality": {
+      "statement": "Every item is our own: stories, statements, datasets, tests, solutions and explanations were written for Parikshaa. Classic ideas (sliding windows, percentages, normal forms) are used, never another site's or book's text or tests.",
+      "checks": ["scripts/content-validate.mjs (schema, runner, duplicate check)", "read through by the writer"]
+    },
+    "tracks": [
+      { "slug": "samples-dsa", "title": "Samples: DSA", "description": "Ten DSA problems in the v2 package with long editorials.", "modules": ["Easy", "Medium", "Hard"], "free_modules": 1 },
+      { "slug": "samples-sql", "title": "Samples: SQL", "description": "Ten SQL problems on SQLite.", "modules": ["Easy", "Medium", "Hard"], "free_modules": 1 },
+      { "slug": "samples-aptitude", "title": "Samples: aptitude", "description": "Quant, logical reasoning and verbal questions with worked explanations.", "modules": ["Quant", "Logical reasoning", "Verbal"], "free_modules": 3 },
+      { "slug": "samples-cs-core", "title": "Samples: CS core", "description": "Lessons from the CN, OS, DBMS, LLD and OOD tracks.", "modules": ["Computer networks", "Operating systems", "DBMS", "Low-level design", "Object-oriented design"], "free_modules": 5 },
+      { "slug": "samples-languages", "title": "Samples: languages", "description": "Lessons from the C, C++, Python, Java and JavaScript courses.", "modules": ["C", "C++", "Python", "Java", "JavaScript"], "free_modules": 5 },
+      { "slug": "samples-projects", "title": "Samples: projects", "description": "Projects, two per language, with hidden tests and a rubric.", "modules": ["C", "C++", "Python", "Java", "JavaScript"], "free_modules": 1 },
+      { "slug": "samples-system-design", "title": "Samples: system design", "description": "Five HLD case studies and five LLD katas.", "modules": ["HLD", "LLD"], "free_modules": 1 }
+    ]
+  }
+}

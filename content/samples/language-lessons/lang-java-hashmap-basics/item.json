@@ -1,0 +1,217 @@
+{
+  "schema": "parikshaa.content/lesson@1",
+  "slug": "lang-java-hashmap-basics",
+  "version": 1,
+  "title": "Java HashMap: counting, ordering and keys",
+  "tier": "premium",
+  "text_language": "en",
+  "course": "lang-java",
+  "difficulty": "medium",
+  "tags": {
+    "topics": [
+      "collections",
+      "hashmap"
+    ],
+    "patterns": [
+      "frequency-count",
+      "immutable-keys"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own lesson text and examples on java hashmap: counting, ordering and keys, examples, code, quiz and explanations; no text from any site, book or course.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-languages",
+      "module": "Java",
+      "position": 1
+    }
+  ],
+  "est_minutes": 13,
+  "prerequisites": [
+    "lang-java-equals-vs-double-equals"
+  ],
+  "outcomes": [
+    "can count occurrences with merge and read safely with getOrDefault",
+    "can explain why HashMap order is undefined and when to use TreeMap or LinkedHashMap",
+    "can explain how a hash map finds a key and why keys must not change"
+  ],
+  "sections": [
+    {
+      "kind": "why",
+      "heading": "Why this matters",
+      "body": "Counting things is the most common job a `HashMap` does in interview code: frequency of words, duplicate roll numbers, the most ordered dish. Doing it in one clean line, printing the result in a stable order, and knowing what can silently break a map are what separate a quick, correct answer from twenty minutes of debugging."
+    },
+    {
+      "kind": "concept",
+      "heading": "Counting in one line",
+      "body": "The old way to count needs a `containsKey` check and two lookups. Java 8 added better tools:\n\n- **`map.merge(key, 1, Integer::sum)`**: if the key is absent, put 1; otherwise replace the value with `old + 1`. One call, one lookup.\n- **`map.getOrDefault(key, 0)`**: read a count without getting `null` for missing keys. A plain `get` returns `null`, and unboxing `null` into an `int` throws `NullPointerException`.\n- **`computeIfPresent` / `compute`**: update with a function; returning `null` **removes** the key, which is handy for decrementing counts to zero.\n\nAll of these are `O(1)` on average, because a hash map finds a key by its hash, not by searching."
+    },
+    {
+      "kind": "concept",
+      "heading": "Order: HashMap, LinkedHashMap, TreeMap",
+      "body": "**A `HashMap` has no defined iteration order.** It iterates in bucket order, which depends on hash values and capacity, and can change when the map grows or between Java versions. Printing a `HashMap` directly in a judged answer is a common reason for \"wrong answer\" on output that looks right.\n\n| Map | Iteration order | Lookup cost |\n|---|---|---|\n| `HashMap` | undefined | O(1) average |\n| `LinkedHashMap` | insertion order | O(1) average |\n| `TreeMap` | sorted by key | O(log n) |\n\nA common pattern: count with a `HashMap` (fast), then copy into a `TreeMap` once for sorted output, as `new TreeMap<>(count)` does."
+    },
+    {
+      "kind": "example",
+      "heading": "Counting canteen orders",
+      "body": "Six orders counted with `merge`, a missing item read with `getOrDefault`, sorted output through a `TreeMap`, and a cancellation that removes `poha` only when its count would reach zero.",
+      "code": [
+        {
+          "lang": "java",
+          "src": "import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n        String[] orders = {\"chai\", \"poha\", \"chai\", \"samosa\", \"chai\", \"poha\"};\n        Map<String, Integer> count = new HashMap<>();\n        for (String item : orders) count.merge(item, 1, Integer::sum);   // add 1, or start at 1\n        System.out.println(\"chai: \" + count.get(\"chai\") + \", idli: \" + count.getOrDefault(\"idli\", 0));\n        System.out.println(\"sorted: \" + new TreeMap<>(count));               // HashMap order is not defined\n        count.computeIfPresent(\"poha\", (k, v) -> v > 1 ? v - 1 : null);    // returning null removes the key\n        System.out.println(\"after one poha cancelled: \" + new TreeMap<>(count));\n    }\n}\n",
+          "runnable": true,
+          "expected_output": "chai: 3, idli: 0\nsorted: {chai=3, poha=2, samosa=1}\nafter one poha cancelled: {chai=3, poha=1, samosa=1}\n",
+          "caption": "Counting with merge and getOrDefault; sorted output with TreeMap"
+        }
+      ]
+    },
+    {
+      "kind": "concept",
+      "heading": "How keys are found, and why they must not change",
+      "body": "A `HashMap` is an array of buckets. To store a key it computes `key.hashCode()`, picks a bucket from it, and keeps the entry there. To find a key it computes the hash again, goes to that bucket, and uses `equals` to pick the right entry.\n\nSo a key's `hashCode` must stay the same **for as long as the key is in the map**. If you change a field that `hashCode` uses, the entry stays in the bucket of its *old* hash, while lookups go to the bucket of the *new* hash. The entry is still in the map (it counts in `size()`), but neither the old nor the new key value can find it.\n\nThe cure is to use **immutable keys**: `String`, `Integer`, or your own class with `final` fields (a Java `record` is ideal)."
+    },
+    {
+      "kind": "example",
+      "heading": "Losing an entry",
+      "body": "`Seat` has non-final fields. After the map stores seat S1-23, the code changes its coach to S2. Neither lookup finds the booking, yet the map still has one entry.",
+      "code": [
+        {
+          "lang": "java",
+          "src": "import java.util.*;\n\npublic class Main {\n    static final class Seat {\n        String coach;                       // NOT final: this is the bug\n        int number;\n        Seat(String coach, int number) { this.coach = coach; this.number = number; }\n        @Override public boolean equals(Object o) {\n            return o instanceof Seat s && s.number == number && s.coach.equals(coach);\n        }\n        @Override public int hashCode() { return Objects.hash(coach, number); }\n    }\n\n    public static void main(String[] args) {\n        Map<Seat, String> booking = new HashMap<>();\n        Seat s = new Seat(\"S1\", 23);\n        booking.put(s, \"Aditi\");\n        System.out.println(\"before change: \" + booking.get(new Seat(\"S1\", 23)));\n        s.coach = \"S2\";                     // mutate a key that is inside the map\n        System.out.println(\"look up S2-23: \" + booking.get(new Seat(\"S2\", 23)));\n        System.out.println(\"look up S1-23: \" + booking.get(new Seat(\"S1\", 23)));\n        System.out.println(\"map size: \" + booking.size());\n    }\n}\n",
+          "runnable": true,
+          "expected_output": "before change: Aditi\nlook up S2-23: null\nlook up S1-23: null\nmap size: 1\n",
+          "caption": "A key changed after insertion is lost inside the map"
+        }
+      ]
+    },
+    {
+      "kind": "example",
+      "heading": "Planning the hands-on task",
+      "body": "The task reads roll numbers from an attendance register and reports the ones that signed more than once. It splits into three steps, each a habit worth keeping:\n\n1. **Count** every roll number with `count.merge(roll, 1, Integer::sum)`. After the first test's seven entries the map holds `21CS04 → 3`, `21ME11 → 2`, `21EE02 → 1`, `21CE09 → 1`, in some bucket order you must not rely on.\n2. **Order** the result by copying it into a `TreeMap` once. Sorting happens a single time, at the end, instead of on every update.\n3. **Filter and print** the entries whose count is above 1: `21CS04 3`, then `21ME11 2`. If nothing qualifies, print `none`; build the output in a `StringBuilder` and check whether it is empty, rather than tracking a separate flag.\n\nThe cost is `O(n)` average for counting and `O(k log k)` for sorting `k` distinct roll numbers, which is far better than comparing every pair of entries (`O(n^2)`).\n\nThe same three steps solve a whole family of questions: the most ordered dish (keep the entry with the largest count), anagram groups (count the letters of each word and use the counts as a key), and \"first non-repeating character\" (count, then scan the input again in order and pick the first character with count 1, or use a `LinkedHashMap` to keep the order while counting)."
+    },
+    {
+      "kind": "misconception",
+      "heading": "Common mix-ups",
+      "body": "**Many students think a HashMap keeps insertion order.** It does not promise any order; use `LinkedHashMap` for insertion order and `TreeMap` for sorted keys.\n\n**Many students think `get` returns 0 for a missing counter.** It returns `null`; `int c = map.get(k);` then throws a `NullPointerException`. Use `getOrDefault`.\n\n**Many students think HashMap lookups are always O(1).** They are `O(1)` on average. Many keys with the same hash share a bucket; since Java 8 a crowded bucket turns into a balanced tree, so the worst case is `O(log n)`, not `O(1)`."
+    },
+    {
+      "kind": "interview",
+      "heading": "Interview questions",
+      "body": "Answers as a strong candidate would say them.",
+      "qa": [
+        {
+          "q": "How does HashMap.get work internally?",
+          "a": "It computes the key's hashCode, spreads it, and picks a bucket index from it. In that bucket it compares entries with equals and returns the matching value. Average cost is O(1); a bucket with many entries becomes a tree, keeping the worst case at O(log n)."
+        },
+        {
+          "q": "Why should HashMap keys be immutable?",
+          "a": "The entry is stored in the bucket chosen by the key's hash at insertion time. If a field used by hashCode changes later, lookups compute a different hash and search the wrong bucket, so the entry is effectively lost while still counted in size."
+        },
+        {
+          "q": "You need word counts printed in alphabetical order. What do you use?",
+          "a": "Count with a HashMap using merge, then copy the entries into a TreeMap, or sort the entry list once, for output. Counting in a TreeMap directly also works but costs O(log n) per update."
+        }
+      ]
+    },
+    {
+      "kind": "summary",
+      "heading": "Summary",
+      "body": "- Count with `merge(key, 1, Integer::sum)`; read with `getOrDefault`.\n- `HashMap` order is undefined; `LinkedHashMap` keeps insertion order, `TreeMap` sorts.\n- Lookup: hash → bucket → `equals`.\n- Never change a field used by `hashCode` while the key is in a map.\n- Average O(1), worst O(log n) since Java 8."
+    }
+  ],
+  "quiz": [
+    {
+      "stem": "After `m.merge(\"chai\", 1, Integer::sum)` three times on an empty map, what is `m.get(\"chai\")`?",
+      "options": [
+        "1",
+        "3",
+        "null",
+        "0"
+      ],
+      "correct": 1,
+      "explanation": "The first call puts 1, the next two add 1 each."
+    },
+    {
+      "stem": "`Map<String, Integer> m = new HashMap<>(); int c = m.get(\"idli\");` What happens?",
+      "options": [
+        "c is 0",
+        "NullPointerException",
+        "compile error",
+        "c is -1"
+      ],
+      "correct": 1,
+      "explanation": "get returns null, and unboxing null into an int throws."
+    },
+    {
+      "stem": "You need keys printed in the order they were first added. Which map?",
+      "options": [
+        "HashMap",
+        "TreeMap",
+        "LinkedHashMap",
+        "Hashtable"
+      ],
+      "correct": 2,
+      "explanation": "LinkedHashMap preserves insertion order."
+    },
+    {
+      "stem": "A key object is changed after being put into a HashMap. What is the usual result?",
+      "options": [
+        "The map updates the bucket automatically",
+        "get with either the old or new value may return null, while size still counts it",
+        "A ConcurrentModificationException",
+        "The value is deleted"
+      ],
+      "correct": 1,
+      "explanation": "The entry stays in the old hash's bucket; lookups search the new one."
+    }
+  ],
+  "hands_on": [
+    {
+      "id": "duplicate-rolls",
+      "title": "Who signed the register twice?",
+      "task": "Read `n`, then `n` roll numbers on one line. Print each roll number that appears **more than once** with its count, sorted by roll number, one per line; print `none` if there are no repeats. Fill in `countAll` using `merge`.",
+      "lang": "java",
+      "starter": "import java.io.*;\nimport java.util.*;\n\npublic class Main {\n    static Map<String, Integer> countAll(List<String> rolls) {\n        Map<String, Integer> count = new HashMap<>();\n        // TODO: count how many times each roll number appears\n        return count;\n    }\n\n    public static void main(String[] args) throws IOException {\n        BufferedReader in = new BufferedReader(new InputStreamReader(System.in));\n        int n = Integer.parseInt(in.readLine().trim());\n        List<String> rolls = new ArrayList<>();\n        StringTokenizer st = new StringTokenizer(in.readLine());\n        for (int i = 0; i < n; i++) rolls.add(st.nextToken());\n        StringBuilder out = new StringBuilder();\n        for (Map.Entry<String, Integer> e : new TreeMap<>(countAll(rolls)).entrySet())\n            if (e.getValue() > 1) out.append(e.getKey()).append(' ').append(e.getValue()).append('\\n');\n        System.out.print(out.length() == 0 ? \"none\\n\" : out.toString());\n    }\n}\n",
+      "solution": "import java.io.*;\nimport java.util.*;\n\npublic class Main {\n    static Map<String, Integer> countAll(List<String> rolls) {\n        Map<String, Integer> count = new HashMap<>();\n        for (String r : rolls) count.merge(r, 1, Integer::sum);\n        return count;\n    }\n\n    public static void main(String[] args) throws IOException {\n        BufferedReader in = new BufferedReader(new InputStreamReader(System.in));\n        int n = Integer.parseInt(in.readLine().trim());\n        List<String> rolls = new ArrayList<>();\n        StringTokenizer st = new StringTokenizer(in.readLine());\n        for (int i = 0; i < n; i++) rolls.add(st.nextToken());\n        StringBuilder out = new StringBuilder();\n        for (Map.Entry<String, Integer> e : new TreeMap<>(countAll(rolls)).entrySet())\n            if (e.getValue() > 1) out.append(e.getKey()).append(' ').append(e.getValue()).append('\\n');\n        System.out.print(out.length() == 0 ? \"none\\n\" : out.toString());\n    }\n}\n",
+      "tests": [
+        {
+          "id": "t1",
+          "input": "7\n21CS04 21ME11 21CS04 21EE02 21ME11 21CS04 21CE09\n",
+          "expected": "21CS04 3\n21ME11 2\n",
+          "hidden": false
+        },
+        {
+          "id": "t2",
+          "input": "3\nA1 B2 C3\n",
+          "expected": "none\n",
+          "hidden": true
+        },
+        {
+          "id": "t3",
+          "input": "1\nZ9\n",
+          "expected": "none\n",
+          "hidden": true
+        },
+        {
+          "id": "t4",
+          "input": "6\nX X Y Y X Z\n",
+          "expected": "X 3\nY 2\n",
+          "hidden": true
+        }
+      ]
+    }
+  ],
+  "revision_card": {
+    "front": "HashMap counting idiom, order guarantees, and the key rule?",
+    "back": "count.merge(k, 1, Integer::sum); read with getOrDefault(k, 0). HashMap order undefined; LinkedHashMap = insertion order; TreeMap = sorted. Keys must not change while in the map (use immutable keys)."
+  },
+  "next": [
+    "lang-javascript-closures"
+  ]
+}

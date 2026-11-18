@@ -1,0 +1,354 @@
+{
+  "schema": "parikshaa.content/system-design@1",
+  "slug": "lld-meeting-room-booker",
+  "version": 1,
+  "title": "Booking seminar rooms without clashes",
+  "tier": "premium",
+  "text_language": "en",
+  "mode": "lld",
+  "difficulty": "medium",
+  "tags": {
+    "topics": [
+      "class-design",
+      "intervals"
+    ],
+    "patterns": [
+      "half-open-intervals",
+      "best-fit"
+    ],
+    "extra": [
+      "scheduling"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own seminar room booking design case and kata, examples, code, quiz and explanations; no text from any site, book or course.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-system-design",
+      "module": "LLD",
+      "position": 4
+    }
+  ],
+  "time_minutes": 45,
+  "scenario": "Departments book the college's seminar rooms for talks and viva sessions. Design and code the booking core: given a group size and a time range, give them the **smallest** free room that fits, so big rooms stay available for big groups; allow cancellation; show each room's agenda.",
+  "clarifying_questions": [
+    {
+      "q": "Can two bookings touch, one ending at 10:00 and the next starting at 10:00?",
+      "a": "Yes: times are half-open [start, end)."
+    },
+    {
+      "q": "Which room if several fit?",
+      "a": "The smallest capacity that fits; equal capacities by room name."
+    },
+    {
+      "q": "One day only?",
+      "a": "Yes, times are HH:MM within one day."
+    },
+    {
+      "q": "Booking ids?",
+      "a": "Increasing from 1, never reused, even after cancellation."
+    }
+  ],
+  "requirements": {
+    "functional": [
+      "Add rooms with capacities",
+      "Book the smallest free room that fits a group and a time range",
+      "Cancel by booking id",
+      "Show a room's agenda in time order"
+    ],
+    "non_functional": [
+      {
+        "name": "Correctness",
+        "target": "no two bookings in one room overlap"
+      },
+      {
+        "name": "Scale",
+        "target": "tens of rooms, hundreds of bookings a day: linear scans are fine"
+      }
+    ]
+  },
+  "entities": [
+    {
+      "name": "Room",
+      "responsibility": "Name, capacity and its bookings; answers whether a time range is free."
+    },
+    {
+      "name": "Scheduler",
+      "responsibility": "All rooms, the booking id counter, the best-fit choice, cancellation and the id-to-room index."
+    },
+    {
+      "name": "Driver (Main)",
+      "responsibility": "Parses HH:MM times and commands."
+    }
+  ],
+  "patterns": [
+    {
+      "name": "Half-open intervals",
+      "why": "With [start, end), back-to-back meetings do not clash and the overlap test is one line: not (end <= s or e <= start)."
+    },
+    {
+      "name": "Best fit",
+      "why": "Choosing the smallest room that fits keeps large rooms free for large groups."
+    },
+    {
+      "name": "Index by id",
+      "why": "A map from booking id to room makes cancellation O(1) instead of searching every room."
+    }
+  ],
+  "diagram": {
+    "id": "rooms-classes",
+    "kind": "mermaid",
+    "alt": "Class diagram: Scheduler holds rooms by name, an index from booking id to room name and the next id; Room holds name, capacity and bookings, with an isFree method.",
+    "data": {
+      "source": "classDiagram\n  class Scheduler {\n    rooms: Map~name, Room~\n    where: Map~id, name~\n    nextId\n    book(size, start, end)\n    cancel(id)\n    agenda(name)\n  }\n  class Room {\n    name\n    capacity\n    bookings: Map~id, interval~\n    isFree(start, end) bool\n  }\n  Scheduler o-- Room"
+    }
+  },
+  "kata": {
+    "io_protocol": "| Command | Prints |\n|---|---|\n| `ROOM <name> <capacity>` | `room <name> for <capacity>` or `error: room <name> exists` |\n| `BOOK <size> <HH:MM> <HH:MM>` | `booking <id>: <room>` or `error: no room free` |\n| `CANCEL <id>` | `cancelled <id>` or `error: no booking <id>` |\n| `AGENDA <room>` | `<id>: HH:MM-HH:MM` lines in time order, `<room>: free all day`, or `error: no room <room>` |\n\nStart must be before end. Anything else: `error: bad command <line>`.",
+    "implementations": [
+      {
+        "language": "python",
+        "files": [
+          {
+            "path": "rooms.py",
+            "content": "class Room:\n    def __init__(self, name, capacity):\n        self.name = name\n        self.capacity = capacity\n        self.bookings = {}             # booking id -> (start, end)\n\n    def is_free(self, start, end):\n        # TODO: free when [start, end) overlaps none of the bookings.\n        return True\n\n\nclass Scheduler:\n    def __init__(self):\n        self.rooms = {}\n        self.where = {}                # booking id -> room name\n        self.next_id = 1\n\n    def add_room(self, name, capacity):\n        if name in self.rooms:\n            return f\"error: room {name} exists\"\n        self.rooms[name] = Room(name, capacity)\n        return f\"room {name} for {capacity}\"\n\n    def _take(self, room, start, end):\n        bid = self.next_id\n        self.next_id += 1\n        room.bookings[bid] = (start, end)\n        self.where[bid] = room.name\n        return f\"booking {bid}: {room.name}\"\n\n    def book(self, size, start, end):\n        # TODO: the smallest free room that fits (ties by name), or \"error: no room free\".\n        return \"error: no room free\"\n\n    def cancel(self, bid):\n        name = self.where.pop(bid, None)\n        if name is None:\n            return f\"error: no booking {bid}\"\n        del self.rooms[name].bookings[bid]\n        return f\"cancelled {bid}\"\n\n    def agenda(self, name):\n        room = self.rooms.get(name)\n        if room is None:\n            return [f\"error: no room {name}\"]\n        rows = sorted((s, e, b) for b, (s, e) in room.bookings.items())\n        return [f\"{b}: {s // 60:02d}:{s % 60:02d}-{e // 60:02d}:{e % 60:02d}\" for s, e, b in rows] or [f\"{name}: free all day\"]\n",
+            "role": "source"
+          },
+          {
+            "path": "main.py",
+            "content": "import re\nimport sys\n\nfrom rooms import Scheduler\n\n\ndef minutes(t):\n    m = re.fullmatch(r\"([01][0-9]|2[0-3]):([0-5][0-9])\", t)\n    return int(m.group(1)) * 60 + int(m.group(2)) if m else None\n\n\ndef main():\n    s = Scheduler()\n    for raw in sys.stdin:\n        p = raw.split()\n        if not p:\n            continue\n        if p[0] == \"ROOM\" and len(p) == 3 and p[2].isdigit() and int(p[2]) > 0:\n            print(s.add_room(p[1], int(p[2])))\n        elif p[0] == \"BOOK\" and len(p) == 4 and p[1].isdigit() and minutes(p[2]) is not None and minutes(p[3]) is not None and minutes(p[2]) < minutes(p[3]):\n            print(s.book(int(p[1]), minutes(p[2]), minutes(p[3])))\n        elif p[0] == \"CANCEL\" and len(p) == 2 and p[1].isdigit():\n            print(s.cancel(int(p[1])))\n        elif p[0] == \"AGENDA\" and len(p) == 2:\n            print(\"\\n\".join(s.agenda(p[1])))\n        else:\n            print(f\"error: bad command {raw.strip()}\")\n\n\nmain()\n",
+            "role": "driver",
+            "editable": false
+          }
+        ],
+        "solution_files": [
+          {
+            "path": "rooms.py",
+            "content": "class Room:\n    def __init__(self, name, capacity):\n        self.name = name\n        self.capacity = capacity\n        self.bookings = {}             # booking id -> (start, end)\n\n    def is_free(self, start, end):\n        return all(end <= s or e <= start for s, e in self.bookings.values())\n\n\nclass Scheduler:\n    def __init__(self):\n        self.rooms = {}\n        self.where = {}                # booking id -> room name\n        self.next_id = 1\n\n    def add_room(self, name, capacity):\n        if name in self.rooms:\n            return f\"error: room {name} exists\"\n        self.rooms[name] = Room(name, capacity)\n        return f\"room {name} for {capacity}\"\n\n    def _take(self, room, start, end):\n        bid = self.next_id\n        self.next_id += 1\n        room.bookings[bid] = (start, end)\n        self.where[bid] = room.name\n        return f\"booking {bid}: {room.name}\"\n\n    def book(self, size, start, end):\n        fits = [r for r in self.rooms.values() if r.capacity >= size and r.is_free(start, end)]\n        if not fits:\n            return \"error: no room free\"\n        best = min(fits, key=lambda r: (r.capacity, r.name))   # smallest room that fits\n        return self._take(best, start, end)\n\n    def cancel(self, bid):\n        name = self.where.pop(bid, None)\n        if name is None:\n            return f\"error: no booking {bid}\"\n        del self.rooms[name].bookings[bid]\n        return f\"cancelled {bid}\"\n\n    def agenda(self, name):\n        room = self.rooms.get(name)\n        if room is None:\n            return [f\"error: no room {name}\"]\n        rows = sorted((s, e, b) for b, (s, e) in room.bookings.items())\n        return [f\"{b}: {s // 60:02d}:{s % 60:02d}-{e // 60:02d}:{e % 60:02d}\" for s, e, b in rows] or [f\"{name}: free all day\"]\n",
+            "role": "source"
+          }
+        ],
+        "change_files": [
+          {
+            "path": "rooms.py",
+            "content": "class Room:\n    def __init__(self, name, capacity):\n        self.name = name\n        self.capacity = capacity\n        self.bookings = {}             # booking id -> (start, end)\n\n    def is_free(self, start, end):\n        return all(end <= s or e <= start for s, e in self.bookings.values())\n\n\nclass Scheduler:\n    def __init__(self):\n        self.rooms = {}\n        self.where = {}                # booking id -> room name\n        self.next_id = 1\n\n    def add_room(self, name, capacity):\n        if name in self.rooms:\n            return f\"error: room {name} exists\"\n        self.rooms[name] = Room(name, capacity)\n        return f\"room {name} for {capacity}\"\n\n    def _take(self, room, start, end):\n        bid = self.next_id\n        self.next_id += 1\n        room.bookings[bid] = (start, end)\n        self.where[bid] = room.name\n        return f\"booking {bid}: {room.name}\"\n\n    def book(self, size, start, end):\n        fits = [r for r in self.rooms.values() if r.capacity >= size and r.is_free(start, end)]\n        if not fits:\n            return \"error: no room free\"\n        best = min(fits, key=lambda r: (r.capacity, r.name))   # smallest room that fits\n        return self._take(best, start, end)\n\n    def book_room(self, name, start, end):\n        room = self.rooms.get(name)\n        if room is None:\n            return f\"error: no room {name}\"\n        if not room.is_free(start, end):\n            return f\"error: {name} is busy\"\n        return self._take(room, start, end)\n\n    def cancel(self, bid):\n        name = self.where.pop(bid, None)\n        if name is None:\n            return f\"error: no booking {bid}\"\n        del self.rooms[name].bookings[bid]\n        return f\"cancelled {bid}\"\n\n    def agenda(self, name):\n        room = self.rooms.get(name)\n        if room is None:\n            return [f\"error: no room {name}\"]\n        rows = sorted((s, e, b) for b, (s, e) in room.bookings.items())\n        return [f\"{b}: {s // 60:02d}:{s % 60:02d}-{e // 60:02d}:{e % 60:02d}\" for s, e, b in rows] or [f\"{name}: free all day\"]\n",
+            "role": "source"
+          },
+          {
+            "path": "main.py",
+            "content": "import re\nimport sys\n\nfrom rooms import Scheduler\n\n\ndef minutes(t):\n    m = re.fullmatch(r\"([01][0-9]|2[0-3]):([0-5][0-9])\", t)\n    return int(m.group(1)) * 60 + int(m.group(2)) if m else None\n\n\ndef main():\n    s = Scheduler()\n    for raw in sys.stdin:\n        p = raw.split()\n        if not p:\n            continue\n        if p[0] == \"ROOM\" and len(p) == 3 and p[2].isdigit() and int(p[2]) > 0:\n            print(s.add_room(p[1], int(p[2])))\n        elif p[0] == \"BOOK\" and len(p) == 4 and p[1].isdigit() and minutes(p[2]) is not None and minutes(p[3]) is not None and minutes(p[2]) < minutes(p[3]):\n            print(s.book(int(p[1]), minutes(p[2]), minutes(p[3])))\n        elif p[0] == \"BOOKROOM\" and len(p) == 4 and minutes(p[2]) is not None and minutes(p[3]) is not None and minutes(p[2]) < minutes(p[3]):\n            print(s.book_room(p[1], minutes(p[2]), minutes(p[3])))\n        elif p[0] == \"CANCEL\" and len(p) == 2 and p[1].isdigit():\n            print(s.cancel(int(p[1])))\n        elif p[0] == \"AGENDA\" and len(p) == 2:\n            print(\"\\n\".join(s.agenda(p[1])))\n        else:\n            print(f\"error: bad command {raw.strip()}\")\n\n\nmain()\n",
+            "role": "driver",
+            "editable": false
+          }
+        ],
+        "bundle_order": [
+          "rooms.py",
+          "main.py"
+        ]
+      },
+      {
+        "language": "java",
+        "files": [
+          {
+            "path": "Rooms.java",
+            "content": "import java.util.*;\n\nclass Room {\n    final String name;\n    final int capacity;\n    final Map<Integer, int[]> bookings = new HashMap<>();   // id -> {start, end}\n\n    Room(String name, int capacity) { this.name = name; this.capacity = capacity; }\n\n    boolean isFree(int start, int end) {\n        // TODO: free when [start, end) overlaps none of the bookings.\n        return true;\n    }\n}\n\nclass Scheduler {\n    final Map<String, Room> rooms = new HashMap<>();\n    final Map<Integer, String> where = new HashMap<>();\n    int nextId = 1;\n\n    String addRoom(String name, int capacity) {\n        if (rooms.containsKey(name)) return \"error: room \" + name + \" exists\";\n        rooms.put(name, new Room(name, capacity));\n        return \"room \" + name + \" for \" + capacity;\n    }\n\n    String take(Room r, int start, int end) {\n        int id = nextId++;\n        r.bookings.put(id, new int[] {start, end});\n        where.put(id, r.name);\n        return \"booking \" + id + \": \" + r.name;\n    }\n\n    String book(int size, int start, int end) {\n        // TODO: the smallest free room that fits (ties by name), or \"error: no room free\".\n        return \"error: no room free\";\n    }\n\n    String cancel(int id) {\n        String name = where.remove(id);\n        if (name == null) return \"error: no booking \" + id;\n        rooms.get(name).bookings.remove(id);\n        return \"cancelled \" + id;\n    }\n\n    List<String> agenda(String name) {\n        Room r = rooms.get(name);\n        if (r == null) return List.of(\"error: no room \" + name);\n        List<int[]> rows = new ArrayList<>();\n        for (Map.Entry<Integer, int[]> e : r.bookings.entrySet()) rows.add(new int[] {e.getValue()[0], e.getValue()[1], e.getKey()});\n        rows.sort((a, b) -> a[0] != b[0] ? a[0] - b[0] : a[1] != b[1] ? a[1] - b[1] : a[2] - b[2]);\n        List<String> out = new ArrayList<>();\n        for (int[] x : rows) out.add(String.format(\"%d: %02d:%02d-%02d:%02d\", x[2], x[0] / 60, x[0] % 60, x[1] / 60, x[1] % 60));\n        return out.isEmpty() ? List.of(name + \": free all day\") : out;\n    }\n}\n",
+            "role": "source"
+          },
+          {
+            "path": "Main.java",
+            "content": "import java.io.*;\n\npublic class Main {\n    static int minutes(String t) {\n        if (!t.matches(\"([01][0-9]|2[0-3]):[0-5][0-9]\")) return -1;\n        return Integer.parseInt(t.substring(0, 2)) * 60 + Integer.parseInt(t.substring(3));\n    }\n\n    public static void main(String[] args) throws IOException {\n        BufferedReader in = new BufferedReader(new InputStreamReader(System.in));\n        StringBuilder out = new StringBuilder();\n        Scheduler s = new Scheduler();\n        for (String raw; (raw = in.readLine()) != null; ) {\n            String[] p = raw.trim().split(\"\\\\s+\");\n            if (p[0].isEmpty()) continue;\n            String reply;\n            if (p[0].equals(\"ROOM\") && p.length == 3 && p[2].matches(\"\\\\d{1,4}\") && Integer.parseInt(p[2]) > 0) reply = s.addRoom(p[1], Integer.parseInt(p[2]));\n            else if (p[0].equals(\"BOOK\") && p.length == 4 && p[1].matches(\"\\\\d{1,4}\") && minutes(p[2]) >= 0 && minutes(p[3]) >= 0 && minutes(p[2]) < minutes(p[3]))\n                reply = s.book(Integer.parseInt(p[1]), minutes(p[2]), minutes(p[3]));\n            else if (p[0].equals(\"CANCEL\") && p.length == 2 && p[1].matches(\"\\\\d{1,6}\")) reply = s.cancel(Integer.parseInt(p[1]));\n            else if (p[0].equals(\"AGENDA\") && p.length == 2) reply = String.join(\"\\n\", s.agenda(p[1]));\n            else reply = \"error: bad command \" + raw.trim();\n            out.append(reply).append('\\n');\n        }\n        System.out.print(out);\n    }\n}\n",
+            "role": "driver",
+            "editable": false
+          }
+        ],
+        "solution_files": [
+          {
+            "path": "Rooms.java",
+            "content": "import java.util.*;\n\nclass Room {\n    final String name;\n    final int capacity;\n    final Map<Integer, int[]> bookings = new HashMap<>();   // id -> {start, end}\n\n    Room(String name, int capacity) { this.name = name; this.capacity = capacity; }\n\n    boolean isFree(int start, int end) {\n        for (int[] b : bookings.values()) if (!(end <= b[0] || b[1] <= start)) return false;\n        return true;\n    }\n}\n\nclass Scheduler {\n    final Map<String, Room> rooms = new HashMap<>();\n    final Map<Integer, String> where = new HashMap<>();\n    int nextId = 1;\n\n    String addRoom(String name, int capacity) {\n        if (rooms.containsKey(name)) return \"error: room \" + name + \" exists\";\n        rooms.put(name, new Room(name, capacity));\n        return \"room \" + name + \" for \" + capacity;\n    }\n\n    String take(Room r, int start, int end) {\n        int id = nextId++;\n        r.bookings.put(id, new int[] {start, end});\n        where.put(id, r.name);\n        return \"booking \" + id + \": \" + r.name;\n    }\n\n    String book(int size, int start, int end) {\n        Room best = null;\n        for (Room r : rooms.values()) {\n            if (r.capacity < size || !r.isFree(start, end)) continue;\n            if (best == null || r.capacity < best.capacity || (r.capacity == best.capacity && r.name.compareTo(best.name) < 0)) best = r;\n        }\n        return best == null ? \"error: no room free\" : take(best, start, end);\n    }\n\n    String cancel(int id) {\n        String name = where.remove(id);\n        if (name == null) return \"error: no booking \" + id;\n        rooms.get(name).bookings.remove(id);\n        return \"cancelled \" + id;\n    }\n\n    List<String> agenda(String name) {\n        Room r = rooms.get(name);\n        if (r == null) return List.of(\"error: no room \" + name);\n        List<int[]> rows = new ArrayList<>();\n        for (Map.Entry<Integer, int[]> e : r.bookings.entrySet()) rows.add(new int[] {e.getValue()[0], e.getValue()[1], e.getKey()});\n        rows.sort((a, b) -> a[0] != b[0] ? a[0] - b[0] : a[1] != b[1] ? a[1] - b[1] : a[2] - b[2]);\n        List<String> out = new ArrayList<>();\n        for (int[] x : rows) out.add(String.format(\"%d: %02d:%02d-%02d:%02d\", x[2], x[0] / 60, x[0] % 60, x[1] / 60, x[1] % 60));\n        return out.isEmpty() ? List.of(name + \": free all day\") : out;\n    }\n}\n",
+            "role": "source"
+          }
+        ],
+        "change_files": [
+          {
+            "path": "Rooms.java",
+            "content": "import java.util.*;\n\nclass Room {\n    final String name;\n    final int capacity;\n    final Map<Integer, int[]> bookings = new HashMap<>();   // id -> {start, end}\n\n    Room(String name, int capacity) { this.name = name; this.capacity = capacity; }\n\n    boolean isFree(int start, int end) {\n        for (int[] b : bookings.values()) if (!(end <= b[0] || b[1] <= start)) return false;\n        return true;\n    }\n}\n\nclass Scheduler {\n    final Map<String, Room> rooms = new HashMap<>();\n    final Map<Integer, String> where = new HashMap<>();\n    int nextId = 1;\n\n    String addRoom(String name, int capacity) {\n        if (rooms.containsKey(name)) return \"error: room \" + name + \" exists\";\n        rooms.put(name, new Room(name, capacity));\n        return \"room \" + name + \" for \" + capacity;\n    }\n\n    String take(Room r, int start, int end) {\n        int id = nextId++;\n        r.bookings.put(id, new int[] {start, end});\n        where.put(id, r.name);\n        return \"booking \" + id + \": \" + r.name;\n    }\n\n    String book(int size, int start, int end) {\n        Room best = null;\n        for (Room r : rooms.values()) {\n            if (r.capacity < size || !r.isFree(start, end)) continue;\n            if (best == null || r.capacity < best.capacity || (r.capacity == best.capacity && r.name.compareTo(best.name) < 0)) best = r;\n        }\n        return best == null ? \"error: no room free\" : take(best, start, end);\n    }\n\n    String bookRoom(String name, int start, int end) {\n        Room r = rooms.get(name);\n        if (r == null) return \"error: no room \" + name;\n        if (!r.isFree(start, end)) return \"error: \" + name + \" is busy\";\n        return take(r, start, end);\n    }\n\n    String cancel(int id) {\n        String name = where.remove(id);\n        if (name == null) return \"error: no booking \" + id;\n        rooms.get(name).bookings.remove(id);\n        return \"cancelled \" + id;\n    }\n\n    List<String> agenda(String name) {\n        Room r = rooms.get(name);\n        if (r == null) return List.of(\"error: no room \" + name);\n        List<int[]> rows = new ArrayList<>();\n        for (Map.Entry<Integer, int[]> e : r.bookings.entrySet()) rows.add(new int[] {e.getValue()[0], e.getValue()[1], e.getKey()});\n        rows.sort((a, b) -> a[0] != b[0] ? a[0] - b[0] : a[1] != b[1] ? a[1] - b[1] : a[2] - b[2]);\n        List<String> out = new ArrayList<>();\n        for (int[] x : rows) out.add(String.format(\"%d: %02d:%02d-%02d:%02d\", x[2], x[0] / 60, x[0] % 60, x[1] / 60, x[1] % 60));\n        return out.isEmpty() ? List.of(name + \": free all day\") : out;\n    }\n}\n",
+            "role": "source"
+          },
+          {
+            "path": "Main.java",
+            "content": "import java.io.*;\n\npublic class Main {\n    static int minutes(String t) {\n        if (!t.matches(\"([01][0-9]|2[0-3]):[0-5][0-9]\")) return -1;\n        return Integer.parseInt(t.substring(0, 2)) * 60 + Integer.parseInt(t.substring(3));\n    }\n\n    public static void main(String[] args) throws IOException {\n        BufferedReader in = new BufferedReader(new InputStreamReader(System.in));\n        StringBuilder out = new StringBuilder();\n        Scheduler s = new Scheduler();\n        for (String raw; (raw = in.readLine()) != null; ) {\n            String[] p = raw.trim().split(\"\\\\s+\");\n            if (p[0].isEmpty()) continue;\n            String reply;\n            if (p[0].equals(\"ROOM\") && p.length == 3 && p[2].matches(\"\\\\d{1,4}\") && Integer.parseInt(p[2]) > 0) reply = s.addRoom(p[1], Integer.parseInt(p[2]));\n            else if (p[0].equals(\"BOOK\") && p.length == 4 && p[1].matches(\"\\\\d{1,4}\") && minutes(p[2]) >= 0 && minutes(p[3]) >= 0 && minutes(p[2]) < minutes(p[3]))\n                reply = s.book(Integer.parseInt(p[1]), minutes(p[2]), minutes(p[3]));\n            else if (p[0].equals(\"BOOKROOM\") && p.length == 4 && minutes(p[2]) >= 0 && minutes(p[3]) >= 0 && minutes(p[2]) < minutes(p[3]))\n                reply = s.bookRoom(p[1], minutes(p[2]), minutes(p[3]));\n            else if (p[0].equals(\"CANCEL\") && p.length == 2 && p[1].matches(\"\\\\d{1,6}\")) reply = s.cancel(Integer.parseInt(p[1]));\n            else if (p[0].equals(\"AGENDA\") && p.length == 2) reply = String.join(\"\\n\", s.agenda(p[1]));\n            else reply = \"error: bad command \" + raw.trim();\n            out.append(reply).append('\\n');\n        }\n        System.out.print(out);\n    }\n}\n",
+            "role": "driver",
+            "editable": false
+          }
+        ],
+        "bundle_order": [
+          "Rooms.java",
+          "Main.java"
+        ]
+      }
+    ],
+    "tests": [
+      {
+        "id": "smallest-fit",
+        "input": "ROOM Tapti 4\nROOM Kaveri 10\nROOM Ganga 4\nBOOK 3 10:00 11:00\nBOOK 3 10:30 11:30\nBOOK 3 10:45 11:15\nBOOK 3 10:50 11:00\n",
+        "expected": "room Tapti for 4\nroom Kaveri for 10\nroom Ganga for 4\nbooking 1: Ganga\nbooking 2: Tapti\nbooking 3: Kaveri\nerror: no room free\n",
+        "hidden": false
+      },
+      {
+        "id": "back-to-back",
+        "input": "ROOM Tapti 4\nROOM Kaveri 10\nROOM Ganga 4\nBOOK 4 09:00 10:00\nBOOK 4 10:00 11:00\nAGENDA Ganga\n",
+        "expected": "room Tapti for 4\nroom Kaveri for 10\nroom Ganga for 4\nbooking 1: Ganga\nbooking 2: Ganga\n1: 09:00-10:00\n2: 10:00-11:00\n",
+        "hidden": false
+      },
+      {
+        "id": "cancel",
+        "input": "ROOM Tapti 4\nROOM Kaveri 10\nROOM Ganga 4\nBOOK 8 14:00 15:00\nBOOK 8 14:30 15:30\nCANCEL 1\nBOOK 8 14:30 15:30\nCANCEL 1\nCANCEL 9\n",
+        "expected": "room Tapti for 4\nroom Kaveri for 10\nroom Ganga for 4\nbooking 1: Kaveri\nerror: no room free\ncancelled 1\nbooking 2: Kaveri\nerror: no booking 1\nerror: no booking 9\n",
+        "hidden": true
+      },
+      {
+        "id": "agenda-order",
+        "input": "ROOM Tapti 4\nROOM Kaveri 10\nROOM Ganga 4\nBOOK 2 16:00 17:00\nBOOK 2 09:00 09:30\nBOOK 2 12:00 13:00\nAGENDA Ganga\nAGENDA Tapti\nAGENDA Nowhere\n",
+        "expected": "room Tapti for 4\nroom Kaveri for 10\nroom Ganga for 4\nbooking 1: Ganga\nbooking 2: Ganga\nbooking 3: Ganga\n2: 09:00-09:30\n3: 12:00-13:00\n1: 16:00-17:00\nTapti: free all day\nerror: no room Nowhere\n",
+        "hidden": true
+      },
+      {
+        "id": "too-big",
+        "input": "ROOM Tapti 4\nROOM Kaveri 10\nROOM Ganga 4\nBOOK 11 10:00 11:00\nBOOK 10 10:00 11:00\n",
+        "expected": "room Tapti for 4\nroom Kaveri for 10\nroom Ganga for 4\nerror: no room free\nbooking 1: Kaveri\n",
+        "hidden": true
+      },
+      {
+        "id": "no-rooms",
+        "input": "BOOK 1 10:00 11:00\nROOM A 2\nROOM A 3\nBOOK 1 10:00 11:00\n",
+        "expected": "error: no room free\nroom A for 2\nerror: room A exists\nbooking 1: A\n",
+        "hidden": true
+      },
+      {
+        "id": "bad-times",
+        "input": "ROOM Tapti 4\nROOM Kaveri 10\nROOM Ganga 4\nBOOK 2 11:00 10:00\nBOOK 2 10:00 10:00\nBOOK 2 24:00 25:00\nBOOK two 10:00 11:00\nROOM Big 0\n",
+        "expected": "room Tapti for 4\nroom Kaveri for 10\nroom Ganga for 4\nerror: bad command BOOK 2 11:00 10:00\nerror: bad command BOOK 2 10:00 10:00\nerror: bad command BOOK 2 24:00 25:00\nerror: bad command BOOK two 10:00 11:00\nerror: bad command ROOM Big 0\n",
+        "hidden": true
+      },
+      {
+        "id": "busy-day",
+        "input": "ROOM Tapti 4\nROOM Kaveri 10\nROOM Ganga 4\nBOOK 4 09:00 09:45\nBOOK 4 10:00 10:45\nBOOK 4 11:00 11:45\nBOOK 4 12:00 12:45\nBOOK 4 13:00 13:45\nAGENDA Ganga\nAGENDA Tapti\n",
+        "expected": "room Tapti for 4\nroom Kaveri for 10\nroom Ganga for 4\nbooking 1: Ganga\nbooking 2: Ganga\nbooking 3: Ganga\nbooking 4: Ganga\nbooking 5: Ganga\n1: 09:00-09:45\n2: 10:00-10:45\n3: 11:00-11:45\n4: 12:00-12:45\n5: 13:00-13:45\nTapti: free all day\n",
+        "hidden": true
+      }
+    ],
+    "change_request": {
+      "description": "Some talks need a particular room (a projector, a stage). Add `BOOKROOM <room> <HH:MM> <HH:MM>`: books that room if it is free (`booking <id>: <room>`), else `error: <room> is busy`, or `error: no room <room>`. Ordinary BOOK is unchanged.",
+      "tests": [
+        {
+          "id": "book-specific",
+          "input": "ROOM Tapti 4\nROOM Kaveri 10\nROOM Ganga 4\nBOOKROOM Kaveri 10:00 11:00\nBOOKROOM Kaveri 10:30 11:30\nBOOKROOM Lab 10:00 11:00\nAGENDA Kaveri\n",
+          "expected": "room Tapti for 4\nroom Kaveri for 10\nroom Ganga for 4\nbooking 1: Kaveri\nerror: Kaveri is busy\nerror: no room Lab\n1: 10:00-11:00\n",
+          "hidden": false
+        },
+        {
+          "id": "mixed",
+          "input": "ROOM Tapti 4\nROOM Kaveri 10\nROOM Ganga 4\nBOOKROOM Ganga 09:00 10:00\nBOOK 3 09:30 10:00\nBOOK 3 09:15 09:45\n",
+          "expected": "room Tapti for 4\nroom Kaveri for 10\nroom Ganga for 4\nbooking 1: Ganga\nbooking 2: Tapti\nbooking 3: Kaveri\n",
+          "hidden": true
+        }
+      ]
+    }
+  },
+  "rubric": [
+    {
+      "id": "tests",
+      "criterion": "Kata tests pass, including BOOKROOM.",
+      "weight": 40,
+      "checked_by": "tests"
+    },
+    {
+      "id": "intervals",
+      "criterion": "Overlap uses half-open intervals correctly; back-to-back bookings are allowed.",
+      "weight": 20,
+      "checked_by": "review"
+    },
+    {
+      "id": "model",
+      "criterion": "Room answers availability; Scheduler chooses and indexes; the driver parses.",
+      "weight": 20,
+      "checked_by": "review"
+    },
+    {
+      "id": "change",
+      "criterion": "BOOKROOM reuses the room's availability check and the booking helper.",
+      "weight": 10,
+      "checked_by": "review"
+    },
+    {
+      "id": "feedback",
+      "criterion": "Naming and clarity (AI feedback, advice only).",
+      "weight": 10,
+      "checked_by": "ai-feedback"
+    }
+  ],
+  "concept_checks": [
+    {
+      "stem": "Booking A is 10:00-11:00. Does 11:00-12:00 clash with it?",
+      "options": [
+        "Yes",
+        "No, intervals are half-open",
+        "Only in the same room",
+        "It depends on the size"
+      ],
+      "correct": 1,
+      "explanation": "With [start, end), 11:00 is not inside [10:00, 11:00)."
+    },
+    {
+      "stem": "Which condition means [s1, e1) and [s2, e2) overlap?",
+      "options": [
+        "s1 < e2 and s2 < e1",
+        "s1 <= e2 and s2 <= e1",
+        "s1 == s2",
+        "e1 == e2"
+      ],
+      "correct": 0,
+      "explanation": "They overlap exactly when each starts before the other ends."
+    },
+    {
+      "stem": "Rooms of capacity 4, 10 and 4 (named Tapti, Kaveri, Ganga) are free. A group of 3 books. Which room?",
+      "options": [
+        "Kaveri",
+        "Tapti",
+        "Ganga",
+        "Any"
+      ],
+      "correct": 2,
+      "explanation": "Smallest capacity that fits is 4; between Ganga and Tapti, the name decides: Ganga."
+    },
+    {
+      "stem": "Why keep an index from booking id to room?",
+      "options": [
+        "To sort agendas",
+        "So cancel finds the booking in O(1) instead of scanning all rooms",
+        "To reuse ids",
+        "It is required for overlap checks"
+      ],
+      "correct": 1,
+      "explanation": "The index makes cancellation direct."
+    }
+  ],
+  "follow_ups": [
+    "Add recurring weekly bookings.",
+    "Suggest the nearest free slot when no room is free at the asked time.",
+    "With thousands of bookings per room, how would you speed up the free check (sorted list with binary search, interval tree)?"
+  ],
+  "revision_card": {
+    "front": "Room booking LLD: overlap test, which room to pick, and the cancellation trick?",
+    "back": "Half-open [start, end): overlap iff s1 < e2 and s2 < e1 (back-to-back is fine). Best fit: smallest capacity that fits, ties by name. Map booking id → room for O(1) cancel; ids never reused."
+  },
+  "reference_solution": {
+    "$file": "reference.md"
+  }
+}

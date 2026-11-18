@@ -1,0 +1,178 @@
+{
+  "schema": "parikshaa.content/project@1",
+  "slug": "proj-cpp-lru-cache",
+  "version": 1,
+  "title": "An LRU cache for the results page",
+  "tier": "premium",
+  "text_language": "en",
+  "difficulty": "medium",
+  "tags": {
+    "topics": [
+      "cpp",
+      "stl",
+      "hashing"
+    ],
+    "patterns": [
+      "lru-cache",
+      "list-plus-hash-map"
+    ]
+  },
+  "authoring": {
+    "author": "Parikshaa content team",
+    "generated_with": "ai+human",
+    "originality": "Written for Parikshaa: our own project brief, code, tests and rubric for an lru cache for the results page, examples, code, quiz and explanations; no text from any site, book or course.",
+    "review": {
+      "state": "self-checked"
+    }
+  },
+  "placement": [
+    {
+      "track": "samples-projects",
+      "module": "C++",
+      "position": 1
+    }
+  ],
+  "language": "cpp",
+  "est_hours": 4,
+  "brief": "On result day the college website falls over, because every student asks for the same few pages. Build the cache that sits in front of it: a fixed number of entries, O(1) get and put, and the least recently used entry thrown out when space runs out. This is the classic list-plus-hash-map design that interviews ask about, built and tested end to end.",
+  "requirements": [
+    "CAP sets the capacity once (1 to 9999).",
+    "GET returns the value or 'miss'; a hit makes the key the most recently used.",
+    "PUT inserts or updates and makes the key the most recently used; when full, the least recently used key is evicted and named.",
+    "KEYS lists keys from most to least recently used; STATS counts hits and misses."
+  ],
+  "io_protocol": "| Command | Prints |\n|---|---|\n| `CAP <n>` | `cache of <n>` |\n| `PUT <key> <value>` | `stored <key>` or `stored <key>, evicted <old>` |\n| `GET <key>` | the value, or `miss` |\n| `KEYS` | keys most-recent first, space-separated, or `empty` |\n| `STATS` | `hits <h>, misses <m>` |\n\nBefore CAP: `error: no cache yet`. Anything else: `error: bad command <line>`.",
+  "milestones": [
+    {
+      "id": "m1",
+      "title": "Get and put without eviction",
+      "instructions": "Implement `get` and the insert/update part of `put`, keeping `order_` (front = most recent) and `where_` in step.",
+      "hints": [
+        "list::splice moves a node to the front in O(1) without invalidating iterators.",
+        "On an update, change the value in place and move the node to the front."
+      ]
+    },
+    {
+      "id": "m2",
+      "title": "Eviction",
+      "instructions": "When the cache is full and a new key arrives, remove the back of the list from both structures and return its key.",
+      "hints": [
+        "Erase from where_ before pop_back, while you still have the key.",
+        "An update of an existing key never evicts."
+      ]
+    }
+  ],
+  "files": [
+    {
+      "path": "lru.h",
+      "content": "#ifndef LRU_H\n#define LRU_H\n\n#include <list>\n#include <string>\n#include <unordered_map>\n#include <utility>\n#include <vector>\n\n// Least-recently-used cache: get and put in O(1). The front of `order_` is the most recently used.\nclass LruCache {\npublic:\n    explicit LruCache(int capacity);\n    // The value, or nullptr on a miss. A hit makes the key the most recently used.\n    const std::string* get(const std::string& key);\n    // Inserts or updates; returns the evicted key, or \"\" if nothing was evicted.\n    std::string put(const std::string& key, const std::string& value);\n    // Keys from most to least recently used.\n    std::vector<std::string> keys() const;\n    int hits() const { return hits_; }\n    int misses() const { return misses_; }\n\nprivate:\n    using Entry = std::pair<std::string, std::string>;\n    int capacity_;\n    int hits_ = 0, misses_ = 0;\n    std::list<Entry> order_;\n    std::unordered_map<std::string, std::list<Entry>::iterator> where_;\n};\n\n#endif\n",
+      "role": "header",
+      "editable": false
+    },
+    {
+      "path": "lru.cpp",
+      "content": "#include \"lru.h\"\n\nLruCache::LruCache(int capacity) : capacity_(capacity) {}\n\nconst std::string* LruCache::get(const std::string& key) {\n    misses_++;            // Milestone 1: find the key, move it to the front, count a hit\n    return nullptr;\n}\n\nstd::string LruCache::put(const std::string& key, const std::string& value) {\n    return \"\";            // Milestone 1 and 2: update or insert at the front; evict from the back when full\n}\n\nstd::vector<std::string> LruCache::keys() const {\n    std::vector<std::string> out;\n    for (const auto& e : order_) out.push_back(e.first);\n    return out;\n}\n",
+      "role": "source"
+    },
+    {
+      "path": "main.cpp",
+      "content": "#include <iostream>\n#include <sstream>\n#include <string>\n#include \"lru.h\"\nusing namespace std;\n\nint main() {\n    ios::sync_with_stdio(false);\n    LruCache* cache = nullptr;\n    string line;\n    while (getline(cin, line)) {\n        istringstream in(line);\n        string cmd, a, b, extra;\n        if (!(in >> cmd)) continue;\n        in >> a >> b;\n        bool more = static_cast<bool>(in >> extra);\n        if (cmd == \"CAP\" && !cache && !a.empty() && b.empty() && a.find_first_not_of(\"0123456789\") == string::npos && a.size() < 5 && stoi(a) > 0) {\n            cache = new LruCache(stoi(a));\n            cout << \"cache of \" << a << \"\\n\";\n        } else if (!cache) cout << \"error: no cache yet\\n\";\n        else if (cmd == \"PUT\" && !b.empty() && !more) {\n            string ev = cache->put(a, b);\n            cout << \"stored \" << a << (ev.empty() ? \"\" : \", evicted \" + ev) << \"\\n\";\n        } else if (cmd == \"GET\" && !a.empty() && b.empty()) {\n            const string* v = cache->get(a);\n            cout << (v ? *v : string(\"miss\")) << \"\\n\";\n        } else if (cmd == \"KEYS\" && a.empty()) {\n            string all;\n            for (const auto& k : cache->keys()) all += (all.empty() ? \"\" : \" \") + k;\n            cout << (all.empty() ? \"empty\" : all) << \"\\n\";\n        } else if (cmd == \"STATS\" && a.empty()) cout << \"hits \" << cache->hits() << \", misses \" << cache->misses() << \"\\n\";\n        else cout << \"error: bad command \" << line << \"\\n\";\n    }\n    delete cache;\n    return 0;\n}\n",
+      "role": "driver",
+      "editable": false
+    }
+  ],
+  "solution_files": [
+    {
+      "path": "lru.cpp",
+      "content": "#include \"lru.h\"\n\nLruCache::LruCache(int capacity) : capacity_(capacity) {}\n\nconst std::string* LruCache::get(const std::string& key) {\n    auto it = where_.find(key);\n    if (it == where_.end()) {\n        misses_++;\n        return nullptr;\n    }\n    hits_++;\n    order_.splice(order_.begin(), order_, it->second);   // move to front; iterators stay valid\n    return &it->second->second;\n}\n\nstd::string LruCache::put(const std::string& key, const std::string& value) {\n    auto it = where_.find(key);\n    if (it != where_.end()) {\n        it->second->second = value;\n        order_.splice(order_.begin(), order_, it->second);\n        return \"\";\n    }\n    std::string evicted;\n    if (static_cast<int>(order_.size()) == capacity_) {\n        evicted = order_.back().first;\n        where_.erase(evicted);\n        order_.pop_back();\n    }\n    order_.emplace_front(key, value);\n    where_[key] = order_.begin();\n    return evicted;\n}\n\nstd::vector<std::string> LruCache::keys() const {\n    std::vector<std::string> out;\n    for (const auto& e : order_) out.push_back(e.first);\n    return out;\n}\n",
+      "role": "source"
+    }
+  ],
+  "bundle_order": [
+    "lru.h",
+    "lru.cpp",
+    "main.cpp"
+  ],
+  "tests": [
+    {
+      "id": "basic",
+      "input": "CAP 2\nPUT r101 pass\nPUT r102 fail\nGET r101\nGET r999\nSTATS\n",
+      "expected": "cache of 2\nstored r101\nstored r102\npass\nmiss\nhits 1, misses 1\n",
+      "hidden": false,
+      "milestone": "m1"
+    },
+    {
+      "id": "evict",
+      "input": "CAP 2\nPUT a 1\nPUT b 2\nGET a\nPUT c 3\nKEYS\nGET b\n",
+      "expected": "cache of 2\nstored a\nstored b\n1\nstored c, evicted b\nc a\nmiss\n",
+      "hidden": false,
+      "milestone": "m2"
+    },
+    {
+      "id": "update",
+      "input": "CAP 2\nPUT a 1\nPUT b 2\nPUT a 10\nPUT c 3\nKEYS\nGET a\n",
+      "expected": "cache of 2\nstored a\nstored b\nstored a\nstored c, evicted b\nc a\n10\n",
+      "hidden": true,
+      "milestone": "m1"
+    },
+    {
+      "id": "capacity-one",
+      "input": "CAP 1\nPUT x 1\nPUT y 2\nGET x\nGET y\nKEYS\nSTATS\n",
+      "expected": "cache of 1\nstored x\nstored y, evicted x\nmiss\n2\ny\nhits 1, misses 1\n",
+      "hidden": true,
+      "milestone": "m2"
+    },
+    {
+      "id": "recency-order",
+      "input": "CAP 4\nPUT a 1\nPUT b 2\nPUT c 3\nPUT d 4\nGET b\nGET a\nKEYS\nPUT e 5\nKEYS\n",
+      "expected": "cache of 4\nstored a\nstored b\nstored c\nstored d\n2\n1\na b d c\nstored e, evicted c\ne a b d\n",
+      "hidden": true,
+      "milestone": "m1"
+    },
+    {
+      "id": "before-cap",
+      "input": "GET a\nCAP 0\nCAP x\nCAP 3\nCAP 5\nKEYS\n",
+      "expected": "error: no cache yet\nerror: no cache yet\nerror: no cache yet\ncache of 3\nerror: bad command CAP 5\nempty\n",
+      "hidden": true,
+      "milestone": "m1"
+    },
+    {
+      "id": "long-run",
+      "input": "CAP 3\nPUT k0 v0\nGET k0\nPUT k1 v1\nGET k0\nPUT k2 v2\nGET k0\nPUT k3 v3\nGET k1\nPUT k4 v4\nGET k2\nPUT k5 v5\nGET k3\nPUT k6 v6\nGET k4\nPUT k7 v7\nGET k5\nPUT k8 v8\nGET k6\nPUT k9 v9\nGET k7\nPUT k10 v10\nGET k8\nPUT k11 v11\nGET k9\nKEYS\nSTATS\n",
+      "expected": "cache of 3\nstored k0\nv0\nstored k1\nv0\nstored k2\nv0\nstored k3, evicted k1\nmiss\nstored k4, evicted k2\nmiss\nstored k5, evicted k0\nv3\nstored k6, evicted k4\nmiss\nstored k7, evicted k5\nmiss\nstored k8, evicted k3\nv6\nstored k9, evicted k7\nmiss\nstored k10, evicted k8\nmiss\nstored k11, evicted k6\nv9\nk9 k11 k10\nhits 6, misses 6\n",
+      "hidden": true,
+      "milestone": "m2"
+    },
+    {
+      "id": "bad-commands",
+      "input": "CAP 2\nPUT onlykey\nPUT a b c\nGET\nDROP a\nSTATS\n",
+      "expected": "cache of 2\nerror: bad command PUT onlykey\nerror: bad command PUT a b c\nerror: bad command GET\nerror: bad command DROP a\nhits 0, misses 0\n",
+      "hidden": true,
+      "milestone": "m1"
+    }
+  ],
+  "rubric": [
+    {
+      "id": "tests",
+      "criterion": "Hidden tests pass: every command prints exactly the expected output.",
+      "weight": 65,
+      "checked_by": "tests"
+    },
+    {
+      "id": "structure",
+      "criterion": "get and put are O(1): one hash lookup and list splices, no scans of the list; the two structures never disagree.",
+      "weight": 20,
+      "checked_by": "review"
+    },
+    {
+      "id": "feedback",
+      "criterion": "Readable names, small functions and clear error handling (AI feedback, advice only).",
+      "weight": 15,
+      "checked_by": "ai-feedback"
+    }
+  ],
+  "extensions": [
+    "Add a time-to-live per entry.",
+    "Make the cache thread-safe and explain the lock you chose."
+  ]
+}
