@@ -55,7 +55,7 @@
     "@parikshaa/store": "*",
     "@parikshaa/viva": "*",
     "ajv": "^8.20.0",
-    "fastify": "^5.5.0",
+    "fastify": "^5.12.8",
     "fastify-type-provider-zod": "^7.0.0",
     "fflate": "^0.8.3",
     "jose": "^6.2.12",
