@@ -1,6 +1,8 @@
 import { expect, type APIRequestContext, type APIResponse } from "@playwright/test";
 // The password hash alone: the whole API would load Fastify into the test runner.
 import { hashPassword } from "@parikshaa/api/passwords";
+// The aptitude starter pack's questions (K2-8), as data: the pack waits for the owner's approval, so e2e files them itself.
+import { APTITUDE_STARTER } from "@parikshaa/api/aptitude-pack";
 import { seedOrganisation } from "../src/database.js";
 
 /**
@@ -265,4 +267,47 @@ export async function seedLearnSql(
     201,
   );
   return { token, track: { slug: pack["track"] as string, title: "SQL, from SELECT to window functions" }, problem: { slug: "big-countries", title: "Big countries" } };
+}
+
+/** What `seedLearnAptitude` makes (K2-8). */
+export interface LearnAptitude {
+  readonly token: string;
+  /** Answered wrong once (option B), so it is a miss, the explanation shut at 1/3. Its right option is A. */
+  readonly miss: { readonly slug: string; readonly title: string; readonly topic: string; readonly options: readonly string[] };
+  /** A reading question with its passage. */
+  readonly reading: { readonly slug: string; readonly title: string; readonly topic: string; readonly passage: string };
+}
+
+/**
+ * Aptitude in Learn (tracker row 140, K2-8) on a practice site of its own:
+ * the aptitude starter pack's ten questions (the content kit's samples, as the
+ * pack holds them; the pack itself waits for the owner's approval, so they go
+ * in through the bank), each with its tags, explanation and shortcut, and a
+ * learner who got one right (time and work) and one wrong (the price question,
+ * option B), so the hub shows both and the misses hold one.
+ */
+export async function seedLearnAptitude(
+  request: APIRequestContext,
+  { org, site, learner }: { readonly org: string; readonly site: string; readonly learner: { readonly name: string; readonly email: string } },
+): Promise<LearnAptitude> {
+  const owner = await seedOrganisation(hashPassword, org, "Nalanda Institute of Technology");
+  const signedIn = await ok(request.post("/api/auth/login", { data: { email: owner.email, password: owner.password } }));
+  const staff = { authorization: `Bearer ${signedIn["token"] as string}` };
+  await ok(request.put("/api/practice-admin/site", { headers: staff, data: { slug: site, title: "Nalanda Practice", welcome: "", open: true } }));
+  for (const q of APTITUDE_STARTER.questions) {
+    const filed = await ok(request.post("/api/bank", { headers: staff, data: { question: { maxScore: 1, rubric: [], ...q.question }, difficulty: q.difficulty, tags: q.tags } }), 201);
+    await ok(request.post("/api/practice-admin/problems", { headers: staff, data: { bankQuestionId: filed["id"], slug: q.slug, title: q.title, difficulty: q.difficulty, tags: q.tags, editorial: q.editorial } }), 201);
+  }
+  const signedUp = await ok(request.post(`/api/practice/${site}/signup`, { data: { name: learner.name, email: learner.email, password: "practice every single day" } }), 201);
+  const token = signedUp["token"] as string;
+  const auth = { authorization: `Bearer ${token}` };
+  await ok(request.post(`/api/practice/${site}/problems/apt-quant-two-tailors/submit`, { headers: auth, data: { answer: "0" } }));
+  await ok(request.post(`/api/practice/${site}/problems/apt-quant-price-rise-then-fall/submit`, { headers: auth, data: { answer: "1" } }));
+  const price = APTITUDE_STARTER.questions.find((q) => q.slug === "apt-quant-price-rise-then-fall")!;
+  const reading = APTITUDE_STARTER.questions.find((q) => q.slug === "apt-verbal-rc-mess-committee")!;
+  return {
+    token,
+    miss: { slug: price.slug, title: price.title, topic: "aptitude-quant-percentages", options: price.question.kind === "mcq" ? price.question.options : [] },
+    reading: { slug: reading.slug, title: reading.title, topic: "aptitude-verbal-reading-comprehension", passage: reading.question.kind === "mcq" ? (reading.question.passage?.title ?? "") : "" },
+  };
 }

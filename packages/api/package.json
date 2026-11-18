@@ -21,6 +21,10 @@
     "./secrets": {
       "types": "./dist/staff-secrets.d.ts",
       "default": "./dist/staff-secrets.js"
+    },
+    "./aptitude-pack": {
+      "types": "./dist/content/aptitude-starter.d.ts",
+      "default": "./dist/content/aptitude-starter.js"
     }
   },
   "files": [

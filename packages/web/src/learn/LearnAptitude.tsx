@@ -728,7 +728,7 @@ function Earlier({ problem, submissions }: { readonly problem: Problem; readonly
               {ok ? <CircleCheck aria-hidden="true" /> : <CircleX aria-hidden="true" />}
               <b className="la-mono">{answerText(problem.question, s.answer)}</b>
               <span>{t(ok ? AP.right : AP.wrong)}</span>
-              <span className="ln-faint la-small">{when.format(new Date(s.createdAt))}</span>
+              <span className="ln-faint la-small ln-dated">{when.format(new Date(s.createdAt))}</span>
             </li>
           );
         })}
